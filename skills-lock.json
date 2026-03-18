@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "shader-effects": {
+      "source": "bbeierle12/skill-mcp-claude",
+      "sourceType": "github",
+      "computedHash": "709b9c7c2188a8441ffa3b90f4fb053705db532b206f678b9898c3a408917fd0"
+    }
+  }
+}
