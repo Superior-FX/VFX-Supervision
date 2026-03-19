@@ -126,7 +126,8 @@ ACTIONVFX_CODES = {
     "BGH1":  "SMOKE",         # Big Grey Haze
     "BGS1":  "SMOKE",         # Big Grey Smoke
     "BM2":   "SMOKE",         # Black Smoke
-    "BW1":   "SMOKE",         # Black & White smoke
+    "BW1":      "BLOOD",       # Blood & Wounds
+    "BW_PRORES": "BLOOD",      # Blood ProRes
     "DB1":   "DUST",          # Dust/Debris
     "FB1":   "FIRE",          # Fire Ball
     "FE1":   "FIRE",          # Fire Element
