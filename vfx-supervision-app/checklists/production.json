@@ -1,0 +1,64 @@
+{
+  "title": "Production (On-Set)",
+  "sections": [
+    {
+      "title": "Daily On-Set Setup",
+      "items": [
+        { "id": "pr-daily-01", "label": "VFX supervisor briefed on day's shot list and any overnight changes" },
+        { "id": "pr-daily-02", "label": "Chrome ball / grey ball / color chart on hand for lighting reference" },
+        { "id": "pr-daily-03", "label": "Tracking markers and clean-plate needs communicated to 1st AD/camera" }
+      ]
+    },
+    {
+      "title": "HDRI Capture",
+      "items": [
+        { "id": "pr-hdri-01", "label": "HDRI captured at each hero camera position/setup" },
+        { "id": "pr-hdri-02", "label": "Bracket sequence covers full dynamic range (no clipped highlights)" },
+        { "id": "pr-hdri-03", "label": "Chrome ball + grey ball shot alongside HDRI for lighting/exposure reference" },
+        { "id": "pr-hdri-04", "label": "HDRI position measured/logged relative to set geometry" }
+      ]
+    },
+    {
+      "title": "Photogrammetry & Survey",
+      "items": [
+        { "id": "pr-scan-01", "label": "Photogrammetry captured for key set pieces / hero props" },
+        { "id": "pr-scan-02", "label": "LiDAR scan completed for environments requiring CG extension" },
+        { "id": "pr-scan-03", "label": "Set survey/measurements logged (dimensions, camera heights, lens heights)" }
+      ]
+    },
+    {
+      "title": "Greenscreen / LED Volume",
+      "items": [
+        { "id": "pr-gs-01", "label": "Greenscreen/bluescreen evenly lit, checked for spill and shadows" },
+        { "id": "pr-gs-02", "label": "Clean plates captured for every greenscreen/LED setup" },
+        { "id": "pr-gs-03", "label": "LED volume content/tracking verified in-camera before rolling (ICVFX)" },
+        { "id": "pr-gs-04", "label": "Reference stills taken of screen/volume state for matchback" }
+      ]
+    },
+    {
+      "title": "Reference Photography & Tracking Markers",
+      "items": [
+        { "id": "pr-ref-01", "label": "Tracking markers placed and logged for matchmove-critical shots" },
+        { "id": "pr-ref-02", "label": "Wide reference stills taken of set dressing/geometry for every setup" },
+        { "id": "pr-ref-03", "label": "Lens grid/distortion charts shot per lens used that day" }
+      ]
+    },
+    {
+      "title": "DIT / Data Management",
+      "items": [
+        { "id": "pr-dit-01", "label": "Camera media offloaded with checksum verification, redundant copies made" },
+        { "id": "pr-dit-02", "label": "On-set LUT applied consistently for dailies/video village monitoring" },
+        { "id": "pr-dit-03", "label": "Metadata (lens, camera, take notes) logged and attached to clips" },
+        { "id": "pr-dit-04", "label": "Dailies QC pass done before wrap (no dropped frames, audio sync, focus issues)" }
+      ]
+    },
+    {
+      "title": "On-Set Reporting",
+      "items": [
+        { "id": "pr-report-01", "label": "VFX supervisor's daily notes/report completed (shots, issues, decisions)" },
+        { "id": "pr-report-02", "label": "Any coverage gaps or missed captures flagged to production immediately" },
+        { "id": "pr-report-03", "label": "Data handed off to DIT/post pipeline confirmed received end of day" }
+      ]
+    }
+  ]
+}

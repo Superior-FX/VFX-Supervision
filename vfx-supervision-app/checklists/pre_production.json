@@ -1,0 +1,74 @@
+{
+  "title": "Pre-Production",
+  "sections": [
+    {
+      "title": "Script Breakdown",
+      "items": [
+        { "id": "pp-script-01", "label": "Full script pass complete — every VFX beat flagged scene-by-scene" },
+        { "id": "pp-script-02", "label": "Shots categorized (invisible fx, heavy comp, full CG, previs-dependent, etc.)" },
+        { "id": "pp-script-03", "label": "Ambiguous or director-dependent shots flagged for discussion" },
+        { "id": "pp-script-04", "label": "Breakdown shared with production, editorial, and department heads" }
+      ]
+    },
+    {
+      "title": "VFX Bid Package",
+      "items": [
+        { "id": "pp-bid-01", "label": "Shot list finalized and numbered for bidding" },
+        { "id": "pp-bid-02", "label": "Reference material (boards, previs, comps) attached per shot where available" },
+        { "id": "pp-bid-03", "label": "Bid package sent to shortlisted vendors" },
+        { "id": "pp-bid-04", "label": "Bid deadline and Q&A window communicated to all vendors" }
+      ]
+    },
+    {
+      "title": "Shot Complexity & Vendor Selection",
+      "items": [
+        { "id": "pp-vendor-01", "label": "Shots tiered by complexity (easy / medium / hard / hero)" },
+        { "id": "pp-vendor-02", "label": "Vendor bids leveled against a common shot-complexity baseline" },
+        { "id": "pp-vendor-03", "label": "Vendor track record / capacity / pipeline compatibility checked" },
+        { "id": "pp-vendor-04", "label": "Awards communicated and vendor contracts issued" }
+      ]
+    },
+    {
+      "title": "Tech Scout",
+      "items": [
+        { "id": "pp-scout-01", "label": "Locations scouted with VFX needs specifically in mind" },
+        { "id": "pp-scout-02", "label": "Greenscreen/bluescreen or LED volume requirements identified per location" },
+        { "id": "pp-scout-03", "label": "HDRI / survey access windows scheduled for each location" },
+        { "id": "pp-scout-04", "label": "Set dressing and practical elements that affect comp flagged" }
+      ]
+    },
+    {
+      "title": "Previs / Techvis / Postvis",
+      "items": [
+        { "id": "pp-previs-01", "label": "Previs scope agreed for action/stunt/complex-camera sequences" },
+        { "id": "pp-previs-02", "label": "Techvis delivered to camera/rigging/stunts ahead of shoot day" },
+        { "id": "pp-previs-03", "label": "Postvis plan set for editorial-dependent sequences" }
+      ]
+    },
+    {
+      "title": "Colorspace & Camera Prep",
+      "items": [
+        { "id": "pp-color-01", "label": "Camera colorspace / working colorspace decided (ACES / OCIO config chosen)" },
+        { "id": "pp-color-02", "label": "On-set LUT selected and distributed to DIT/video village" },
+        { "id": "pp-color-03", "label": "Lens package confirmed and distortion/grid-chart plan set for prep day" },
+        { "id": "pp-color-04", "label": "Codec/format for principal photography confirmed against delivery spec" }
+      ]
+    },
+    {
+      "title": "Asset List & Scheduling",
+      "items": [
+        { "id": "pp-asset-01", "label": "Asset list generated (builds, environments, props needing VFX equivalents)" },
+        { "id": "pp-asset-02", "label": "Long-lead asset builds kicked off ahead of shoot" },
+        { "id": "pp-asset-03", "label": "VFX milestones integrated into the overall production schedule" }
+      ]
+    },
+    {
+      "title": "Risk Assessment",
+      "items": [
+        { "id": "pp-risk-01", "label": "High-risk shots/sequences identified with contingency options" },
+        { "id": "pp-risk-02", "label": "Weather/practical-FX dependencies flagged for backup coverage plans" },
+        { "id": "pp-risk-03", "label": "Budget contingency reserved against identified risk shots" }
+      ]
+    }
+  ]
+}

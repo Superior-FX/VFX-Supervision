@@ -1,0 +1,58 @@
+{
+  "title": "Post-Production",
+  "sections": [
+    {
+      "title": "VFX Turnover Package",
+      "items": [
+        { "id": "po-turnover-01", "label": "Turnover package includes plates, camera data, and shot-specific notes" },
+        { "id": "po-turnover-02", "label": "Handles included on all plates per the agreed handle length" },
+        { "id": "po-turnover-03", "label": "Offline-to-online conform path confirmed (no missing/renamed shots)" },
+        { "id": "po-turnover-04", "label": "EDL/AAF/XML exported and validated against the cut before sending" }
+      ]
+    },
+    {
+      "title": "Plate Delivery to Vendors",
+      "items": [
+        { "id": "po-plate-01", "label": "Plates delivered in agreed colorspace/format (e.g. ACEScg EXR, LogC ProRes)" },
+        { "id": "po-plate-02", "label": "Slate/metadata (shot name, frame range, lens, colorspace) attached to every plate" },
+        { "id": "po-plate-03", "label": "Vendor confirms receipt and successful ingest of plates" },
+        { "id": "po-plate-04", "label": "Reference cut/QuickTime provided alongside plates for context" }
+      ]
+    },
+    {
+      "title": "VFX Review & Approval",
+      "items": [
+        { "id": "po-review-01", "label": "Vendor submissions reviewed against shot notes and previs/reference" },
+        { "id": "po-review-02", "label": "Notes delivered back to vendor with clear, actionable feedback" },
+        { "id": "po-review-03", "label": "Director/client approval tracked per shot (WIP, approved, final)" },
+        { "id": "po-review-04", "label": "Approved shots confirmed conformed back into the cut" }
+      ]
+    },
+    {
+      "title": "Budget & Change Orders",
+      "items": [
+        { "id": "po-budget-01", "label": "Burn tracked against bid per vendor, updated regularly" },
+        { "id": "po-budget-02", "label": "Change orders issued for any shot added, re-scoped, or upresed beyond bid" },
+        { "id": "po-budget-03", "label": "Contingency spend tracked separately from base budget" },
+        { "id": "po-budget-04", "label": "Cost report shared with production on the agreed cadence" }
+      ]
+    },
+    {
+      "title": "Finals Delivery",
+      "items": [
+        { "id": "po-finals-01", "label": "Finals delivered in the spec'd codec, resolution, and colorspace" },
+        { "id": "po-finals-02", "label": "File naming follows the agreed convention across all vendors" },
+        { "id": "po-finals-03", "label": "QC pass done on every final (no drop frames, artifacts, or slate errors)" },
+        { "id": "po-finals-04", "label": "Finals conformed into the final online timeline and verified" }
+      ]
+    },
+    {
+      "title": "Wrap",
+      "items": [
+        { "id": "po-wrap-01", "label": "Archival copies of plates, finals, and project files stored per retention policy" },
+        { "id": "po-wrap-02", "label": "Vendor contracts closed out, final invoices reconciled against burn report" },
+        { "id": "po-wrap-03", "label": "Post-mortem notes captured for pipeline/vendor learnings on the next show" }
+      ]
+    }
+  ]
+}
