@@ -43,7 +43,8 @@
         { "id": "po-finals-01", "label": "Finals delivered in the spec'd codec, resolution, and colorspace" },
         { "id": "po-finals-02", "label": "File naming follows the agreed convention across all vendors" },
         { "id": "po-finals-03", "label": "QC pass done on every final (no drop frames, artifacts, or slate errors)" },
-        { "id": "po-finals-04", "label": "Finals conformed into the final online timeline and verified" }
+        { "id": "po-finals-04", "label": "Finals conformed into the final online timeline and verified" },
+        { "id": "po-finals-05", "label": "Full technical deliverable spec (video, audio, localization/accessibility) confirmed against the current distributor spec sheet" }
       ]
     },
     {
@@ -51,7 +52,10 @@
       "items": [
         { "id": "po-wrap-01", "label": "Archival copies of plates, finals, and project files stored per retention policy" },
         { "id": "po-wrap-02", "label": "Vendor contracts closed out, final invoices reconciled against burn report" },
-        { "id": "po-wrap-03", "label": "Post-mortem notes captured for pipeline/vendor learnings on the next show" }
+        { "id": "po-wrap-03", "label": "Post-mortem notes captured for pipeline/vendor learnings on the next show" },
+        { "id": "po-wrap-04", "label": "Final shot count and status reconciled against the original bid/shot list" },
+        { "id": "po-wrap-05", "label": "Long-term archive format specified (LTO tape, cold cloud storage) and archive integrity verified" },
+        { "id": "po-wrap-06", "label": "Asset library (rigs, textures, tools, builds) handed off to studio for sequel/franchise reuse where applicable" }
       ]
     }
   ]

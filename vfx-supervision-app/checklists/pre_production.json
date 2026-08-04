@@ -7,7 +7,8 @@
         { "id": "pp-script-01", "label": "Full script pass complete — every VFX beat flagged scene-by-scene" },
         { "id": "pp-script-02", "label": "Shots categorized (invisible fx, heavy comp, full CG, previs-dependent, etc.)" },
         { "id": "pp-script-03", "label": "Ambiguous or director-dependent shots flagged for discussion" },
-        { "id": "pp-script-04", "label": "Breakdown shared with production, editorial, and department heads" }
+        { "id": "pp-script-04", "label": "Breakdown shared with production, editorial, and department heads" },
+        { "id": "pp-script-05", "label": "Every scene cross-checked against the VFX shot-type taxonomy, not just the obvious beats" }
       ]
     },
     {
@@ -16,7 +17,8 @@
         { "id": "pp-bid-01", "label": "Shot list finalized and numbered for bidding" },
         { "id": "pp-bid-02", "label": "Reference material (boards, previs, comps) attached per shot where available" },
         { "id": "pp-bid-03", "label": "Bid package sent to shortlisted vendors" },
-        { "id": "pp-bid-04", "label": "Bid deadline and Q&A window communicated to all vendors" }
+        { "id": "pp-bid-04", "label": "Bid deadline and Q&A window communicated to all vendors" },
+        { "id": "pp-bid-05", "label": "Client intake information gathered across pipeline/tech, assets, deliverables, and approval process" }
       ]
     },
     {
@@ -26,6 +28,33 @@
         { "id": "pp-vendor-02", "label": "Vendor bids leveled against a common shot-complexity baseline" },
         { "id": "pp-vendor-03", "label": "Vendor track record / capacity / pipeline compatibility checked" },
         { "id": "pp-vendor-04", "label": "Awards communicated and vendor contracts issued" }
+      ]
+    },
+    {
+      "title": "Insurance & Legal",
+      "items": [
+        { "id": "pp-legal-01", "label": "Certificate of insurance (COI) collected from every VFX vendor before work begins" },
+        { "id": "pp-legal-02", "label": "IP/ownership terms for VFX assets (builds, tools, pipeline elements) defined in vendor contracts" },
+        { "id": "pp-legal-03", "label": "Clearance documentation secured for stunts, weapons, and pyro sequences requiring VFX enhancement" },
+        { "id": "pp-legal-04", "label": "E&O insurance confirmed for vendors handling licensed or copyrighted material" }
+      ]
+    },
+    {
+      "title": "Content Security & Data Handling",
+      "items": [
+        { "id": "pp-security-01", "label": "Forensic watermarking applied to dailies/screeners before distribution to vendors" },
+        { "id": "pp-security-02", "label": "Secure transfer protocol (Aspera, PIX, secure FTP) agreed with every vendor" },
+        { "id": "pp-security-03", "label": "Vendor MPA content-security compliance (or studio-equivalent) confirmed before footage is released" },
+        { "id": "pp-security-04", "label": "Access control and credential policy set for shared project storage" }
+      ]
+    },
+    {
+      "title": "Pipeline & Review Setup",
+      "items": [
+        { "id": "pp-pipeline-01", "label": "Review platform selected and vendor accounts provisioned (frame.io, ShotGrid/ftrack, Syncsketch, etc.)" },
+        { "id": "pp-pipeline-02", "label": "Shot-status tracking system stood up and populated with the full shot list before work begins" },
+        { "id": "pp-pipeline-03", "label": "Standardized note-taking format/template agreed across departments" },
+        { "id": "pp-pipeline-04", "label": "Turnaround expectations per review round communicated to vendors" }
       ]
     },
     {
@@ -42,7 +71,8 @@
       "items": [
         { "id": "pp-previs-01", "label": "Previs scope agreed for action/stunt/complex-camera sequences" },
         { "id": "pp-previs-02", "label": "Techvis delivered to camera/rigging/stunts ahead of shoot day" },
-        { "id": "pp-previs-03", "label": "Postvis plan set for editorial-dependent sequences" }
+        { "id": "pp-previs-03", "label": "Postvis plan set for editorial-dependent sequences" },
+        { "id": "pp-previs-04", "label": "Previs/techvis turned over to VFX vendors as camera and timing reference" }
       ]
     },
     {
@@ -51,7 +81,8 @@
         { "id": "pp-color-01", "label": "Camera colorspace / working colorspace decided (ACES / OCIO config chosen)" },
         { "id": "pp-color-02", "label": "On-set LUT selected and distributed to DIT/video village" },
         { "id": "pp-color-03", "label": "Lens package confirmed and distortion/grid-chart plan set for prep day" },
-        { "id": "pp-color-04", "label": "Codec/format for principal photography confirmed against delivery spec" }
+        { "id": "pp-color-04", "label": "Codec/format for principal photography confirmed against delivery spec" },
+        { "id": "pp-color-05", "label": "Camera department reference sheet collected (DP contact, per-body specs, monitoring LUT)" }
       ]
     },
     {
@@ -59,7 +90,8 @@
       "items": [
         { "id": "pp-asset-01", "label": "Asset list generated (builds, environments, props needing VFX equivalents)" },
         { "id": "pp-asset-02", "label": "Long-lead asset builds kicked off ahead of shoot" },
-        { "id": "pp-asset-03", "label": "VFX milestones integrated into the overall production schedule" }
+        { "id": "pp-asset-03", "label": "VFX milestones integrated into the overall production schedule" },
+        { "id": "pp-asset-04", "label": "Asset budget confirmed against vendor bids, with contingency reserved" }
       ]
     },
     {
@@ -67,7 +99,8 @@
       "items": [
         { "id": "pp-risk-01", "label": "High-risk shots/sequences identified with contingency options" },
         { "id": "pp-risk-02", "label": "Weather/practical-FX dependencies flagged for backup coverage plans" },
-        { "id": "pp-risk-03", "label": "Budget contingency reserved against identified risk shots" }
+        { "id": "pp-risk-03", "label": "Budget contingency reserved against identified risk shots" },
+        { "id": "pp-risk-04", "label": "Stunt/SFX interaction with VFX (wire removal, rig removal, pyro, atmospherics) reviewed with stunt/SFX coordinators" }
       ]
     }
   ]

@@ -11,7 +11,11 @@ of `../element-library` — no shared code or data between the two projects.
   colorspace/ACES/OCIO, pre-production, on-set supervision, DIT workflow,
   post budgeting, editorial & deliveries, codecs, Nuke/After Effects/ComfyUI
   workflows, CGI pipeline, camera tracking, lens distortion, camera & lens
-  specs.
+  specs, FFmpeg (core concepts, conversion, filters, trimming/merging,
+  audio), DIY motion-capture (overview, IMU hardware, firmware/sensor
+  fusion, optical mocap, suit fabrication), streamer deliverable specs
+  (Netflix-style IMF), VFX shot-type taxonomy, camera department
+  reference, and client intake checklist.
 - **Checklists** — checkable pre-production / production / post-production
   checklists (`checklists/*.json`). Checked state is saved locally to
   `checklists/.state.json` (gitignored — per-machine progress, not shared).

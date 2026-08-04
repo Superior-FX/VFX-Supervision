@@ -6,7 +6,8 @@
       "items": [
         { "id": "pr-daily-01", "label": "VFX supervisor briefed on day's shot list and any overnight changes" },
         { "id": "pr-daily-02", "label": "Chrome ball / grey ball / color chart on hand for lighting reference" },
-        { "id": "pr-daily-03", "label": "Tracking markers and clean-plate needs communicated to 1st AD/camera" }
+        { "id": "pr-daily-03", "label": "Tracking markers and clean-plate needs communicated to 1st AD/camera" },
+        { "id": "pr-daily-04", "label": "Stunt/SFX coordination reviewed for wire removal, rig removal, or pyro/atmospheric elements" }
       ]
     },
     {
@@ -23,7 +24,8 @@
       "items": [
         { "id": "pr-scan-01", "label": "Photogrammetry captured for key set pieces / hero props" },
         { "id": "pr-scan-02", "label": "LiDAR scan completed for environments requiring CG extension" },
-        { "id": "pr-scan-03", "label": "Set survey/measurements logged (dimensions, camera heights, lens heights)" }
+        { "id": "pr-scan-03", "label": "Set survey/measurements logged (dimensions, camera heights, lens heights)" },
+        { "id": "pr-scan-04", "label": "Turntable/texture reference captured for hero props/costumes requiring CG doubles" }
       ]
     },
     {
@@ -40,7 +42,8 @@
       "items": [
         { "id": "pr-ref-01", "label": "Tracking markers placed and logged for matchmove-critical shots" },
         { "id": "pr-ref-02", "label": "Wide reference stills taken of set dressing/geometry for every setup" },
-        { "id": "pr-ref-03", "label": "Lens grid/distortion charts shot per lens used that day" }
+        { "id": "pr-ref-03", "label": "Lens grid/distortion charts shot per lens used that day" },
+        { "id": "pr-ref-04", "label": "Focus/stop, lens, and camera height logged per setup for matchmove" }
       ]
     },
     {
@@ -57,7 +60,8 @@
       "items": [
         { "id": "pr-report-01", "label": "VFX supervisor's daily notes/report completed (shots, issues, decisions)" },
         { "id": "pr-report-02", "label": "Any coverage gaps or missed captures flagged to production immediately" },
-        { "id": "pr-report-03", "label": "Data handed off to DIT/post pipeline confirmed received end of day" }
+        { "id": "pr-report-03", "label": "Data handed off to DIT/post pipeline confirmed received end of day" },
+        { "id": "pr-report-04", "label": "Continuity-relevant wardrobe, prop, or set changes logged for post" }
       ]
     }
   ]
