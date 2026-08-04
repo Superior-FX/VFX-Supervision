@@ -121,11 +121,11 @@ class ChecklistTab(QWidget):
         scroll.setWidget(content)
 
         for section in data.get("sections", []):
-            box = QGroupBox(section.get("title", ""))
+            box = QGroupBox(section.get("title", "").replace("&", "&&"))
             box_layout = QVBoxLayout(box)
             for item in section.get("items", []):
                 item_id = item["id"]
-                checkbox = QCheckBox(item["label"])
+                checkbox = QCheckBox(item["label"].replace("&", "&&"))
                 checkbox.setChecked(bool(self.state.get(item_id, False)))
                 checkbox.toggled.connect(self._make_handler(item_id))
                 box_layout.addWidget(checkbox)
