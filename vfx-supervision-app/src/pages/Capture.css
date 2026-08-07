@@ -1,0 +1,175 @@
+.capture {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 32px 28px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.capture-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.capture-title {
+  font: 600 13px var(--font-mono);
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+.capture-shot-input {
+  font: 600 13px var(--font-mono);
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px dashed var(--border-soft);
+  padding: 2px 0;
+  min-width: 200px;
+}
+
+.capture-shot-input:focus {
+  outline: none;
+  border-bottom-color: var(--accent);
+}
+
+.viewfinder {
+  height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-tertiary);
+  overflow: hidden;
+}
+
+.viewfinder span {
+  font: 700 13px var(--font-body);
+}
+
+.viewfinder-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.capture-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.capture-actions .btn {
+  flex: 1;
+}
+
+.attach-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.capture-submit-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.capture-confirmation {
+  font: 12px var(--font-body);
+  color: var(--success);
+}
+
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  cursor: pointer;
+}
+
+.checklist-box {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 4px;
+  border: 1.5px solid var(--border-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.checklist-box.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.checklist-label {
+  font: 700 13px var(--font-body);
+  color: var(--text-primary);
+}
+
+.lens-readout {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.lens-readout span {
+  font: 11px var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.note-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note-textarea {
+  position: relative;
+}
+
+.note-textarea textarea {
+  width: 100%;
+  min-height: 68px;
+  resize: vertical;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font: 13px var(--font-body);
+  padding: 12px 40px 12px 12px;
+  box-sizing: border-box;
+}
+
+.note-textarea textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.note-mic {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}

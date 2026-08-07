@@ -1,0 +1,125 @@
+.upload {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 32px 28px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.upload-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.upload-title {
+  font: 600 12px var(--font-mono);
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+.dropzone {
+  height: 200px;
+  border: 1.5px dashed var(--accent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--card-bg);
+  cursor: pointer;
+}
+
+.dropzone-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.dropzone-text {
+  font: 700 13px var(--font-body);
+  color: var(--text-primary);
+}
+
+.dropzone-hint {
+  font: 9px var(--font-mono);
+  color: var(--text-tertiary);
+}
+
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.file-icon {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 5px;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+}
+
+.file-name {
+  font: 11px var(--font-mono);
+  color: var(--text-primary);
+}
+
+.file-size {
+  margin-left: auto;
+}
+
+.attach-field {
+  padding: 10px 12px;
+}
+
+.attach-field span {
+  font: 11px var(--font-mono);
+  color: var(--text-primary);
+}
+
+.upload-note textarea {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font: 13px var(--font-body);
+  padding: 10px 12px;
+  box-sizing: border-box;
+}
+
+.upload-note textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.upload-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.upload-actions .btn {
+  flex: 1;
+}

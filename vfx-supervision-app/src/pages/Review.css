@@ -1,0 +1,97 @@
+.review {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 28px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.review-title {
+  font: 600 12px var(--font-mono);
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+.review-frame {
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+}
+
+.review-frame span {
+  font: 700 13px var(--font-body);
+}
+
+.review-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.review-tool {
+  cursor: pointer;
+}
+
+.review-tool.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.review-scrub-hint {
+  margin-left: auto;
+  font: 700 12px var(--font-body);
+  color: var(--text-tertiary);
+}
+
+.review-scrubber {
+  height: 26px;
+  position: relative;
+  overflow: hidden;
+}
+
+.review-scrubber-fill {
+  position: absolute;
+  inset: 0;
+  width: 38%;
+  background: var(--accent-soft);
+  border-right: 1.5px solid var(--accent);
+}
+
+.filmstrip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+
+.filmstrip-frame {
+  width: 76px;
+  height: 52px;
+  flex: none;
+  border-radius: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.filmstrip-frame.active {
+  border-color: var(--accent-border);
+}
+
+.review-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.review-actions .btn {
+  flex: 1;
+}

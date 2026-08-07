@@ -1,0 +1,103 @@
+.shell {
+  display: flex;
+  height: 100vh;
+}
+
+.shell-sidebar {
+  width: 200px;
+  flex: none;
+  background: var(--card-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  gap: 26px;
+}
+
+.shell-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 6px;
+}
+
+.shell-brand-mark {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  background: var(--accent-soft);
+  border: 1.5px solid var(--accent);
+}
+
+.shell-brand-name {
+  font: 600 12px var(--font-mono);
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+.shell-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.shell-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.shell-nav-group-label {
+  font: 600 10px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+  padding: 0 10px;
+  margin-bottom: 3px;
+  display: block;
+}
+
+.shell-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 6px;
+  font: 600 12px var(--font-body);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.shell-nav-link:hover {
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.shell-nav-link.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.shell-nav-icon {
+  display: flex;
+  flex: none;
+}
+
+.shell-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 6px;
+}
+
+.shell-role-pill {
+  align-self: flex-start;
+}
+
+.shell-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+}

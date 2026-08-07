@@ -1,0 +1,38 @@
+.script-reports {
+  padding: 32px 28px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.script-reports-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.script-reports-title {
+  font: 600 12px var(--font-mono);
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+.script-reports-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font: 13px var(--font-body);
+}
+
+.script-report-heading {
+  font: 700 11px var(--font-mono);
+  color: var(--text-primary);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.script-report-budget {
+  font: 11px var(--font-mono);
+  color: var(--success);
+  white-space: nowrap;
+}

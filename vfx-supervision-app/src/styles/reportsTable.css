@@ -1,0 +1,91 @@
+.report-table-wrap {
+  overflow-x: auto;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.report-table th {
+  text-align: left;
+  font: 600 9px var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.report-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  font: 13px var(--font-body);
+  color: var(--text-secondary);
+}
+
+.report-thumb-cell {
+  width: 64px;
+}
+
+.report-thumb {
+  width: 56px;
+  height: 40px;
+  border-radius: 5px;
+  object-fit: cover;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.report-thumb-placeholder {
+  width: 56px;
+  height: 40px;
+  border-radius: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+}
+
+.report-shot-code {
+  font: 700 12px var(--font-mono);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.report-description {
+  max-width: 260px;
+}
+
+.report-mono {
+  font: 11px var(--font-mono);
+  white-space: nowrap;
+}
+
+.report-checklist-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 11px var(--font-mono);
+}
+
+.report-checklist-count.complete {
+  color: var(--success);
+}
+
+.report-timestamp {
+  font: 10px var(--font-mono);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.report-badges-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 260px;
+}

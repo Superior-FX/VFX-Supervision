@@ -1,0 +1,81 @@
+.board {
+  padding: 32px 28px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.board-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.board-title {
+  font: 600 13px var(--font-mono);
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+.board-filters {
+  display: flex;
+  gap: 6px;
+}
+
+.board-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.board-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.board-column-label {
+  display: flex;
+  justify-content: space-between;
+}
+
+.board-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.board-card {
+  padding: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.15s ease;
+}
+
+.board-card:hover {
+  border-color: var(--border-soft);
+}
+
+.board-card.highlight {
+  border-color: var(--accent-border);
+}
+
+.board-card-code {
+  font: 11px var(--font-mono);
+  color: var(--text-primary);
+}
+
+.board-card-meta {
+  font: 700 12px var(--font-body);
+  color: var(--text-secondary);
+}
+
+.board-card-pills {
+  display: flex;
+  gap: 6px;
+}

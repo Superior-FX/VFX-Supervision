@@ -1,0 +1,127 @@
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.login-panel {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 34px 30px;
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.login-brand-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  border: 1.5px solid var(--accent);
+}
+
+.login-brand-name {
+  font: 600 13px var(--font-mono);
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+.login-heading {
+  font: 22px var(--font-display);
+  color: var(--text-primary);
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.login-field label {
+  font: 600 10px var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.login-field input {
+  height: 40px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  padding: 0 12px;
+  font: 13px var(--font-body);
+}
+
+.login-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.login-panel .btn {
+  width: 100%;
+}
+
+.login-projects-label {
+  margin-top: 4px;
+}
+
+.login-projects {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.login-project-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.login-project-card:hover {
+  border-color: var(--border-soft);
+}
+
+.login-project-name {
+  font: 700 14px var(--font-body);
+  color: var(--text-primary);
+}
+
+.login-project-meta {
+  font: 9px var(--font-mono);
+  color: var(--accent);
+}
+
+.login-project-meta.wrapped {
+  color: var(--text-secondary);
+}
+
+.login-role-label {
+  margin-top: 6px;
+}
+
+.login-roles {
+  display: flex;
+  gap: 8px;
+}
+
+.login-role {
+  flex: 1;
+  text-align: center;
+  padding: 8px 6px;
+  cursor: pointer;
+}
