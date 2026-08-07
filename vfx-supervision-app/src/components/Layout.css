@@ -96,6 +96,17 @@
   align-self: flex-start;
 }
 
+.shell-switch-role {
+  font: 600 9px var(--font-mono);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.shell-switch-role:hover {
+  color: var(--text-secondary);
+}
+
 .shell-main {
   flex: 1;
   min-width: 0;

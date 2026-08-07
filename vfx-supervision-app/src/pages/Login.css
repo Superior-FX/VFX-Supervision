@@ -125,3 +125,9 @@
   padding: 8px 6px;
   cursor: pointer;
 }
+
+.login-role-hint {
+  font: 11px var(--font-body);
+  color: var(--text-tertiary);
+  margin-top: -8px;
+}

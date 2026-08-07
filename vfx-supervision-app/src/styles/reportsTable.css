@@ -89,3 +89,86 @@
   gap: 4px;
   max-width: 260px;
 }
+
+.report-edit-cell {
+  width: 34px;
+}
+
+.report-edit-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border-soft);
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.report-edit-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.report-static-text {
+  font: 13px var(--font-body);
+  color: var(--text-secondary);
+}
+
+.report-edit-input {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  font: 13px var(--font-body);
+  color: var(--text-secondary);
+  width: 100%;
+  min-width: 90px;
+  box-sizing: border-box;
+}
+
+.report-edit-input:hover {
+  border-color: var(--border-soft);
+}
+
+.report-edit-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.report-number-input {
+  min-width: 56px;
+  width: 56px;
+}
+
+.report-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.report-move-btn {
+  font-size: 9px;
+}
+
+.report-move-btn.disabled {
+  opacity: 0.25;
+  cursor: default;
+  pointer-events: none;
+}
+
+.report-add-btn {
+  padding: 7px 12px;
+  font-size: 11px;
+}
+
+.btn-disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}

@@ -1,0 +1,25 @@
+.artist-report {
+  padding: 32px 28px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.artist-report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.artist-report-title {
+  font: 600 12px var(--font-mono);
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+.artist-report-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font: 13px var(--font-body);
+}

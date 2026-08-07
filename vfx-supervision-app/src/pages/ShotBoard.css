@@ -49,20 +49,55 @@
 }
 
 .board-card {
-  padding: 12px;
+  padding: 10px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  border-left: 3px solid var(--border);
   transition: border-color 0.15s ease;
 }
 
 .board-card:hover {
   border-color: var(--border-soft);
+  border-left-color: var(--border-soft);
 }
 
-.board-card.highlight {
-  border-color: var(--accent-border);
+.board-card.importance-danger {
+  border-left-color: var(--danger);
+}
+
+.board-card.importance-warning {
+  border-left-color: var(--warning);
+}
+
+.board-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.board-card-thumb {
+  width: 40px;
+  height: 28px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  flex: none;
+}
+
+.board-card-thumb-placeholder {
+  width: 40px;
+  height: 28px;
+  border-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  flex: none;
 }
 
 .board-card-code {
@@ -71,11 +106,12 @@
 }
 
 .board-card-meta {
-  font: 700 12px var(--font-body);
+  font: 700 11px var(--font-body);
   color: var(--text-secondary);
 }
 
-.board-card-pills {
-  display: flex;
-  gap: 6px;
+.board-column-empty {
+  font: 11px var(--font-mono);
+  color: var(--text-tertiary);
+  padding: 8px 0;
 }

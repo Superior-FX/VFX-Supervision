@@ -224,6 +224,9 @@
   border-radius: 50%;
   background: var(--surface-2);
   border: 1px solid var(--border-soft);
+}
+
+.complexity-dot.editable {
   cursor: pointer;
 }
 
@@ -391,6 +394,16 @@
 
 .budget-set-btn {
   cursor: pointer;
+}
+
+.budget-unset {
+  font: 11px var(--font-mono);
+  color: var(--text-tertiary);
+}
+
+.effect-none {
+  font: 11px var(--font-mono);
+  color: var(--text-tertiary);
 }
 
 .budget-summary {

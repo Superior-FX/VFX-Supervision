@@ -96,6 +96,30 @@
   color: var(--text-primary);
 }
 
+.attach-select {
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font: 12px var(--font-mono);
+  padding: 0 12px;
+}
+
+.attach-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.upload-confirmation {
+  font: 12px var(--font-mono);
+  color: var(--success);
+  background: var(--success-soft);
+  border: 1px solid var(--success);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
 .upload-note textarea {
   width: 100%;
   min-height: 60px;

@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./Upload.css";
 
 const FILES = [
@@ -24,12 +26,35 @@ function FileIcon() {
 }
 
 export default function Upload() {
+  const [postReports, setPostReports] = useLocalStorageState("vfx-supe-post-reports", []);
+  const [selectedId, setSelectedId] = useState("");
+  const [note, setNote] = useState("");
+  const [confirmation, setConfirmation] = useState(null);
+
+  const selectedShot = postReports.find((s) => s.id === selectedId);
+
+  const submit = () => {
+    if (!selectedShot) return;
+    setPostReports((prev) =>
+      prev.map((s) =>
+        s.id === selectedShot.id
+          ? { ...s, boardStatus: "progress", tasks: s.tasks.map((t) => ({ ...t, status: "in_progress" })) }
+          : s
+      )
+    );
+    setConfirmation(`${selectedShot.shotCode} submitted — moved to In Progress on the Shot Board`);
+    setTimeout(() => setConfirmation(null), 4000);
+    setSelectedId("");
+    setNote("");
+  };
+
   return (
     <div className="upload">
       <div className="upload-header">
         <span className="upload-title">UPLOAD SHOT</span>
-        <span className="pill">to SH_042_020</span>
+        {selectedShot && <span className="pill">to {selectedShot.shotCode}</span>}
       </div>
+      {confirmation && <div className="upload-confirmation">{confirmation}</div>}
 
       <div className="dropzone">
         <div className="dropzone-icon">
@@ -53,18 +78,33 @@ export default function Upload() {
       </div>
 
       <span className="label">Attach to</span>
-      <div className="card attach-field">
-        <span>SH_042_020 — v004</span>
-      </div>
+      <select className="attach-select" value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
+        <option value="">Select a shot…</option>
+        {postReports.map((s) => (
+          <option value={s.id} key={s.id}>
+            {s.shotCode}
+          </option>
+        ))}
+      </select>
 
       <span className="label">Version note</span>
       <div className="upload-note">
-        <textarea placeholder="What changed in this version…" />
+        <textarea
+          placeholder="What changed in this version…"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
       </div>
 
       <div className="upload-actions">
         <div className="btn btn-secondary">Cancel</div>
-        <div className="btn btn-primary">Upload</div>
+        <div className="btn btn-secondary">Upload</div>
+        <div
+          className={`btn btn-primary${selectedShot ? "" : " btn-disabled"}`}
+          onClick={selectedShot ? submit : undefined}
+        >
+          Submit
+        </div>
       </div>
     </div>
   );

@@ -11,6 +11,21 @@
   align-items: center;
 }
 
+.capture-reports-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.capture-reports-confirmation {
+  font: 12px var(--font-mono);
+  color: var(--success);
+  background: var(--success-soft);
+  border: 1px solid var(--success);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
 .capture-reports-title {
   font: 600 12px var(--font-mono);
   color: var(--text-primary);
@@ -22,4 +37,62 @@
   text-align: center;
   color: var(--text-tertiary);
   font: 13px var(--font-body);
+}
+
+.report-thumb-edit {
+  position: relative;
+  cursor: pointer;
+  width: 56px;
+  height: 40px;
+}
+
+.report-thumb-edit-icon {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--card-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.report-thumb-edit:hover .report-thumb-edit-icon {
+  opacity: 1;
+}
+
+.report-thumb-status {
+  font: 8px var(--font-mono);
+  color: var(--accent);
+}
+
+.report-checklist-count.clickable {
+  cursor: pointer;
+}
+
+.report-expanded-row td {
+  background: var(--surface);
+  padding: 12px 12px 14px 12px;
+}
+
+.capture-report-checklist-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.capture-report-checklist-editor .checklist-item {
+  padding: 7px 10px;
+  background: var(--card-bg);
+  border-radius: 6px;
+  flex: none;
+}
+
+.capture-report-checklist-editor .checklist-label {
+  font-size: 12px;
 }

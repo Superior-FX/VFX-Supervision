@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./Login.css";
 
 const PROJECTS = [
@@ -7,11 +8,17 @@ const PROJECTS = [
   { name: "Ironclad Reshoots", meta: "wrapped", wrapped: true },
 ];
 
-const ROLES = ["On-set", "Post", "Coordinator"];
+const ROLES = ["On-set", "Post", "Coordinator", "Artist"];
 
 export default function Login() {
   const navigate = useNavigate();
   const [role, setRole] = useState("On-set");
+  const [, setStoredRole] = useLocalStorageState("vfx-supe-role", "On-set");
+
+  const enter = () => {
+    setStoredRole(role);
+    navigate(role === "Artist" ? "/upload" : "/dashboard");
+  };
 
   return (
     <div className="login-page">
@@ -26,7 +33,7 @@ export default function Login() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            navigate("/dashboard");
+            enter();
           }}
         >
           <div className="login-field">
@@ -45,11 +52,7 @@ export default function Login() {
         <span className="label login-projects-label">Recent projects</span>
         <div className="login-projects">
           {PROJECTS.map((project) => (
-            <div
-              className="card login-project-card"
-              key={project.name}
-              onClick={() => navigate("/dashboard")}
-            >
+            <div className="card login-project-card" key={project.name} onClick={enter}>
               <span className="login-project-name">{project.name}</span>
               <span className={`login-project-meta mono${project.wrapped ? " wrapped" : ""}`}>
                 {project.meta}
@@ -70,6 +73,9 @@ export default function Login() {
             </div>
           ))}
         </div>
+        {role === "Artist" && (
+          <span className="login-role-hint">Artists only see the Artist Portal section.</span>
+        )}
       </div>
     </div>
   );

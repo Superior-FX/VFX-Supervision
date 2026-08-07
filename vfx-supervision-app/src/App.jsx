@@ -8,8 +8,10 @@ import ScriptBreakdown from "./pages/ScriptBreakdown.jsx";
 import ScriptReports from "./pages/ScriptReports.jsx";
 import ShotBoard from "./pages/ShotBoard.jsx";
 import ShotDetail from "./pages/ShotDetail.jsx";
+import PostReports from "./pages/PostReports.jsx";
 import Review from "./pages/Review.jsx";
 import Upload from "./pages/Upload.jsx";
+import ArtistReport from "./pages/ArtistReport.jsx";
 import Help from "./pages/Help.jsx";
 
 export default function App() {
@@ -25,9 +27,11 @@ export default function App() {
         <Route path="/breakdown" element={<ScriptBreakdown />} />
         <Route path="/script-reports" element={<ScriptReports />} />
         <Route path="/board" element={<ShotBoard />} />
+        <Route path="/post-reports" element={<PostReports />} />
         <Route path="/shot/:shotId" element={<ShotDetail />} />
         <Route path="/review" element={<Review />} />
         <Route path="/upload" element={<Upload />} />
+        <Route path="/artist-report" element={<ArtistReport />} />
         <Route path="/help" element={<Help />} />
       </Route>
     </Routes>

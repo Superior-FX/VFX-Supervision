@@ -17,6 +17,12 @@
   letter-spacing: 0.5px;
 }
 
+.script-reports-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .script-reports-empty {
   padding: 40px;
   text-align: center;
@@ -24,15 +30,30 @@
   font: 13px var(--font-body);
 }
 
-.script-report-heading {
+.script-report-heading-input {
   font: 700 11px var(--font-mono);
   color: var(--text-primary);
   text-transform: uppercase;
-  white-space: nowrap;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 6px;
+  width: 220px;
+  margin: -4px -6px;
 }
 
-.script-report-budget {
-  font: 11px var(--font-mono);
-  color: var(--success);
-  white-space: nowrap;
+.script-report-heading-input:hover {
+  border-color: var(--border-soft);
+}
+
+.script-report-heading-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.script-report-heading-static {
+  font: 700 11px var(--font-mono);
+  color: var(--text-primary);
+  text-transform: uppercase;
 }
