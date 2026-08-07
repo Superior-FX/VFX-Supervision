@@ -1,17 +1,14 @@
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { computeImportance } from "../lib/importance.js";
+import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./Dashboard.css";
 
-const STATS = [
-  { label: "Shots today", value: 14 },
-  { label: "Pending review", value: 7 },
-  { label: "Greenscreen setups", value: 3 },
-  { label: "Overdue vendor", value: 2 },
-];
-
-const SHOTS = [
-  { code: "SH_042_010", status: "HDRI ✓", tone: "success" },
-  { code: "SH_042_020", status: "pending", tone: "warning" },
-  { code: "SH_042_030", status: "flagged", tone: "danger" },
+const BOARD_COLUMNS = [
+  { id: "bidding", label: "Bidding" },
+  { id: "progress", label: "In progress" },
+  { id: "review", label: "Sup review" },
+  { id: "final", label: "Final" },
 ];
 
 function ThumbIcon() {
@@ -23,8 +20,60 @@ function ThumbIcon() {
   );
 }
 
+function isOverdue(dueDate) {
+  if (!dueDate) return false;
+  return new Date(dueDate).getTime() < Date.now();
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [scriptReports] = useLocalStorageState("vfx-supe-script-reports", []);
+  const [captureReports] = useLocalStorageState("vfx-supe-capture-reports", []);
+  const [postReports] = useLocalStorageState("vfx-supe-post-reports", []);
+
+  const unassignedTaskCount = useMemo(
+    () =>
+      postReports.reduce(
+        (sum, shot) => sum + shot.tasks.filter((t) => !t.assignee?.trim()).length,
+        0
+      ),
+    [postReports]
+  );
+
+  const boardCounts = useMemo(
+    () =>
+      BOARD_COLUMNS.map((col) => ({
+        ...col,
+        count: postReports.filter((s) => (s.boardStatus ?? "bidding") === col.id).length,
+      })),
+    [postReports]
+  );
+
+  const stats = [
+    { label: "VFX scenes tagged", value: scriptReports.length },
+    { label: "Shots captured", value: captureReports.length },
+    { label: "Shots in post", value: postReports.length },
+    { label: "Unassigned tasks", value: unassignedTaskCount },
+  ];
+
+  const attention = useMemo(() => {
+    return postReports
+      .filter((shot) => (shot.boardStatus ?? "bidding") !== "final")
+      .map((shot) => {
+        const importance = computeImportance(shot);
+        const unassigned = shot.tasks.filter((t) => !t.assignee?.trim()).length;
+        const overdue = isOverdue(shot.dueDate);
+        const reasons = [];
+        if (importance.tier === "high") reasons.push({ label: "High importance", tone: "danger" });
+        else if (importance.tier === "medium") reasons.push({ label: "Watch", tone: "warning" });
+        if (overdue) reasons.push({ label: `Overdue ${shot.dueDate}`, tone: "danger" });
+        if (unassigned > 0) reasons.push({ label: `${unassigned} unassigned`, tone: "warning" });
+        return { shot, reasons, severity: (overdue ? 2 : 0) + (importance.tier === "high" ? 2 : importance.tier === "medium" ? 1 : 0) + unassigned };
+      })
+      .filter((row) => row.reasons.length > 0)
+      .sort((a, b) => b.severity - a.severity)
+      .slice(0, 6);
+  }, [postReports]);
 
   return (
     <div className="dashboard">
@@ -37,7 +86,7 @@ export default function Dashboard() {
       </div>
 
       <div className="stat-grid">
-        {STATS.map((stat) => (
+        {stats.map((stat) => (
           <div className="card stat-card" key={stat.label}>
             <span className="label">{stat.label}</span>
             <span className="stat-value">{stat.value}</span>
@@ -45,18 +94,40 @@ export default function Dashboard() {
         ))}
       </div>
 
+      <div className="card board-pulse">
+        <span className="label">Shot board</span>
+        <div className="board-pulse-row">
+          {boardCounts.map((col) => (
+            <span className="pill board-pulse-pill" key={col.id}>
+              {col.label} {col.count}
+            </span>
+          ))}
+        </div>
+      </div>
+
       <div className="section-label-row">
-        <span className="label">Call sheet — scene 42, ext. rooftop</span>
+        <span className="label">Needs attention</span>
       </div>
 
       <div className="card shot-list">
-        {SHOTS.map((shot) => (
-          <div className="shot-row" key={shot.code} onClick={() => navigate(`/shot/${shot.code}`)}>
-            <div className="shot-thumb">
-              <ThumbIcon />
+        {attention.length === 0 && <span className="attention-empty">Nothing needs attention right now.</span>}
+        {attention.map(({ shot, reasons }) => (
+          <div className="shot-row" key={shot.id} onClick={() => navigate(`/shot/${shot.shotCode}`)}>
+            {shot.thumbnail ? (
+              <img className="shot-thumb-img" src={shot.thumbnail} alt={`${shot.shotCode} thumbnail`} />
+            ) : (
+              <div className="shot-thumb">
+                <ThumbIcon />
+              </div>
+            )}
+            <span className="shot-code">{shot.shotCode}</span>
+            <div className="shot-row-reasons">
+              {reasons.map((r) => (
+                <span className={`pill pill-${r.tone}`} key={r.label}>
+                  {r.label}
+                </span>
+              ))}
             </div>
-            <span className="shot-code">{shot.code}</span>
-            <span className={`pill pill-${shot.tone}`}>{shot.status}</span>
           </div>
         ))}
       </div>
@@ -64,6 +135,9 @@ export default function Dashboard() {
       <div className="dashboard-actions">
         <div className="btn btn-primary" onClick={() => navigate("/capture")}>
           + Capture
+        </div>
+        <div className="btn btn-secondary" onClick={() => navigate("/post-reports")}>
+          Post reports
         </div>
         <div className="btn btn-secondary" onClick={() => navigate("/board")}>
           Shot board

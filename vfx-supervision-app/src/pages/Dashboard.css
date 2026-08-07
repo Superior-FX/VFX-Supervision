@@ -26,11 +26,50 @@
   gap: 8px;
 }
 
+.board-pulse {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.board-pulse-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.board-pulse-pill {
+  font-size: 10px;
+}
+
 .section-label-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
+}
+
+.attention-empty {
+  padding: 14px 10px;
+  color: var(--text-tertiary);
+  font: 13px var(--font-body);
+}
+
+.shot-thumb-img {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 5px;
+  object-fit: cover;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.shot-row-reasons {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
 }
 
 .callsheet-scene {
@@ -82,7 +121,7 @@
   color: var(--text-primary);
 }
 
-.shot-row .pill {
+.shot-row > .pill {
   margin-left: auto;
 }
 
