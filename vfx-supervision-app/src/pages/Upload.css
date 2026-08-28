@@ -111,6 +111,17 @@
   border-color: var(--accent);
 }
 
+.upload-no-artist-hint {
+  padding: 10px 12px;
+  color: var(--text-tertiary);
+  font: 12px var(--font-body);
+}
+
+.upload-no-shots-hint {
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
 .upload-confirmation {
   font: 12px var(--font-mono);
   color: var(--success);

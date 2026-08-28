@@ -11,6 +11,12 @@
   align-items: center;
 }
 
+.artist-report-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .artist-report-title {
   font: 600 12px var(--font-mono);
   color: var(--text-primary);
@@ -22,4 +28,14 @@
   text-align: center;
   color: var(--text-tertiary);
   font: 13px var(--font-body);
+}
+
+.artist-report-action-btn {
+  padding: 6px 12px;
+  font-size: 10px;
+}
+
+.artist-report-action-hint {
+  font: 11px var(--font-mono);
+  color: var(--text-tertiary);
 }

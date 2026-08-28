@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { resolveCurrentArtist } from "../lib/currentArtist.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./Upload.css";
 
@@ -27,22 +28,33 @@ function FileIcon() {
 
 export default function Upload() {
   const [postReports, setPostReports] = useLocalStorageState("vfx-supe-post-reports", []);
+  const [artists] = useLocalStorageState("vfx-supe-artists", []);
   const [selectedId, setSelectedId] = useState("");
   const [note, setNote] = useState("");
   const [confirmation, setConfirmation] = useState(null);
 
-  const selectedShot = postReports.find((s) => s.id === selectedId);
+  const currentArtist = resolveCurrentArtist(artists);
+  const myTask = (t) => t.assignee?.trim().toLowerCase() === currentArtist?.name.trim().toLowerCase();
+
+  const myShots = currentArtist
+    ? postReports.filter((s) => s.tasks.some((t) => myTask(t) && t.status === "wip"))
+    : [];
+
+  const selectedShot = myShots.find((s) => s.id === selectedId);
 
   const submit = () => {
-    if (!selectedShot) return;
+    if (!selectedShot || !currentArtist) return;
     setPostReports((prev) =>
       prev.map((s) =>
         s.id === selectedShot.id
-          ? { ...s, boardStatus: "progress", tasks: s.tasks.map((t) => ({ ...t, status: "in_progress" })) }
+          ? {
+              ...s,
+              tasks: s.tasks.map((t) => (myTask(t) && t.status === "wip" ? { ...t, status: "pending" } : t)),
+            }
           : s
       )
     );
-    setConfirmation(`${selectedShot.shotCode} submitted — moved to In Progress on the Shot Board`);
+    setConfirmation(`${selectedShot.shotCode} submitted — now pending supervisor review`);
     setTimeout(() => setConfirmation(null), 4000);
     setSelectedId("");
     setNote("");
@@ -52,9 +64,19 @@ export default function Upload() {
     <div className="upload">
       <div className="upload-header">
         <span className="upload-title">UPLOAD SHOT</span>
-        {selectedShot && <span className="pill">to {selectedShot.shotCode}</span>}
+        {currentArtist ? (
+          <span className="pill pill-accent">{currentArtist.name}</span>
+        ) : (
+          selectedShot && <span className="pill">to {selectedShot.shotCode}</span>
+        )}
       </div>
       {confirmation && <div className="upload-confirmation">{confirmation}</div>}
+
+      {!currentArtist && (
+        <div className="card upload-no-artist-hint">
+          No artist profile found for you yet — ask an Admin to add you in Post Reports → Artists.
+        </div>
+      )}
 
       <div className="dropzone">
         <div className="dropzone-icon">
@@ -78,14 +100,24 @@ export default function Upload() {
       </div>
 
       <span className="label">Attach to</span>
-      <select className="attach-select" value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
-        <option value="">Select a shot…</option>
-        {postReports.map((s) => (
+      <select
+        className="attach-select"
+        value={selectedId}
+        onChange={(e) => setSelectedId(e.target.value)}
+        disabled={!currentArtist}
+      >
+        <option value="">{currentArtist ? "Select a shot…" : "No artist profile linked"}</option>
+        {myShots.map((s) => (
           <option value={s.id} key={s.id}>
             {s.shotCode}
           </option>
         ))}
       </select>
+      {currentArtist && myShots.length === 0 && (
+        <span className="label upload-no-shots-hint">
+          No shots in progress for {currentArtist.name} — click Start in Artist Report first.
+        </span>
+      )}
 
       <span className="label">Version note</span>
       <div className="upload-note">

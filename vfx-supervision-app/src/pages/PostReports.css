@@ -217,6 +217,17 @@
   background: #fb718535;
 }
 
+.post-task-review-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.post-task-review-btn {
+  padding: 5px 10px;
+  font-size: 10px;
+}
+
 .post-shot-delete-btn {
   color: var(--danger);
   border-color: var(--danger);

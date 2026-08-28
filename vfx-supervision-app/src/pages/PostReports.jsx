@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckIcon, ComplexityDots, PencilIcon } from "../components/SceneVfxFields.jsx";
 import { STORY_IMPORTANCE_LEVELS } from "../data/importance.js";
 import { POST_TASK_TYPES } from "../data/postTasks.js";
+import { taskStatusInfo } from "../data/taskStatus.js";
 import { buildFolderPath, padScene } from "../lib/folderPath.js";
 import { createShotFolders, ensurePermission, isFsAccessSupported, loadRootHandle, pickProjectRootFolder } from "../lib/fsAccess.js";
 import { computeImportance } from "../lib/importance.js";
@@ -129,6 +130,7 @@ function CreateProjectPanel({ onCreate, rootHandle, onPickFolder, folderError, s
 function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
   const [confirming, setConfirming] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const status = taskStatusInfo(task.status);
 
   if (readOnly) {
     return (
@@ -137,8 +139,18 @@ function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
         <span className={`pill${task.source === "inhouse" ? " pill-accent" : ""}`}>
           {task.source === "vendor" ? "Outsourced" : "In-house"}
         </span>
-        {task.status === "in_progress" && <span className="pill pill-warning">In Progress</span>}
+        <span className={`pill${status.tone ? ` pill-${status.tone}` : ""}`}>{status.label}</span>
         <span className="post-task-assignee mono">{task.assignee?.trim() || "Unassigned"}</span>
+        {task.status === "pending" && (
+          <div className="post-task-review-actions">
+            <span className="btn btn-danger post-task-review-btn" onClick={() => onChange({ status: "needs_revision" })}>
+              Revise
+            </span>
+            <span className="btn btn-primary post-task-review-btn" onClick={() => onChange({ status: "final" })}>
+              Final
+            </span>
+          </div>
+        )}
       </div>
     );
   }
@@ -188,7 +200,7 @@ function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
           Outsourced
         </span>
       </div>
-      {task.status === "in_progress" && <span className="pill pill-warning">In Progress</span>}
+      <span className={`pill${status.tone ? ` pill-${status.tone}` : ""}`}>{status.label}</span>
       {task.source === "vendor" ? (
         <input
           className="report-edit-input mono post-task-assignee-input"
@@ -239,7 +251,7 @@ function ShotCard({ shot, index, isFirst, isLast, isEditing, onToggleEdit, onMov
 
   const addTask = (type) => {
     if (!type) return;
-    update({ tasks: [...shot.tasks, { id: crypto.randomUUID(), type, source: "inhouse", assignee: "", status: null }] });
+    update({ tasks: [...shot.tasks, { id: crypto.randomUUID(), type, source: "inhouse", assignee: "", status: "assigned" }] });
   };
 
   const updateTask = (taskId, patch) => {

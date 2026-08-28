@@ -32,9 +32,9 @@ const NAV_GROUPS = [
   {
     label: "Artist Portal",
     items: [
+      { to: "/artist-assignments", label: "Shot Tracking" },
       { to: "/upload", label: "Upload Shot" },
       { to: "/artist-report", label: "Artist Report" },
-      { to: "/artist-assignments", label: "Shot Tracking" },
     ],
   },
   {
