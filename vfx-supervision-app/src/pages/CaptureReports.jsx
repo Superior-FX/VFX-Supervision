@@ -60,6 +60,8 @@ function blankRow() {
   return {
     id: crypto.randomUUID(),
     shotCode: "NEW_SHOT",
+    sequence: "",
+    scene: "",
     description: "",
     lens: "",
     camera: "",
@@ -105,6 +107,9 @@ export default function CaptureReports() {
         next = upsertById(next, {
           id: row.id,
           shotCode: row.shotCode,
+          sequence: row.sequence,
+          scene: row.scene,
+          pipeline: existing?.pipeline ?? "traditional",
           description: row.description,
           thumbnail: row.thumbnail,
           tasks: existing?.tasks ?? [],
@@ -113,6 +118,7 @@ export default function CaptureReports() {
           complexity: existing?.complexity ?? 1,
           storyImportance: existing?.storyImportance ?? 1,
           dueDate: existing?.dueDate ?? "",
+          foldersCreatedAt: existing?.foldersCreatedAt ?? null,
           submittedAt: new Date().toISOString(),
         });
       }
@@ -259,13 +265,36 @@ export default function CaptureReports() {
                       </td>
                       <td>
                         {isEditing ? (
-                          <input
-                            className="report-edit-input mono"
-                            value={row.shotCode}
-                            onChange={(e) => updateRow(row.id, { shotCode: e.target.value })}
-                          />
+                          <div className="capture-shot-cell-editing">
+                            <input
+                              className="report-edit-input mono"
+                              value={row.shotCode}
+                              onChange={(e) => updateRow(row.id, { shotCode: e.target.value })}
+                            />
+                            <div className="capture-shot-cell-subfields">
+                              <input
+                                className="report-edit-input mono capture-shot-subfield"
+                                placeholder="Sequence"
+                                value={row.sequence ?? ""}
+                                onChange={(e) => updateRow(row.id, { sequence: e.target.value })}
+                              />
+                              <input
+                                className="report-edit-input mono capture-shot-subfield"
+                                placeholder="Scene"
+                                value={row.scene ?? ""}
+                                onChange={(e) => updateRow(row.id, { scene: e.target.value })}
+                              />
+                            </div>
+                          </div>
                         ) : (
-                          <span className="report-shot-code">{row.shotCode}</span>
+                          <>
+                            <span className="report-shot-code">{row.shotCode}</span>
+                            {(row.sequence || row.scene) && (
+                              <span className="capture-shot-cell-meta mono">
+                                {row.sequence || "—"} / SC{row.scene || "—"}
+                              </span>
+                            )}
+                          </>
                         )}
                       </td>
                       <td className="report-description">

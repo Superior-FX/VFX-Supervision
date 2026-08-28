@@ -131,3 +131,22 @@
   color: var(--text-tertiary);
   margin-top: -8px;
 }
+
+.login-artist-label {
+  margin-top: 2px;
+}
+
+.login-artist-select {
+  height: 40px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  padding: 0 12px;
+  font: 13px var(--font-body);
+}
+
+.login-artist-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}

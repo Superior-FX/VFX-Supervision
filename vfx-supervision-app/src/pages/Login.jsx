@@ -8,15 +8,19 @@ const PROJECTS = [
   { name: "Ironclad Reshoots", meta: "wrapped", wrapped: true },
 ];
 
-const ROLES = ["On-set", "Post", "Coordinator", "Artist"];
+const ROLES = ["Admin", "On-set", "Post", "Coordinator", "Artist"];
 
 export default function Login() {
   const navigate = useNavigate();
-  const [role, setRole] = useState("On-set");
-  const [, setStoredRole] = useLocalStorageState("vfx-supe-role", "On-set");
+  const [role, setRole] = useState("Admin");
+  const [artistId, setArtistId] = useState("");
+  const [, setStoredRole] = useLocalStorageState("vfx-supe-role", "Admin");
+  const [, setStoredArtistId] = useLocalStorageState("vfx-supe-current-artist-id", "");
+  const [artists] = useLocalStorageState("vfx-supe-artists", []);
 
   const enter = () => {
     setStoredRole(role);
+    setStoredArtistId(role === "Artist" ? artistId : "");
     navigate(role === "Artist" ? "/upload" : "/dashboard");
   };
 
@@ -74,7 +78,28 @@ export default function Login() {
           ))}
         </div>
         {role === "Artist" && (
-          <span className="login-role-hint">Artists only see the Artist Portal section.</span>
+          <>
+            <span className="login-role-hint">Artists only see the Artist Portal section.</span>
+            <span className="label login-artist-label">Which artist are you?</span>
+            {artists.length === 0 ? (
+              <span className="login-role-hint">
+                No artists in the database yet — ask an Admin to add you in Post Reports → Artists.
+              </span>
+            ) : (
+              <select
+                className="login-artist-select"
+                value={artistId}
+                onChange={(e) => setArtistId(e.target.value)}
+              >
+                <option value="">Select your name…</option>
+                {artists.map((a) => (
+                  <option value={a.id} key={a.id}>
+                    {a.name} — {a.department}
+                  </option>
+                ))}
+              </select>
+            )}
+          </>
         )}
       </div>
     </div>

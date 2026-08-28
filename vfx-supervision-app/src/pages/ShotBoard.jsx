@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { buildFolderPath } from "../lib/folderPath.js";
 import { computeImportance } from "../lib/importance.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./ShotBoard.css";
@@ -30,6 +31,7 @@ function assigneeSummary(shot) {
 export default function ShotBoard() {
   const navigate = useNavigate();
   const [shots] = useLocalStorageState("vfx-supe-post-reports", []);
+  const [project] = useLocalStorageState("vfx-supe-project", null);
 
   return (
     <div className="board">
@@ -54,6 +56,12 @@ export default function ShotBoard() {
                 {colShots.length === 0 && <span className="board-column-empty">No shots</span>}
                 {colShots.map((shot) => {
                   const importance = computeImportance(shot);
+                  const folderPath = buildFolderPath({
+                    show: project?.showCode,
+                    sequence: shot.sequence,
+                    scene: shot.scene,
+                    shotCode: shot.shotCode,
+                  });
                   return (
                     <div
                       key={shot.id}
@@ -71,6 +79,7 @@ export default function ShotBoard() {
                         <span className="board-card-code">{shot.shotCode}</span>
                       </div>
                       <span className="board-card-meta">{assigneeSummary(shot)}</span>
+                      {folderPath && <span className="board-card-folder-path mono">{folderPath}</span>}
                     </div>
                   );
                 })}

@@ -1,9 +1,6 @@
-import { useEffect } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useLocalStorageState } from "../lib/useLocalStorageState.js";
+import { NavLink, Outlet } from "react-router-dom";
+import { CURRENT_ROLE } from "../lib/role.js";
 import "./Layout.css";
-
-const ARTIST_ROUTES = ["/upload", "/artist-report"];
 
 const NAV_GROUPS = [
   {
@@ -37,6 +34,7 @@ const NAV_GROUPS = [
     items: [
       { to: "/upload", label: "Upload Shot" },
       { to: "/artist-report", label: "Artist Report" },
+      { to: "/artist-assignments", label: "Shot Tracking" },
     ],
   },
   {
@@ -46,16 +44,8 @@ const NAV_GROUPS = [
 ];
 
 export default function Layout() {
-  const [role] = useLocalStorageState("vfx-supe-role", "On-set");
+  const role = CURRENT_ROLE;
   const isArtist = role === "Artist";
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (isArtist && !ARTIST_ROUTES.includes(location.pathname)) {
-      navigate("/upload", { replace: true });
-    }
-  }, [isArtist, location.pathname, navigate]);
 
   const visibleGroups = isArtist ? NAV_GROUPS.filter((g) => g.label === "Artist Portal") : NAV_GROUPS;
 
@@ -86,9 +76,6 @@ export default function Layout() {
 
         <div className="shell-footer">
           <span className="pill pill-accent shell-role-pill">{role}</span>
-          <span className="shell-switch-role" onClick={() => navigate("/login")}>
-            Switch role
-          </span>
         </div>
       </aside>
 

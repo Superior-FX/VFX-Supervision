@@ -1,0 +1,127 @@
+.artist-directory {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.artist-directory-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.artist-directory-hint {
+  padding: 12px 16px;
+  color: var(--text-tertiary);
+  font: 12px var(--font-body);
+}
+
+.artist-directory-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font: 13px var(--font-body);
+}
+
+.artist-directory-form {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.artist-directory-form > .report-edit-input {
+  max-width: 320px;
+}
+
+.artist-directory-departments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.artist-directory-dept-pill {
+  cursor: pointer;
+}
+
+.artist-directory-form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.artist-directory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.artist-directory-row {
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.artist-directory-name {
+  font: 700 13px var(--font-body);
+  color: var(--text-primary);
+  flex: none;
+}
+
+.artist-directory-row-depts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+
+.artist-directory-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.artist-directory-edit {
+  cursor: pointer;
+  color: var(--text-tertiary);
+  display: flex;
+}
+
+.artist-directory-edit:hover {
+  color: var(--accent);
+}
+
+.artist-directory-remove {
+  cursor: pointer;
+  color: var(--text-tertiary);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.artist-directory-remove:hover {
+  color: var(--danger);
+}
+
+.artist-directory-row-confirm {
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  border-left: 3px solid var(--danger);
+}
+
+.artist-directory-confirm-label {
+  font: 700 12px var(--font-body);
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 200px;
+}
+
+.artist-directory-confirm-input {
+  width: 100px;
+}

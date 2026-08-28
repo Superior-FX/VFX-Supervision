@@ -118,6 +118,16 @@ body {
   color: var(--text-primary);
 }
 
+.btn-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.btn-danger:hover {
+  background: #fb718535;
+}
+
 .card {
   background: var(--card-bg);
   border: 1px solid var(--border);

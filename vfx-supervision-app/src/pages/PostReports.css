@@ -7,8 +7,16 @@
 
 .post-reports-header {
   display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.post-reports-header-top {
+  display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .post-reports-title {
@@ -150,6 +158,7 @@
 .post-task-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 8px 10px;
   background: var(--surface);
@@ -161,6 +170,7 @@
   font: 700 11px var(--font-mono);
   color: var(--text-primary);
   min-width: 170px;
+  flex-shrink: 0;
 }
 
 .post-task-assignee {
@@ -179,22 +189,57 @@
 }
 
 .post-task-assignee-input {
-  flex: 1;
-  min-width: 120px;
+  flex: 1 1 120px;
+  min-width: 0;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   background: var(--card-bg);
   border: 1px solid var(--border-soft);
 }
 
 .post-task-remove {
   cursor: pointer;
-  color: var(--text-tertiary);
-  font-size: 16px;
-  line-height: 1;
-  padding: 0 2px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger);
+  border-radius: 5px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .post-task-remove:hover {
+  background: #fb718535;
+}
+
+.post-shot-delete-btn {
   color: var(--danger);
+  border-color: var(--danger);
+}
+
+.post-shot-delete-btn:hover {
+  background: var(--danger-soft);
+}
+
+.post-shot-card-confirm {
+  padding: 16px 18px;
+  gap: 10px;
+  border-left: 3px solid var(--danger);
+}
+
+.post-shot-confirm-label {
+  font: 700 13px var(--font-body);
+  color: var(--text-primary);
+}
+
+.post-shot-confirm-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .post-add-task-select {
@@ -217,4 +262,124 @@
 .post-shot-footer .btn {
   padding: 7px 14px;
   font-size: 11px;
+}
+
+.post-reports-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.post-reports-tab {
+  cursor: pointer;
+  padding: 9px 4px;
+  margin-right: 22px;
+  font: 700 13px var(--font-body);
+  color: var(--text-tertiary);
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.post-reports-tab:hover {
+  color: var(--text-secondary);
+}
+
+.post-reports-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.post-add-task-hint {
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.post-task-row-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  flex-wrap: wrap;
+}
+
+.post-task-confirm-label {
+  font: 700 11px var(--font-body);
+  color: var(--text-primary);
+}
+
+.post-task-confirm-input {
+  width: 100px;
+  background: var(--card-bg);
+  border-color: var(--border-soft);
+}
+
+.post-project-pill {
+  font: 700 11px var(--font-mono);
+}
+
+.post-project-change {
+  font: 700 10px var(--font-body);
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.post-project-change:hover {
+  color: var(--text-secondary);
+}
+
+.project-create {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.project-create-fields {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.project-create-fields .report-edit-input:first-child {
+  flex: 1;
+}
+
+.project-create-code {
+  width: 100px;
+}
+
+.project-create-hint {
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.project-create-error {
+  font: 11px var(--font-mono);
+  color: var(--danger);
+}
+
+.post-shot-folder-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.post-shot-folder-path {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.post-create-folders-btn {
+  padding: 4px 10px;
+  font-size: 10px;
+}
+
+.post-shot-folder-hint {
+  color: var(--text-tertiary);
+  font-weight: 400;
 }

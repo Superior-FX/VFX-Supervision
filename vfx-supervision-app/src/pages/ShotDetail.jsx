@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { useParams } from "react-router-dom";
+import { buildFolderPath } from "../lib/folderPath.js";
+import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./ShotDetail.css";
 
 function PlayIcon() {
@@ -12,14 +15,45 @@ function PlayIcon() {
 
 export default function ShotDetail() {
   const { shotId } = useParams();
-  const code = shotId ?? "SH_042_020";
+  const [shots] = useLocalStorageState("vfx-supe-post-reports", []);
+  const [project] = useLocalStorageState("vfx-supe-project", null);
+  const [copied, setCopied] = useState(false);
+
+  const shot = shots.find((s) => s.shotCode === shotId);
+  const code = shot?.shotCode ?? shotId ?? "SH_042_020";
   const isInHouse = true;
+
+  const folderPath = shot
+    ? buildFolderPath({ show: project?.showCode, sequence: shot.sequence, scene: shot.scene, shotCode: shot.shotCode })
+    : null;
+
+  const copyPath = () => {
+    if (!folderPath) return;
+    navigator.clipboard.writeText(folderPath);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   return (
     <div className="detail">
       <div className="detail-header">
         <span className="detail-code">{code}</span>
         <span className="pill">v004 pending</span>
+      </div>
+
+      <div className="card detail-field detail-folder-path-field">
+        <span className="label">Folder path</span>
+        <br />
+        {folderPath ? (
+          <span className="detail-folder-path" onClick={copyPath} title="Click to copy">
+            {folderPath}
+            <span className="detail-folder-path-copy">{copied ? "Copied" : "Copy"}</span>
+          </span>
+        ) : (
+          <span className="detail-field-value muted">
+            Set a project (Post Reports), sequence, and scene to see the folder path.
+          </span>
+        )}
       </div>
 
       <div className="card playback">

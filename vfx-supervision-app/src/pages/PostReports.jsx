@@ -1,10 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckIcon, ComplexityDots, PencilIcon } from "../components/SceneVfxFields.jsx";
 import { STORY_IMPORTANCE_LEVELS } from "../data/importance.js";
 import { POST_TASK_TYPES } from "../data/postTasks.js";
+import { buildFolderPath, padScene } from "../lib/folderPath.js";
+import { createShotFolders, ensurePermission, isFsAccessSupported, loadRootHandle, pickProjectRootFolder } from "../lib/fsAccess.js";
 import { computeImportance } from "../lib/importance.js";
+import { CURRENT_ROLE } from "../lib/role.js";
 import { moveItem, useLocalStorageState } from "../lib/useLocalStorageState.js";
+import ArtistDirectory, { artistDepartments } from "./postReports/ArtistDirectory.jsx";
 import "./PostReports.css";
+
+const TABS = ["Shots", "Artists"];
+
+const PIPELINES = [
+  { value: "traditional", label: "Traditional" },
+  { value: "ai_assist", label: "AI-assist" },
+  { value: "hybrid", label: "Hybrid" },
+];
 
 function ImageIcon() {
   return (
@@ -16,10 +28,27 @@ function ImageIcon() {
   );
 }
 
+function TrashIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function blankShot() {
   return {
     id: crypto.randomUUID(),
     shotCode: "NEW_SHOT",
+    sequence: "",
+    scene: "",
+    pipeline: "traditional",
     description: "",
     thumbnail: null,
     tasks: [],
@@ -28,11 +57,79 @@ function blankShot() {
     complexity: 1,
     storyImportance: 1,
     dueDate: "",
+    foldersCreatedAt: null,
     submittedAt: new Date().toISOString(),
   };
 }
 
-function TaskRow({ task, readOnly, onChange, onRemove }) {
+function deriveShowCode(name) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 6);
+}
+
+function CreateProjectPanel({ onCreate, rootHandle, onPickFolder, folderError, supported }) {
+  const [name, setName] = useState("");
+  const [showCode, setShowCode] = useState("");
+  const [codeTouched, setCodeTouched] = useState(false);
+
+  const handleNameChange = (value) => {
+    setName(value);
+    if (!codeTouched) setShowCode(deriveShowCode(value));
+  };
+
+  const canCreate = name.trim() && showCode.trim() && (!supported || rootHandle);
+
+  return (
+    <div className="card project-create">
+      <span className="label">New project</span>
+      <div className="project-create-fields">
+        <input
+          className="report-edit-input"
+          placeholder="Project name, e.g. The Girl on the Plane"
+          value={name}
+          onChange={(e) => handleNameChange(e.target.value)}
+        />
+        <input
+          className="report-edit-input mono project-create-code"
+          placeholder="SHOW"
+          value={showCode}
+          onChange={(e) => {
+            setCodeTouched(true);
+            setShowCode(e.target.value.toUpperCase());
+          }}
+        />
+      </div>
+
+      {supported ? (
+        <span className="btn btn-secondary" onClick={onPickFolder}>
+          {rootHandle ? `Folder selected: ${rootHandle.name}` : "Choose Project Folder…"}
+        </span>
+      ) : (
+        <span className="label project-create-hint">
+          Automatic folder creation needs Chrome or Edge — you can still track shots and copy folder paths manually.
+        </span>
+      )}
+      {folderError && <span className="project-create-error">{folderError}</span>}
+
+      <span
+        className={`btn btn-primary${canCreate ? "" : " btn-disabled"}`}
+        onClick={canCreate ? () => onCreate({ name: name.trim(), showCode: showCode.trim().toUpperCase() }) : undefined}
+      >
+        Create Project
+      </span>
+    </div>
+  );
+}
+
+function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
+  const [confirming, setConfirming] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+
   if (readOnly) {
     return (
       <div className="post-task-row">
@@ -42,6 +139,34 @@ function TaskRow({ task, readOnly, onChange, onRemove }) {
         </span>
         {task.status === "in_progress" && <span className="pill pill-warning">In Progress</span>}
         <span className="post-task-assignee mono">{task.assignee?.trim() || "Unassigned"}</span>
+      </div>
+    );
+  }
+
+  if (confirming) {
+    const matches = confirmText.trim().toUpperCase() === "DELETE";
+    return (
+      <div className="post-task-row post-task-row-confirm">
+        <span className="post-task-confirm-label">Type DELETE to remove this assignment</span>
+        <input
+          className="report-edit-input mono post-task-confirm-input"
+          value={confirmText}
+          onChange={(e) => setConfirmText(e.target.value)}
+          placeholder="DELETE"
+          autoFocus
+        />
+        <span className={`btn btn-danger${matches ? "" : " btn-disabled"}`} onClick={matches ? onRemove : undefined}>
+          Confirm delete
+        </span>
+        <span
+          className="btn btn-secondary"
+          onClick={() => {
+            setConfirming(false);
+            setConfirmText("");
+          }}
+        >
+          Cancel
+        </span>
       </div>
     );
   }
@@ -64,21 +189,52 @@ function TaskRow({ task, readOnly, onChange, onRemove }) {
         </span>
       </div>
       {task.status === "in_progress" && <span className="pill pill-warning">In Progress</span>}
-      <input
-        className="report-edit-input mono post-task-assignee-input"
-        placeholder={task.source === "vendor" ? "Vendor name" : "Artist name"}
-        value={task.assignee}
-        onChange={(e) => onChange({ assignee: e.target.value })}
-      />
-      <span className="post-task-remove" onClick={onRemove} title="Remove task">
-        ×
+      {task.source === "vendor" ? (
+        <input
+          className="report-edit-input mono post-task-assignee-input"
+          placeholder="Vendor name"
+          value={task.assignee}
+          onChange={(e) => onChange({ assignee: e.target.value })}
+        />
+      ) : (
+        <select
+          className="report-edit-input mono post-task-assignee-input"
+          value={task.assignee}
+          onChange={(e) => onChange({ assignee: e.target.value })}
+        >
+          <option value="">Unassigned</option>
+          {artists.map((a) => (
+            <option value={a.name} key={a.id}>
+              {a.name} — {artistDepartments(a).join(" / ")}
+            </option>
+          ))}
+        </select>
+      )}
+      <span className="post-task-remove" onClick={() => setConfirming(true)} title="Remove assignment">
+        <TrashIcon />
       </span>
     </div>
   );
 }
 
-function ShotCard({ shot, index, isFirst, isLast, isEditing, onToggleEdit, onMove, onChange }) {
+function buildShotMeta(project, shot) {
+  return {
+    show: project.showCode,
+    sequence: shot.sequence,
+    scene: padScene(shot.scene),
+    shot: shot.shotCode,
+    description: shot.description || "",
+    pipeline: shot.pipeline || "traditional",
+    status: shot.dispatched ? "in_progress" : "not_shot",
+    notes: "",
+  };
+}
+
+function ShotCard({ shot, index, isFirst, isLast, isEditing, onToggleEdit, onMove, onChange, onDelete, project, rootHandle, artists, isAdmin }) {
   const [addTaskType, setAddTaskType] = useState("");
+  const [folderStatus, setFolderStatus] = useState(null); // "creating" | "error" | null
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const update = (patch) => onChange({ ...shot, ...patch });
 
   const addTask = (type) => {
@@ -99,6 +255,77 @@ function ShotCard({ shot, index, isFirst, isLast, isEditing, onToggleEdit, onMov
   const fullyAssigned = totalTasks > 0 && assignedCount === totalTasks;
   const availableTaskTypes = POST_TASK_TYPES.filter((t) => !shot.tasks.some((task) => task.type === t));
   const importance = computeImportance(shot);
+  const folderPath = buildFolderPath({
+    show: project?.showCode,
+    sequence: shot.sequence,
+    scene: shot.scene,
+    shotCode: shot.shotCode,
+  });
+  const readyForFolders = Boolean(folderPath && rootHandle);
+
+  const createFolders = async () => {
+    if (!readyForFolders) return;
+    setFolderStatus("creating");
+    try {
+      const ok = await ensurePermission(rootHandle);
+      if (!ok) {
+        setFolderStatus("error");
+        return;
+      }
+      await createShotFolders(rootHandle, {
+        show: project.showCode,
+        sequence: shot.sequence,
+        scene: padScene(shot.scene),
+        shotCode: shot.shotCode,
+        pipeline: shot.pipeline,
+        meta: buildShotMeta(project, shot),
+      });
+      update({ foldersCreatedAt: new Date().toISOString() });
+      setFolderStatus(null);
+    } catch (err) {
+      console.error("Folder creation failed:", err);
+      setFolderStatus("error");
+    }
+  };
+
+  const handleEditToggle = async () => {
+    if (isEditing && readyForFolders && !shot.foldersCreatedAt) {
+      await createFolders();
+    }
+    onToggleEdit();
+  };
+
+  if (confirmingDelete) {
+    const matches = deleteConfirmText.trim().toUpperCase() === "DELETE";
+    return (
+      <div className="card post-shot-card post-shot-card-confirm">
+        <span className="post-shot-confirm-label">
+          Type DELETE to permanently remove {shot.shotCode} and all of its assignments
+        </span>
+        <input
+          className="report-edit-input mono post-task-confirm-input"
+          value={deleteConfirmText}
+          onChange={(e) => setDeleteConfirmText(e.target.value)}
+          placeholder="DELETE"
+          autoFocus
+        />
+        <div className="post-shot-confirm-actions">
+          <span className={`btn btn-danger${matches ? "" : " btn-disabled"}`} onClick={matches ? onDelete : undefined}>
+            Confirm delete
+          </span>
+          <span
+            className="btn btn-secondary"
+            onClick={() => {
+              setConfirmingDelete(false);
+              setDeleteConfirmText("");
+            }}
+          >
+            Cancel
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`card post-shot-card${importance.colorKey ? ` importance-${importance.colorKey}` : ""}`}>
@@ -151,8 +378,15 @@ function ShotCard({ shot, index, isFirst, isLast, isEditing, onToggleEdit, onMov
               </span>
             </>
           )}
-          <span className="report-edit-btn" onClick={onToggleEdit} title={isEditing ? "Done" : "Edit"}>
+          <span className="report-edit-btn" onClick={handleEditToggle} title={isEditing ? "Done" : "Edit"}>
             {isEditing ? <CheckIcon /> : <PencilIcon />}
+          </span>
+          <span
+            className="report-edit-btn post-shot-delete-btn"
+            onClick={() => setConfirmingDelete(true)}
+            title="Delete shot"
+          >
+            <TrashIcon />
           </span>
         </div>
       </div>
@@ -180,12 +414,62 @@ function ShotCard({ shot, index, isFirst, isLast, isEditing, onToggleEdit, onMov
               onChange={(e) => update({ dueDate: e.target.value })}
             />
           </div>
+          <div className="post-shot-meta-field">
+            <span className="label">Sequence</span>
+            <input
+              className="report-edit-input mono post-due-input"
+              placeholder="Sequence"
+              value={shot.sequence ?? ""}
+              onChange={(e) => update({ sequence: e.target.value })}
+            />
+          </div>
+          <div className="post-shot-meta-field">
+            <span className="label">Scene</span>
+            <input
+              className="report-edit-input mono post-due-input"
+              placeholder="Scene"
+              value={shot.scene ?? ""}
+              onChange={(e) => update({ scene: e.target.value })}
+            />
+          </div>
+          <div className="post-shot-meta-field">
+            <span className="label">Pipeline</span>
+            <select
+              className="report-edit-input mono post-due-input"
+              value={shot.pipeline ?? "traditional"}
+              onChange={(e) => update({ pipeline: e.target.value })}
+            >
+              {PIPELINES.map((p) => (
+                <option value={p.value} key={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       ) : (
         <div className="post-shot-meta">
           <span className="pill mono">C: {shot.complexity}/5</span>
           <span className="pill mono">Story: {shot.storyImportance}/5</span>
           {shot.dueDate && <span className="pill mono">Due {shot.dueDate}</span>}
+        </div>
+      )}
+
+      {folderPath && (
+        <div className="post-shot-folder-row">
+          <span className="post-shot-folder-path mono">{folderPath}</span>
+          {shot.foldersCreatedAt ? (
+            <span className="pill pill-success">Folders created</span>
+          ) : folderStatus === "creating" ? (
+            <span className="pill pill-warning">Creating…</span>
+          ) : rootHandle ? (
+            <span className="btn btn-secondary post-create-folders-btn" onClick={createFolders}>
+              Create folders
+            </span>
+          ) : (
+            <span className="label post-shot-folder-hint">Set a project folder to create these on disk</span>
+          )}
+          {folderStatus === "error" && <span className="project-create-error">Couldn't write to the project folder.</span>}
         </div>
       )}
 
@@ -198,27 +482,32 @@ function ShotCard({ shot, index, isFirst, isLast, isEditing, onToggleEdit, onMov
             readOnly={!isEditing}
             onChange={(patch) => updateTask(task.id, patch)}
             onRemove={() => removeTask(task.id)}
+            artists={artists}
           />
         ))}
       </div>
 
-      {isEditing && availableTaskTypes.length > 0 && (
-        <select
-          className="effect-add-select post-add-task-select"
-          value={addTaskType}
-          onChange={(e) => {
-            addTask(e.target.value);
-            setAddTaskType("");
-          }}
-        >
-          <option value="">+ add task</option>
-          {availableTaskTypes.map((t) => (
-            <option value={t} key={t}>
-              {t}
-            </option>
-          ))}
-        </select>
-      )}
+      {isEditing && (isAdmin ? (
+        availableTaskTypes.length > 0 && (
+          <select
+            className="effect-add-select post-add-task-select"
+            value={addTaskType}
+            onChange={(e) => {
+              addTask(e.target.value);
+              setAddTaskType("");
+            }}
+          >
+            <option value="">+ add task</option>
+            {availableTaskTypes.map((t) => (
+              <option value={t} key={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        )
+      ) : (
+        <span className="label post-add-task-hint">Only Admins can add assignments</span>
+      ))}
 
       <div className="post-shot-footer">
         <span className="post-shot-progress mono">
@@ -237,7 +526,30 @@ function ShotCard({ shot, index, isFirst, isLast, isEditing, onToggleEdit, onMov
 
 export default function PostReports() {
   const [shots, setShots] = useLocalStorageState("vfx-supe-post-reports", []);
+  const [project, setProject] = useLocalStorageState("vfx-supe-project", null);
+  const [artists] = useLocalStorageState("vfx-supe-artists", []);
   const [editingIds, setEditingIds] = useState([]);
+  const [rootHandle, setRootHandle] = useState(null);
+  const [folderError, setFolderError] = useState("");
+  const [tab, setTab] = useState(TABS[0]);
+  const supported = isFsAccessSupported();
+  const isAdmin = CURRENT_ROLE === "Admin";
+
+  useEffect(() => {
+    loadRootHandle()
+      .then(setRootHandle)
+      .catch(() => {});
+  }, []);
+
+  const pickFolder = async () => {
+    try {
+      const handle = await pickProjectRootFolder();
+      setRootHandle(handle);
+      setFolderError("");
+    } catch (err) {
+      if (err?.name !== "AbortError") setFolderError("Couldn't get folder access — try again.");
+    }
+  };
 
   const toggleEditing = (id) => {
     setEditingIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -245,6 +557,11 @@ export default function PostReports() {
 
   const updateShot = (updated) => {
     setShots((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+  };
+
+  const removeShot = (id) => {
+    setShots((prev) => prev.filter((s) => s.id !== id));
+    setEditingIds((prev) => prev.filter((x) => x !== id));
   };
 
   const addRow = () => {
@@ -260,35 +577,81 @@ export default function PostReports() {
   return (
     <div className="post-reports">
       <div className="post-reports-header">
-        <span className="post-reports-title">POST REPORTS</span>
-        <div className="post-reports-header-actions">
-          <span className="pill">{shots.length} shots</span>
-          <span className="btn btn-secondary report-add-btn" onClick={addRow}>
-            + Add Shot
-          </span>
+        <div className="post-reports-header-top">
+          <span className="post-reports-title">POST REPORTS</span>
+          <div className="post-reports-header-actions">
+            {tab === "Shots" && project && (
+              <span className="pill pill-accent post-project-pill">
+                {project.name} ({project.showCode})
+              </span>
+            )}
+            {tab === "Shots" && project && (
+              <span className="post-project-change" onClick={() => setProject(null)}>
+                Change
+              </span>
+            )}
+            {tab === "Shots" && <span className="pill">{shots.length} shots</span>}
+            {tab === "Shots" && (
+              <span className="btn btn-secondary report-add-btn" onClick={addRow}>
+                + Add Shot
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="post-reports-tabs">
+          {TABS.map((t) => (
+            <span
+              key={t}
+              className={`post-reports-tab${tab === t ? " active" : ""}`}
+              onClick={() => setTab(t)}
+            >
+              {t}
+            </span>
+          ))}
         </div>
       </div>
 
-      {shots.length === 0 ? (
-        <div className="card post-reports-empty">
-          No shots yet — submit shots in Capture Reports, then Push to Post to see them here.
-        </div>
+      {tab === "Artists" ? (
+        <ArtistDirectory isAdmin={isAdmin} />
       ) : (
-        <div className="post-shot-list">
-          {shots.map((shot, i) => (
-            <ShotCard
-              key={shot.id}
-              shot={shot}
-              index={i}
-              isFirst={i === 0}
-              isLast={i === shots.length - 1}
-              isEditing={editingIds.includes(shot.id)}
-              onToggleEdit={() => toggleEditing(shot.id)}
-              onMove={move}
-              onChange={updateShot}
+        <>
+          {!project && (
+            <CreateProjectPanel
+              onCreate={setProject}
+              rootHandle={rootHandle}
+              onPickFolder={pickFolder}
+              folderError={folderError}
+              supported={supported}
             />
-          ))}
-        </div>
+          )}
+
+          {shots.length === 0 ? (
+            <div className="card post-reports-empty">
+              No shots yet — submit shots in Capture Reports, then Push to Post to see them here.
+            </div>
+          ) : (
+            <div className="post-shot-list">
+              {shots.map((shot, i) => (
+                <ShotCard
+                  key={shot.id}
+                  shot={shot}
+                  index={i}
+                  isFirst={i === 0}
+                  isLast={i === shots.length - 1}
+                  isEditing={editingIds.includes(shot.id)}
+                  onToggleEdit={() => toggleEditing(shot.id)}
+                  onMove={move}
+                  onChange={updateShot}
+                  onDelete={() => removeShot(shot.id)}
+                  project={project}
+                  rootHandle={rootHandle}
+                  artists={artists}
+                  isAdmin={isAdmin}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

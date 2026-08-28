@@ -110,6 +110,14 @@
   color: var(--text-secondary);
 }
 
+.board-card-folder-path {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .board-column-empty {
   font: 11px var(--font-mono);
   color: var(--text-tertiary);

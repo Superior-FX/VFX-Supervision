@@ -96,3 +96,26 @@
 .capture-report-checklist-editor .checklist-label {
   font-size: 12px;
 }
+
+.capture-shot-cell-editing {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.capture-shot-cell-subfields {
+  display: flex;
+  gap: 4px;
+}
+
+.capture-shot-subfield {
+  width: 76px;
+  font-size: 11px;
+}
+
+.capture-shot-cell-meta {
+  display: block;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
