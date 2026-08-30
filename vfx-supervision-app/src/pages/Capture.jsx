@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { generateThumbnail } from "../lib/ffmpeg.js";
+import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { upsertById, useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./Capture.css";
 
@@ -54,7 +55,8 @@ export default function Capture() {
   const [confirmation, setConfirmation] = useState(null);
   const fileInputRef = useRef(null);
 
-  const [reports, setReports] = useLocalStorageState("vfx-supe-capture-reports", []);
+  const project = useActiveProject();
+  const [reports, setReports] = useLocalStorageState(scopedKey("vfx-supe-capture-reports", project?.id), []);
 
   const toggle = (id) =>
     setChecklist((items) => items.map((item) => (item.id === id ? { ...item, checked: !item.checked } : item)));

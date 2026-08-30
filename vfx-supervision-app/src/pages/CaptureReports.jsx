@@ -1,6 +1,7 @@
 import { Fragment, useRef, useState } from "react";
 import { CheckIcon, PencilIcon } from "../components/SceneVfxFields.jsx";
 import { generateThumbnail } from "../lib/ffmpeg.js";
+import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { moveItem, upsertById, useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "../styles/reportsTable.css";
 import "./Capture.css";
@@ -72,8 +73,9 @@ function blankRow() {
 }
 
 export default function CaptureReports() {
-  const [reports, setReports] = useLocalStorageState("vfx-supe-capture-reports", []);
-  const [postReports, setPostReports] = useLocalStorageState("vfx-supe-post-reports", []);
+  const project = useActiveProject();
+  const [reports, setReports] = useLocalStorageState(scopedKey("vfx-supe-capture-reports", project?.id), []);
+  const [postReports, setPostReports] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
   const [editingIds, setEditingIds] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
   const [thumbStatus, setThumbStatus] = useState({});

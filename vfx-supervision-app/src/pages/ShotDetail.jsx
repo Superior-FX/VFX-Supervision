@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { buildFolderPath } from "../lib/folderPath.js";
+import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./ShotDetail.css";
 
@@ -15,8 +16,8 @@ function PlayIcon() {
 
 export default function ShotDetail() {
   const { shotId } = useParams();
-  const [shots] = useLocalStorageState("vfx-supe-post-reports", []);
-  const [project] = useLocalStorageState("vfx-supe-project", null);
+  const project = useActiveProject();
+  const [shots] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
   const [copied, setCopied] = useState(false);
 
   const shot = shots.find((s) => s.shotCode === shotId);
@@ -51,7 +52,7 @@ export default function ShotDetail() {
           </span>
         ) : (
           <span className="detail-field-value muted">
-            Set a project (Post Reports), sequence, and scene to see the folder path.
+            Set sequence and scene on this shot (Post Reports) to see the folder path.
           </span>
         )}
       </div>

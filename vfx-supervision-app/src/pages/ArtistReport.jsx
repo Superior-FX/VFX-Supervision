@@ -1,5 +1,6 @@
 import { taskStatusInfo } from "../data/taskStatus.js";
 import { resolveCurrentArtist } from "../lib/currentArtist.js";
+import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "../styles/reportsTable.css";
 import "./ArtistReport.css";
@@ -15,7 +16,8 @@ function formatTime(iso) {
 }
 
 export default function ArtistReport() {
-  const [postReports, setPostReports] = useLocalStorageState("vfx-supe-post-reports", []);
+  const project = useActiveProject();
+  const [postReports, setPostReports] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
   const [artists] = useLocalStorageState("vfx-supe-artists", []);
 
   const currentArtist = resolveCurrentArtist(artists);

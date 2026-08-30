@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { Navigate, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useActiveProject } from "../lib/projects.js";
 import { CURRENT_ROLE } from "../lib/role.js";
 import "./Layout.css";
 
@@ -44,8 +45,14 @@ const NAV_GROUPS = [
 ];
 
 export default function Layout() {
+  const navigate = useNavigate();
+  const activeProject = useActiveProject();
   const role = CURRENT_ROLE;
   const isArtist = role === "Artist";
+
+  if (!activeProject) {
+    return <Navigate to="/" replace />;
+  }
 
   const visibleGroups = isArtist ? NAV_GROUPS.filter((g) => g.label === "Artist Portal") : NAV_GROUPS;
 
@@ -55,6 +62,16 @@ export default function Layout() {
         <div className="shell-brand">
           <div className="shell-brand-mark" />
           <span className="shell-brand-name">VFX SUPE</span>
+        </div>
+
+        <div className="shell-project-block">
+          <span className="shell-back-link" onClick={() => navigate("/")}>
+            ← Projects
+          </span>
+          <div className="shell-project-pill" title={activeProject.name}>
+            <span className="pill mono">{activeProject.showCode}</span>
+            <span className="shell-project-name">{activeProject.name}</span>
+          </div>
         </div>
 
         <nav className="shell-nav">

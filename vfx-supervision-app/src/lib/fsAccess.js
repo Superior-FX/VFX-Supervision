@@ -1,11 +1,14 @@
 // Wraps the File System Access API so Post Reports can create the real
 // on-disk folder tree described in references/vfx-shot-folder-structure.md.
 // FileSystemDirectoryHandle isn't JSON-serializable, so it's persisted to
-// IndexedDB separately from the rest of the app's localStorage state.
+// IndexedDB separately from the rest of the app's localStorage state, one
+// handle per project (keyed by project id).
 
 const DB_NAME = "vfx-supe-fs";
 const STORE_NAME = "handles";
-const ROOT_HANDLE_KEY = "project-root";
+// Pre-multi-project handle lived under this fixed key — kept only so a
+// migration can pick it up and re-key it under a real project id.
+const LEGACY_ROOT_HANDLE_KEY = "project-root";
 
 function openDb() {
   return new Promise((resolve, reject) => {
@@ -16,23 +19,41 @@ function openDb() {
   });
 }
 
-async function saveRootHandle(handle) {
+async function saveRootHandle(projectId, handle) {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readwrite");
-    tx.objectStore(STORE_NAME).put(handle, ROOT_HANDLE_KEY);
+    tx.objectStore(STORE_NAME).put(handle, projectId);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
 }
 
-export async function loadRootHandle() {
+export async function loadRootHandle(projectId) {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readonly");
-    const req = tx.objectStore(STORE_NAME).get(ROOT_HANDLE_KEY);
+    const req = tx.objectStore(STORE_NAME).get(projectId);
     req.onsuccess = () => resolve(req.result ?? null);
     req.onerror = () => reject(req.error);
+  });
+}
+
+// One-time migration hook: copies the old single fixed-key handle over to a
+// real project id. No-op if nothing was ever stored under the legacy key.
+export async function migrateLegacyRootHandle(newProjectId) {
+  const handle = await loadRootHandle(LEGACY_ROOT_HANDLE_KEY);
+  if (handle) await saveRootHandle(newProjectId, handle);
+  return handle;
+}
+
+export async function deleteRootHandle(projectId) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).delete(projectId);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
   });
 }
 
@@ -40,10 +61,25 @@ export function isFsAccessSupported() {
   return typeof window !== "undefined" && "showDirectoryPicker" in window;
 }
 
-export async function pickProjectRootFolder() {
-  const handle = await window.showDirectoryPicker({ mode: "readwrite" });
-  await saveRootHandle(handle);
-  return handle;
+// The user picks a destination directory (e.g. a shows drive/folder) —
+// nothing is created yet, just granted.
+export async function pickDestinationFolder() {
+  return window.showDirectoryPicker({ mode: "readwrite" });
+}
+
+// The actual project root is a subfolder created inside that destination,
+// named after the show code, so shots never land loose in a shared folder.
+export async function createProjectRootFolder(projectId, destinationHandle, folderName) {
+  const rootHandle = await subdir(destinationHandle, folderName);
+  await saveRootHandle(projectId, rootHandle);
+  return rootHandle;
+}
+
+// Combined pick+create+save for call sites with no separate "create" step
+// to defer to (e.g. granting a folder to an already-existing project).
+export async function pickProjectRootFolder(projectId, folderName) {
+  const destinationHandle = await pickDestinationFolder();
+  return createProjectRootFolder(projectId, destinationHandle, folderName);
 }
 
 export async function ensurePermission(handle) {

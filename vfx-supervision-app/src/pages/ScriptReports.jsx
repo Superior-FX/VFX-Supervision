@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { BudgetControl, CheckIcon, ComplexityDots, EffectPicker, PencilIcon } from "../components/SceneVfxFields.jsx";
+import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { moveItem, useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "../styles/reportsTable.css";
 import "./ScriptBreakdown.css";
@@ -33,7 +34,8 @@ function blankScene() {
 }
 
 export default function ScriptReports() {
-  const [reports, setReports] = useLocalStorageState("vfx-supe-script-reports", []);
+  const project = useActiveProject();
+  const [reports, setReports] = useLocalStorageState(scopedKey("vfx-supe-script-reports", project?.id), []);
   const [editingIds, setEditingIds] = useState([]);
 
   const toggleEditing = (id) => {

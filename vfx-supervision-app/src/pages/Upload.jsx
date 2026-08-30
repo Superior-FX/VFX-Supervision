@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { resolveCurrentArtist } from "../lib/currentArtist.js";
+import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./Upload.css";
 
@@ -27,7 +28,8 @@ function FileIcon() {
 }
 
 export default function Upload() {
-  const [postReports, setPostReports] = useLocalStorageState("vfx-supe-post-reports", []);
+  const project = useActiveProject();
+  const [postReports, setPostReports] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
   const [artists] = useLocalStorageState("vfx-supe-artists", []);
   const [selectedId, setSelectedId] = useState("");
   const [note, setNote] = useState("");

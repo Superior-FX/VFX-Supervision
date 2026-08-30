@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { BudgetControl, ComplexityDots, EffectPicker } from "../components/SceneVfxFields.jsx";
+import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { upsertById, useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./ScriptBreakdown.css";
 
@@ -212,7 +213,8 @@ export default function ScriptBreakdown() {
   const [filter, setFilter] = useState("all");
   const [confirmation, setConfirmation] = useState(null);
 
-  const [, setScriptReports] = useLocalStorageState("vfx-supe-script-reports", []);
+  const project = useActiveProject();
+  const [, setScriptReports] = useLocalStorageState(scopedKey("vfx-supe-script-reports", project?.id), []);
 
   const updateScene = (updated) => {
     setScenes((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));

@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { buildFolderPath } from "../lib/folderPath.js";
 import { computeImportance } from "../lib/importance.js";
+import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./ShotBoard.css";
 
@@ -30,8 +31,8 @@ function assigneeSummary(shot) {
 
 export default function ShotBoard() {
   const navigate = useNavigate();
-  const [shots] = useLocalStorageState("vfx-supe-post-reports", []);
-  const [project] = useLocalStorageState("vfx-supe-project", null);
+  const project = useActiveProject();
+  const [shots] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
 
   return (
     <div className="board">

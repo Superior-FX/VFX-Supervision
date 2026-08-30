@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { computeImportance } from "../lib/importance.js";
+import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./Dashboard.css";
 
@@ -27,9 +28,10 @@ function isOverdue(dueDate) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [scriptReports] = useLocalStorageState("vfx-supe-script-reports", []);
-  const [captureReports] = useLocalStorageState("vfx-supe-capture-reports", []);
-  const [postReports] = useLocalStorageState("vfx-supe-post-reports", []);
+  const project = useActiveProject();
+  const [scriptReports] = useLocalStorageState(scopedKey("vfx-supe-script-reports", project?.id), []);
+  const [captureReports] = useLocalStorageState(scopedKey("vfx-supe-capture-reports", project?.id), []);
+  const [postReports] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
 
   const unassignedTaskCount = useMemo(
     () =>

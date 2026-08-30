@@ -2,6 +2,7 @@ import { Fragment, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { taskStatusInfo } from "../data/taskStatus.js";
 import { CURRENT_ARTIST_NAME, resolveCurrentArtist } from "../lib/currentArtist.js";
+import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "../styles/reportsTable.css";
 import "./ArtistAssignments.css";
@@ -25,7 +26,8 @@ function shotStatus(shot) {
 
 export default function ArtistAssignments() {
   const navigate = useNavigate();
-  const [postReports] = useLocalStorageState("vfx-supe-post-reports", []);
+  const project = useActiveProject();
+  const [postReports] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
   const [artists] = useLocalStorageState("vfx-supe-artists", []);
   const [onlyMine, setOnlyMine] = useState(false);
   const [expandedId, setExpandedId] = useState(null);

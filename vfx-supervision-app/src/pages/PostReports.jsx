@@ -6,7 +6,9 @@ import { taskStatusInfo } from "../data/taskStatus.js";
 import { buildFolderPath, padScene } from "../lib/folderPath.js";
 import { createShotFolders, ensurePermission, isFsAccessSupported, loadRootHandle, pickProjectRootFolder } from "../lib/fsAccess.js";
 import { computeImportance } from "../lib/importance.js";
+import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { CURRENT_ROLE } from "../lib/role.js";
+import { useEnterKey } from "../lib/useEnterKey.js";
 import { moveItem, useLocalStorageState } from "../lib/useLocalStorageState.js";
 import ArtistDirectory, { artistDepartments } from "./postReports/ArtistDirectory.jsx";
 import "./PostReports.css";
@@ -63,74 +65,14 @@ function blankShot() {
   };
 }
 
-function deriveShowCode(name) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 6);
-}
-
-function CreateProjectPanel({ onCreate, rootHandle, onPickFolder, folderError, supported }) {
-  const [name, setName] = useState("");
-  const [showCode, setShowCode] = useState("");
-  const [codeTouched, setCodeTouched] = useState(false);
-
-  const handleNameChange = (value) => {
-    setName(value);
-    if (!codeTouched) setShowCode(deriveShowCode(value));
-  };
-
-  const canCreate = name.trim() && showCode.trim() && (!supported || rootHandle);
-
-  return (
-    <div className="card project-create">
-      <span className="label">New project</span>
-      <div className="project-create-fields">
-        <input
-          className="report-edit-input"
-          placeholder="Project name, e.g. The Girl on the Plane"
-          value={name}
-          onChange={(e) => handleNameChange(e.target.value)}
-        />
-        <input
-          className="report-edit-input mono project-create-code"
-          placeholder="SHOW"
-          value={showCode}
-          onChange={(e) => {
-            setCodeTouched(true);
-            setShowCode(e.target.value.toUpperCase());
-          }}
-        />
-      </div>
-
-      {supported ? (
-        <span className="btn btn-secondary" onClick={onPickFolder}>
-          {rootHandle ? `Folder selected: ${rootHandle.name}` : "Choose Project Folder…"}
-        </span>
-      ) : (
-        <span className="label project-create-hint">
-          Automatic folder creation needs Chrome or Edge — you can still track shots and copy folder paths manually.
-        </span>
-      )}
-      {folderError && <span className="project-create-error">{folderError}</span>}
-
-      <span
-        className={`btn btn-primary${canCreate ? "" : " btn-disabled"}`}
-        onClick={canCreate ? () => onCreate({ name: name.trim(), showCode: showCode.trim().toUpperCase() }) : undefined}
-      >
-        Create Project
-      </span>
-    </div>
-  );
-}
-
 function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
   const [confirming, setConfirming] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const status = taskStatusInfo(task.status);
+  const deleteMatches = confirmText.trim().toUpperCase() === "DELETE";
+  useEnterKey(() => {
+    if (confirming && deleteMatches) onRemove();
+  });
 
   if (readOnly) {
     return (
@@ -156,7 +98,7 @@ function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
   }
 
   if (confirming) {
-    const matches = confirmText.trim().toUpperCase() === "DELETE";
+    const matches = deleteMatches;
     return (
       <div className="post-task-row post-task-row-confirm">
         <span className="post-task-confirm-label">Type DELETE to remove this assignment</span>
@@ -310,7 +252,12 @@ function ShotCard({ shot, index, isFirst, isLast, isEditing, onToggleEdit, onMov
   if (confirmingDelete) {
     const matches = deleteConfirmText.trim().toUpperCase() === "DELETE";
     return (
-      <div className="card post-shot-card post-shot-card-confirm">
+      <div
+        className="card post-shot-card post-shot-card-confirm"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && matches) onDelete();
+        }}
+      >
         <span className="post-shot-confirm-label">
           Type DELETE to permanently remove {shot.shotCode} and all of its assignments
         </span>
@@ -537,8 +484,8 @@ function ShotCard({ shot, index, isFirst, isLast, isEditing, onToggleEdit, onMov
 }
 
 export default function PostReports() {
-  const [shots, setShots] = useLocalStorageState("vfx-supe-post-reports", []);
-  const [project, setProject] = useLocalStorageState("vfx-supe-project", null);
+  const project = useActiveProject();
+  const [shots, setShots] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
   const [artists] = useLocalStorageState("vfx-supe-artists", []);
   const [editingIds, setEditingIds] = useState([]);
   const [rootHandle, setRootHandle] = useState(null);
@@ -548,14 +495,15 @@ export default function PostReports() {
   const isAdmin = CURRENT_ROLE === "Admin";
 
   useEffect(() => {
-    loadRootHandle()
+    if (!project) return;
+    loadRootHandle(project.id)
       .then(setRootHandle)
       .catch(() => {});
-  }, []);
+  }, [project]);
 
   const pickFolder = async () => {
     try {
-      const handle = await pickProjectRootFolder();
+      const handle = await pickProjectRootFolder(project.id, project.showCode);
       setRootHandle(handle);
       setFolderError("");
     } catch (err) {
@@ -592,14 +540,9 @@ export default function PostReports() {
         <div className="post-reports-header-top">
           <span className="post-reports-title">POST REPORTS</span>
           <div className="post-reports-header-actions">
-            {tab === "Shots" && project && (
-              <span className="pill pill-accent post-project-pill">
-                {project.name} ({project.showCode})
-              </span>
-            )}
-            {tab === "Shots" && project && (
-              <span className="post-project-change" onClick={() => setProject(null)}>
-                Change
+            {tab === "Shots" && supported && !rootHandle && (
+              <span className="btn btn-secondary" onClick={pickFolder}>
+                Choose Destination Folder…
               </span>
             )}
             {tab === "Shots" && <span className="pill">{shots.length} shots</span>}
@@ -627,14 +570,12 @@ export default function PostReports() {
         <ArtistDirectory isAdmin={isAdmin} />
       ) : (
         <>
-          {!project && (
-            <CreateProjectPanel
-              onCreate={setProject}
-              rootHandle={rootHandle}
-              onPickFolder={pickFolder}
-              folderError={folderError}
-              supported={supported}
-            />
+          {folderError && <span className="project-create-error">{folderError}</span>}
+          {!supported && !rootHandle && (
+            <div className="card post-reports-no-fs-hint">
+              Automatic folder creation needs Chrome or Edge — you can still track shots and copy folder paths
+              manually.
+            </div>
           )}
 
           {shots.length === 0 ? (

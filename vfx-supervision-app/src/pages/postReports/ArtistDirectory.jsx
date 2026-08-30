@@ -35,7 +35,12 @@ function ArtistRemoveConfirm({ artist, onConfirm, onCancel }) {
   const matches = text.trim().toUpperCase() === "DELETE";
 
   return (
-    <div className="card artist-directory-row-confirm">
+    <div
+      className="card artist-directory-row-confirm"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && matches) onConfirm();
+      }}
+    >
       <span className="artist-directory-confirm-label">
         Type DELETE to remove {artist.name} from the artist database
       </span>
@@ -67,7 +72,12 @@ function ArtistForm({ value, onChange, onSave, onCancel }) {
   const canSave = value.name.trim() && value.departments.length > 0;
 
   return (
-    <div className="card artist-directory-form">
+    <div
+      className="card artist-directory-form"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && canSave) onSave();
+      }}
+    >
       <input
         className="report-edit-input"
         placeholder="Artist name"

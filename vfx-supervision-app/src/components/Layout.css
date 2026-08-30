@@ -35,6 +35,39 @@
   letter-spacing: 0.5px;
 }
 
+.shell-project-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 6px;
+}
+
+.shell-back-link {
+  font: 600 10px var(--font-mono);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.shell-back-link:hover {
+  color: var(--text-secondary);
+}
+
+.shell-project-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.shell-project-name {
+  font: 700 12px var(--font-body);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .shell-nav {
   display: flex;
   flex-direction: column;
