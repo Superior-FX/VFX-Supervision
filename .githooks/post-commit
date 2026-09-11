@@ -1,0 +1,5 @@
+#!/bin/sh
+# Installed automatically by `npm install` inside vfx-supervision-app (see
+# its package.json "prepare" script + .githooks/setup.js). Runs after every
+# commit on any machine with hooks pointed here.
+node "$(git rev-parse --show-toplevel)/.githooks/log-commit.js"
