@@ -189,6 +189,10 @@ function ShotCard({ shot, index, isFirst, isLast, isEditing, onToggleEdit, onMov
   const [folderStatus, setFolderStatus] = useState(null); // "creating" | "error" | null
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const deleteMatches = deleteConfirmText.trim().toUpperCase() === "DELETE";
+  useEnterKey(() => {
+    if (confirmingDelete && deleteMatches) onDelete();
+  });
   const update = (patch) => onChange({ ...shot, ...patch });
 
   const addTask = (type) => {
@@ -250,14 +254,8 @@ function ShotCard({ shot, index, isFirst, isLast, isEditing, onToggleEdit, onMov
   };
 
   if (confirmingDelete) {
-    const matches = deleteConfirmText.trim().toUpperCase() === "DELETE";
     return (
-      <div
-        className="card post-shot-card post-shot-card-confirm"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && matches) onDelete();
-        }}
-      >
+      <div className="card post-shot-card post-shot-card-confirm">
         <span className="post-shot-confirm-label">
           Type DELETE to permanently remove {shot.shotCode} and all of its assignments
         </span>
@@ -269,7 +267,7 @@ function ShotCard({ shot, index, isFirst, isLast, isEditing, onToggleEdit, onMov
           autoFocus
         />
         <div className="post-shot-confirm-actions">
-          <span className={`btn btn-danger${matches ? "" : " btn-disabled"}`} onClick={matches ? onDelete : undefined}>
+          <span className={`btn btn-danger${deleteMatches ? "" : " btn-disabled"}`} onClick={deleteMatches ? onDelete : undefined}>
             Confirm delete
           </span>
           <span

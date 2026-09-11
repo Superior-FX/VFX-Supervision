@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PencilIcon } from "../../components/SceneVfxFields.jsx";
 import { POST_TASK_TYPES } from "../../data/postTasks.js";
+import { useEnterKey } from "../../lib/useEnterKey.js";
 import { useLocalStorageState } from "../../lib/useLocalStorageState.js";
 import "./ArtistDirectory.css";
 
@@ -33,14 +34,12 @@ function DepartmentPicker({ selected, onToggle }) {
 function ArtistRemoveConfirm({ artist, onConfirm, onCancel }) {
   const [text, setText] = useState("");
   const matches = text.trim().toUpperCase() === "DELETE";
+  useEnterKey(() => {
+    if (matches) onConfirm();
+  });
 
   return (
-    <div
-      className="card artist-directory-row-confirm"
-      onKeyDown={(e) => {
-        if (e.key === "Enter" && matches) onConfirm();
-      }}
-    >
+    <div className="card artist-directory-row-confirm">
       <span className="artist-directory-confirm-label">
         Type DELETE to remove {artist.name} from the artist database
       </span>
@@ -70,14 +69,12 @@ function ArtistForm({ value, onChange, onSave, onCancel }) {
   };
 
   const canSave = value.name.trim() && value.departments.length > 0;
+  useEnterKey(() => {
+    if (canSave) onSave();
+  });
 
   return (
-    <div
-      className="card artist-directory-form"
-      onKeyDown={(e) => {
-        if (e.key === "Enter" && canSave) onSave();
-      }}
-    >
+    <div className="card artist-directory-form">
       <input
         className="report-edit-input"
         placeholder="Artist name"
