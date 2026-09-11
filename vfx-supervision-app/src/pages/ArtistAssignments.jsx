@@ -101,7 +101,7 @@ export default function ArtistAssignments() {
                         <span className="report-shot-code">{shot.shotCode}</span>
                       </td>
                       <td>
-                        <span className="report-static-text">{shot.description || "—"}</span>
+                        <span className="report-static-text">{shot.internalDescription || "—"}</span>
                       </td>
                       <td>
                         <span className="report-mono">{assigneeSummary(shot.tasks)}</span>

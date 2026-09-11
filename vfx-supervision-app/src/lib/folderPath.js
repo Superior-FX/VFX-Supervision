@@ -7,12 +7,19 @@ export function padScene(scene) {
   return /^\d+$/.test(trimmed) ? trimmed.padStart(3, "0") : trimmed;
 }
 
-export function buildFolderPath({ show, sequence, scene, shotCode }) {
+export function buildSceneFolderPath({ show, scene }) {
   const showTrim = (show ?? "").trim();
-  const sequenceTrim = (sequence ?? "").trim();
+  const sceneTrim = padScene(scene);
+  if (!showTrim || !sceneTrim) return null;
+
+  return `${showTrim}/SC${sceneTrim}`;
+}
+
+export function buildFolderPath({ show, scene, shotCode }) {
+  const showTrim = (show ?? "").trim();
   const sceneTrim = padScene(scene);
   const shotTrim = (shotCode ?? "").trim();
-  if (!showTrim || !sequenceTrim || !sceneTrim || !shotTrim) return null;
+  if (!showTrim || !sceneTrim || !shotTrim) return null;
 
-  return `${showTrim}_${sequenceTrim}/SC${sceneTrim}/${showTrim}_SC${sceneTrim}_${shotTrim}`;
+  return `${showTrim}/SC${sceneTrim}/${showTrim}_SC${sceneTrim}_${shotTrim}`;
 }

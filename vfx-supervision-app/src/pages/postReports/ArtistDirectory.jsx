@@ -96,7 +96,7 @@ function ArtistForm({ value, onChange, onSave, onCancel }) {
   );
 }
 
-export default function ArtistDirectory({ isAdmin }) {
+export default function ArtistDirectory({ isAdmin, onRenameArtist }) {
   const [artists, setArtists] = useLocalStorageState("vfx-supe-artists", []);
   const [draft, setDraft] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -119,8 +119,13 @@ export default function ArtistDirectory({ isAdmin }) {
     setEditDraft(null);
   };
   const saveEdit = () => {
+    const trimmedName = editDraft.name.trim();
+    const original = artists.find((a) => a.id === editDraft.id);
+    if (original && trimmedName && original.name.trim() !== trimmedName) {
+      onRenameArtist?.(original.name, trimmedName);
+    }
     setArtists((prev) =>
-      prev.map((a) => (a.id === editDraft.id ? { ...editDraft, name: editDraft.name.trim() } : a))
+      prev.map((a) => (a.id === editDraft.id ? { ...editDraft, name: trimmedName } : a))
     );
     setEditingId(null);
     setEditDraft(null);

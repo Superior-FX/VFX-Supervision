@@ -8,6 +8,7 @@ export const POST_TASK_TYPES = [
   "Particle / Fluid Simulation",
   "Lighting / Rendering",
   "AI Generation",
+  "Digital Matte Painting (DMP)",
   "Compositing",
   "Color / Grading",
   "QC / Delivery",

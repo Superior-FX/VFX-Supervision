@@ -93,15 +93,21 @@ async function subdir(parent, name) {
   return parent.getDirectoryHandle(name, { create: true });
 }
 
-// Builds [SHOW]_[SEQUENCE]/SC[SCENE]/[SHOW]_SC[SCENE]_[SHOT]/ with its
-// numbered subfolders, plus the per-shot metadata JSON, under rootHandle.
-export async function createShotFolders(rootHandle, { show, sequence, scene, shotCode, pipeline, meta }) {
-  const showSeqName = `${show}_${sequence}`;
+// Creates just SC[SCENE]/ under the project root — the group folder a scene
+// gets as soon as it's created, before any of its shots exist.
+export async function createSceneFolder(rootHandle, { scene }) {
+  const sceneName = `SC${scene}`;
+  await subdir(rootHandle, sceneName);
+  return { path: sceneName };
+}
+
+// Builds SC[SCENE]/[SHOW]_SC[SCENE]_[SHOT]/ with its numbered subfolders,
+// plus the per-shot metadata JSON, under rootHandle.
+export async function createShotFolders(rootHandle, { show, scene, shotCode, pipeline, meta }) {
   const sceneName = `SC${scene}`;
   const shotName = `${show}_${sceneName}_${shotCode}`;
 
-  const showSeqDir = await subdir(rootHandle, showSeqName);
-  const sceneDir = await subdir(showSeqDir, sceneName);
+  const sceneDir = await subdir(rootHandle, sceneName);
   const shotDir = await subdir(sceneDir, shotName);
 
   await subdir(shotDir, "00_plates");
@@ -120,5 +126,5 @@ export async function createShotFolders(rootHandle, { show, sequence, scene, sho
   await writable.write(JSON.stringify(meta, null, 2));
   await writable.close();
 
-  return { path: `${showSeqName}/${sceneName}/${shotName}` };
+  return { path: `${sceneName}/${shotName}` };
 }

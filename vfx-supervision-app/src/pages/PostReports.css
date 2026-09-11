@@ -359,3 +359,121 @@
   color: var(--text-tertiary);
   font-weight: 400;
 }
+
+.post-scene-group {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-left: 3px solid var(--accent);
+}
+
+.post-scene-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.post-scene-header-static {
+  cursor: default;
+}
+
+.post-scene-expand {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  width: 10px;
+  flex: none;
+}
+
+.post-scene-label {
+  font: 700 13px var(--font-body);
+  color: var(--text-primary);
+}
+
+.post-scene-delete-btn {
+  margin-left: auto;
+}
+
+.post-scene-confirm {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+}
+
+.post-scene-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.post-scene-add-shot-btn {
+  align-self: flex-start;
+  padding: 6px 12px;
+  font-size: 11px;
+}
+
+.post-scene-form {
+  width: 100%;
+  max-width: 320px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.post-scene-form-input {
+  width: 100%;
+}
+
+.post-scene-form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.post-shot-description-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.post-shot-description-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.post-shot-description-field textarea {
+  width: 100%;
+  min-height: 44px;
+  resize: vertical;
+  border-radius: 6px;
+  border: 1px solid var(--border-soft);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font: 13px var(--font-body);
+  padding: 8px 10px;
+  box-sizing: border-box;
+}
+
+.post-shot-description-field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.post-shot-description-display {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.post-shot-description-script {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
