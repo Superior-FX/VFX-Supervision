@@ -48,6 +48,18 @@
   background: var(--surface);
 }
 
+/* Same importance color-coding as the shot card in Post Reports and the
+   board card in Shot Board — a table row has no left border of its own
+   under border-collapse, so it's drawn as an inset shadow on the first
+   cell instead. */
+.artist-assignments-row.importance-danger td:first-child {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+.artist-assignments-row.importance-warning td:first-child {
+  box-shadow: inset 3px 0 0 var(--warning);
+}
+
 .artist-assignments-expand-cell {
   width: 20px;
   color: var(--text-tertiary);

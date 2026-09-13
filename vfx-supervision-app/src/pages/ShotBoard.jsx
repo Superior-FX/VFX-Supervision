@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { buildFolderPath } from "../lib/folderPath.js";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
+import { getAssignees } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./ShotBoard.css";
 
@@ -23,7 +24,7 @@ function ImageIcon() {
 }
 
 function assigneeSummary(shot) {
-  const names = [...new Set(shot.tasks.map((t) => t.assignee?.trim()).filter(Boolean))];
+  const names = [...new Set(shot.tasks.flatMap((t) => getAssignees(t)))];
   if (names.length === 0) return "Unassigned";
   if (names.length <= 2) return names.join(", ");
   return `${names[0]}, ${names[1]} +${names.length - 2}`;

@@ -10,11 +10,13 @@ import {
   ensurePermission,
   isFsAccessSupported,
   loadRootHandle,
+  moveShotFolderToDeleted,
   pickProjectRootFolder,
 } from "../lib/fsAccess.js";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject, useProjects } from "../lib/projects.js";
 import { CURRENT_ROLE } from "../lib/role.js";
+import { assigneeRows, assigneesLabel, getAssignees, renameAssigneeOnTask } from "../lib/taskAssignees.js";
 import { useEnterKey } from "../lib/useEnterKey.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import ArtistDirectory, { artistDepartments } from "./postReports/ArtistDirectory.jsx";
@@ -85,6 +87,10 @@ function blankShot(sceneId, sceneNumber) {
     storyImportance: 1,
     dueDate: "",
     foldersCreatedAt: null,
+    // The shotCode that was actually on disk the last time folders were
+    // created — compared against the live shotCode so the UI can tell when
+    // they've drifted apart instead of silently pointing at a stale folder.
+    foldersCreatedForCode: null,
     submittedAt: new Date().toISOString(),
   };
 }
@@ -106,17 +112,14 @@ function moveShotInScene(allShots, sceneKey, shotId, direction) {
   return next;
 }
 
-// Task assignees are stored as a name snapshot, not a live artist reference
-// — vendor assignments are free text with no artist behind them at all, so
+// Task assignees are stored as name snapshots, not live artist references —
+// vendor assignments are free text with no artist behind them at all, so
 // only in-house tasks are rewritten here. Matching is case-insensitive/trim
 // to mirror how "my tasks" filtering elsewhere compares names.
 function renameAssigneeInShots(shotList, oldName, newName) {
-  const oldTrim = oldName.trim().toLowerCase();
   return shotList.map((s) => ({
     ...s,
-    tasks: s.tasks.map((t) =>
-      t.source !== "vendor" && t.assignee?.trim().toLowerCase() === oldTrim ? { ...t, assignee: newName } : t
-    ),
+    tasks: s.tasks.map((t) => (t.source === "vendor" ? t : renameAssigneeOnTask(t, oldName, newName))),
   }));
 }
 
@@ -129,6 +132,21 @@ function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
     if (confirming && deleteMatches) onRemove();
   });
 
+  const setAssigneeAt = (index, value) => {
+    const rows = [...assigneeRows(task)];
+    rows[index] = value;
+    onChange({ assignees: rows, assignee: undefined });
+  };
+
+  const addAssigneeRow = () => {
+    onChange({ assignees: [...assigneeRows(task), ""], assignee: undefined });
+  };
+
+  const removeAssigneeAt = (index) => {
+    const rows = assigneeRows(task).filter((_, i) => i !== index);
+    onChange({ assignees: rows.length ? rows : [""], assignee: undefined });
+  };
+
   if (readOnly) {
     return (
       <div className="post-task-row">
@@ -137,7 +155,7 @@ function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
           {task.source === "vendor" ? "Outsourced" : "In-house"}
         </span>
         <span className={`pill${status.tone ? ` pill-${status.tone}` : ""}`}>{status.label}</span>
-        <span className="post-task-assignee mono">{task.assignee?.trim() || "Unassigned"}</span>
+        <span className="post-task-assignee mono">{assigneesLabel(task)}</span>
         {task.status === "pending" && (
           <div className="post-task-review-actions">
             <span className="btn btn-danger post-task-review-btn" onClick={() => onChange({ status: "needs_revision" })}>
@@ -198,27 +216,49 @@ function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
         </span>
       </div>
       <span className={`pill${status.tone ? ` pill-${status.tone}` : ""}`}>{status.label}</span>
-      {task.source === "vendor" ? (
-        <input
-          className="report-edit-input mono post-task-assignee-input"
-          placeholder="Vendor name"
-          value={task.assignee}
-          onChange={(e) => onChange({ assignee: e.target.value })}
-        />
-      ) : (
-        <select
-          className="report-edit-input mono post-task-assignee-input"
-          value={task.assignee}
-          onChange={(e) => onChange({ assignee: e.target.value })}
+      <div className="post-task-assignee-list">
+        {assigneeRows(task).map((value, i) => (
+          <div className="post-task-assignee-row" key={i}>
+            {task.source === "vendor" ? (
+              <input
+                className="report-edit-input mono post-task-assignee-input"
+                placeholder="Vendor name"
+                value={value}
+                onChange={(e) => setAssigneeAt(i, e.target.value)}
+              />
+            ) : (
+              <select
+                className="report-edit-input mono post-task-assignee-input"
+                value={value}
+                onChange={(e) => setAssigneeAt(i, e.target.value)}
+              >
+                <option value="">Unassigned</option>
+                {artists.map((a) => (
+                  <option value={a.name} key={a.id}>
+                    {a.name} — {artistDepartments(a).join(" / ")}
+                  </option>
+                ))}
+              </select>
+            )}
+            {assigneeRows(task).length > 1 && (
+              <span
+                className="post-task-remove-assignee"
+                onClick={() => removeAssigneeAt(i)}
+                title={task.source === "vendor" ? "Remove vendor" : "Remove artist"}
+              >
+                ×
+              </span>
+            )}
+          </div>
+        ))}
+        <span
+          className="post-task-add-assignee"
+          onClick={addAssigneeRow}
+          title={task.source === "vendor" ? "Add another vendor" : "Add another artist"}
         >
-          <option value="">Unassigned</option>
-          {artists.map((a) => (
-            <option value={a.name} key={a.id}>
-              {a.name} — {artistDepartments(a).join(" / ")}
-            </option>
-          ))}
-        </select>
-      )}
+          +
+        </span>
+      </div>
       <span className="post-task-remove" onClick={() => setConfirming(true)} title="Remove assignment">
         <TrashIcon />
       </span>
@@ -246,6 +286,8 @@ function ShotCard({
   isLast,
   isEditing,
   onToggleEdit,
+  isExpanded,
+  onToggleExpand,
   onMove,
   onChange,
   onDelete,
@@ -267,7 +309,7 @@ function ShotCard({
 
   const addTask = (type) => {
     if (!type) return;
-    update({ tasks: [...shot.tasks, { id: crypto.randomUUID(), type, source: "inhouse", assignee: "", status: "assigned" }] });
+    update({ tasks: [...shot.tasks, { id: crypto.randomUUID(), type, source: "inhouse", assignees: [""], status: "assigned" }] });
   };
 
   const updateTask = (taskId, patch) => {
@@ -278,7 +320,7 @@ function ShotCard({
     update({ tasks: shot.tasks.filter((t) => t.id !== taskId) });
   };
 
-  const assignedCount = shot.tasks.filter((t) => t.assignee?.trim()).length;
+  const assignedCount = shot.tasks.filter((t) => getAssignees(t).length > 0).length;
   const totalTasks = shot.tasks.length;
   const fullyAssigned = totalTasks > 0 && assignedCount === totalTasks;
   const availableTaskTypes = POST_TASK_TYPES.filter((t) => !shot.tasks.some((task) => task.type === t));
@@ -300,13 +342,12 @@ function ShotCard({
         return;
       }
       await createShotFolders(rootHandle, {
-        show: project.showCode,
         scene: padScene(sceneNumber),
         shotCode: shot.shotCode,
         pipeline: shot.pipeline,
         meta: buildShotMeta(project, sceneNumber, shot),
       });
-      update({ foldersCreatedAt: new Date().toISOString() });
+      update({ foldersCreatedAt: new Date().toISOString(), foldersCreatedForCode: shot.shotCode });
       setFolderStatus(null);
     } catch (err) {
       console.error("Folder creation failed:", err);
@@ -314,18 +355,23 @@ function ShotCard({
     }
   };
 
-  const handleEditToggle = async () => {
-    if (isEditing && readyForFolders && !shot.foldersCreatedAt) {
-      await createFolders();
-    }
-    onToggleEdit();
-  };
+  // Folders are only ever created by an explicit click below — never as a
+  // side effect of leaving edit mode. Auto-creating on the first "Done"
+  // used to lock in whatever shotCode happened to be set at that moment
+  // (often still the "NEW_SHOT" placeholder), and since foldersCreatedAt
+  // then blocked any retry, a later rename never reached the folder on disk.
+  const codeChangedSinceCreate = Boolean(shot.foldersCreatedAt) && shot.foldersCreatedForCode !== shot.shotCode;
+
+  // Editing always shows the full card — collapsing mid-edit would hide the
+  // very fields being edited — so the collapse toggle only matters at rest.
+  const showExpanded = isEditing || isExpanded;
 
   if (confirmingDelete) {
     return (
       <div className="card post-shot-card post-shot-card-confirm">
         <span className="post-shot-confirm-label">
           Type DELETE to permanently remove {shot.shotCode} and all of its assignments
+          {shot.foldersCreatedAt ? " — its folder will be moved into this scene's zzz_DELETED/ folder" : ""}
         </span>
         <input
           className="report-edit-input mono post-task-confirm-input"
@@ -355,6 +401,13 @@ function ShotCard({
   return (
     <div className={`card post-shot-card${importance.colorKey ? ` importance-${importance.colorKey}` : ""}`}>
       <div className="post-shot-header">
+        <span
+          className="post-shot-expand"
+          onClick={onToggleExpand}
+          title={showExpanded ? "Collapse" : "Expand"}
+        >
+          {showExpanded ? "▼" : "▶"}
+        </span>
         {shot.thumbnail ? (
           <img className="post-shot-thumb" src={shot.thumbnail} alt={`${shot.shotCode} thumbnail`} />
         ) : (
@@ -422,7 +475,7 @@ function ShotCard({
               </span>
             </>
           )}
-          <span className="report-edit-btn" onClick={handleEditToggle} title={isEditing ? "Done" : "Edit"}>
+          <span className="report-edit-btn" onClick={onToggleEdit} title={isEditing ? "Done" : "Edit"}>
             {isEditing ? <CheckIcon /> : <PencilIcon />}
           </span>
           <span
@@ -435,117 +488,138 @@ function ShotCard({
         </div>
       </div>
 
-      {isEditing ? (
-        <div className="post-shot-meta post-shot-meta-editing">
-          <div className="post-shot-meta-field">
-            <span className="label">Complexity</span>
-            <ComplexityDots value={shot.complexity} onChange={(v) => update({ complexity: v })} />
-          </div>
-          <div className="post-shot-meta-field">
-            <span className="label">Story importance</span>
-            <ComplexityDots
-              value={shot.storyImportance}
-              onChange={(v) => update({ storyImportance: v })}
-              levels={STORY_IMPORTANCE_LEVELS}
-            />
-          </div>
-          <div className="post-shot-meta-field">
-            <span className="label">Due date</span>
-            <input
-              className="report-edit-input mono post-due-input"
-              type="date"
-              value={shot.dueDate || ""}
-              onChange={(e) => update({ dueDate: e.target.value })}
-            />
-          </div>
-          <div className="post-shot-meta-field">
-            <span className="label">Pipeline</span>
-            <select
-              className="report-edit-input mono post-due-input"
-              value={shot.pipeline ?? "traditional"}
-              onChange={(e) => update({ pipeline: e.target.value })}
-            >
-              {PIPELINES.map((p) => (
-                <option value={p.value} key={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      ) : (
-        <div className="post-shot-meta">
-          <span className="pill mono">C: {shot.complexity}/5</span>
-          <span className="pill mono">Story: {shot.storyImportance}/5</span>
-          {shot.dueDate && <span className="pill mono">Due {shot.dueDate}</span>}
-        </div>
-      )}
-
-      {folderPath && (
-        <div className="post-shot-folder-row">
-          <span className="post-shot-folder-path mono">{folderPath}</span>
-          {shot.foldersCreatedAt ? (
-            <span className="pill pill-success">Folders created</span>
-          ) : folderStatus === "creating" ? (
-            <span className="pill pill-warning">Creating…</span>
-          ) : rootHandle ? (
-            <span className="btn btn-secondary post-create-folders-btn" onClick={createFolders}>
-              Create folders
-            </span>
+      {showExpanded && (
+        <>
+          {isEditing ? (
+            <div className="post-shot-meta post-shot-meta-editing">
+              <div className="post-shot-meta-field">
+                <span className="label">Complexity</span>
+                <ComplexityDots value={shot.complexity} onChange={(v) => update({ complexity: v })} />
+              </div>
+              <div className="post-shot-meta-field">
+                <span className="label">Story importance</span>
+                <ComplexityDots
+                  value={shot.storyImportance}
+                  onChange={(v) => update({ storyImportance: v })}
+                  levels={STORY_IMPORTANCE_LEVELS}
+                />
+              </div>
+              <div className="post-shot-meta-field">
+                <span className="label">Due date</span>
+                <input
+                  className="report-edit-input mono post-due-input"
+                  type="date"
+                  value={shot.dueDate || ""}
+                  onChange={(e) => update({ dueDate: e.target.value })}
+                />
+              </div>
+              <div className="post-shot-meta-field">
+                <span className="label">Pipeline</span>
+                <select
+                  className="report-edit-input mono post-due-input"
+                  value={shot.pipeline ?? "traditional"}
+                  onChange={(e) => update({ pipeline: e.target.value })}
+                >
+                  {PIPELINES.map((p) => (
+                    <option value={p.value} key={p.value}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           ) : (
-            <span className="label post-shot-folder-hint">Set a project folder to create these on disk</span>
+            <div className="post-shot-meta">
+              <span className="pill mono">C: {shot.complexity}/5</span>
+              <span className="pill mono">Story: {shot.storyImportance}/5</span>
+              {shot.dueDate && <span className="pill mono">Due {shot.dueDate}</span>}
+            </div>
           )}
-          {folderStatus === "error" && <span className="project-create-error">Couldn't write to the project folder.</span>}
-        </div>
-      )}
 
-      <div className="post-shot-tasks">
-        {shot.tasks.length === 0 && <span className="post-tasks-empty">No tasks added yet.</span>}
-        {shot.tasks.map((task) => (
-          <TaskRow
-            key={task.id}
-            task={task}
-            readOnly={!isEditing}
-            onChange={(patch) => updateTask(task.id, patch)}
-            onRemove={() => removeTask(task.id)}
-            artists={artists}
-          />
-        ))}
-      </div>
+          {folderPath && (
+            <div className="post-shot-folder-row">
+              <span className="post-shot-folder-path mono">{folderPath}</span>
+              {folderStatus === "creating" ? (
+                <span className="pill pill-warning">Creating…</span>
+              ) : codeChangedSinceCreate ? (
+                <>
+                  <span
+                    className="pill pill-warning"
+                    title={`On-disk folder is still named for "${shot.foldersCreatedForCode}"`}
+                  >
+                    Shot code changed since folders were created
+                  </span>
+                  {rootHandle && (
+                    <span className="btn btn-secondary post-create-folders-btn" onClick={createFolders}>
+                      Create folder for new code
+                    </span>
+                  )}
+                </>
+              ) : shot.foldersCreatedAt ? (
+                <span className="pill pill-success">Folders created</span>
+              ) : rootHandle ? (
+                <span className="btn btn-secondary post-create-folders-btn" onClick={createFolders}>
+                  Create folders
+                </span>
+              ) : (
+                <span className="label post-shot-folder-hint">Set a project folder to create these on disk</span>
+              )}
+              {folderStatus === "error" && (
+                <span className="project-create-error">Couldn't write to the project folder.</span>
+              )}
+            </div>
+          )}
 
-      {isEditing && (isAdmin ? (
-        availableTaskTypes.length > 0 && (
-          <select
-            className="effect-add-select post-add-task-select"
-            value={addTaskType}
-            onChange={(e) => {
-              addTask(e.target.value);
-              setAddTaskType("");
-            }}
-          >
-            <option value="">+ add task</option>
-            {availableTaskTypes.map((t) => (
-              <option value={t} key={t}>
-                {t}
-              </option>
+          <div className="post-shot-tasks">
+            {shot.tasks.length === 0 && <span className="post-tasks-empty">No tasks added yet.</span>}
+            {shot.tasks.map((task) => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                readOnly={!isEditing}
+                onChange={(patch) => updateTask(task.id, patch)}
+                onRemove={() => removeTask(task.id)}
+                artists={artists}
+              />
             ))}
-          </select>
-        )
-      ) : (
-        <span className="label post-add-task-hint">Only Admins can add assignments</span>
-      ))}
+          </div>
 
-      <div className="post-shot-footer">
-        <span className="post-shot-progress mono">
-          {assignedCount}/{totalTasks} task{totalTasks === 1 ? "" : "s"} assigned
-        </span>
-        <span
-          className={`btn btn-primary${fullyAssigned ? "" : " btn-disabled"}`}
-          onClick={fullyAssigned ? () => update({ dispatched: true }) : undefined}
-        >
-          {shot.dispatched ? "Re-push Assignment" : "Push Assignment"}
-        </span>
-      </div>
+          {isEditing &&
+            (isAdmin ? (
+              availableTaskTypes.length > 0 && (
+                <select
+                  className="effect-add-select post-add-task-select"
+                  value={addTaskType}
+                  onChange={(e) => {
+                    addTask(e.target.value);
+                    setAddTaskType("");
+                  }}
+                >
+                  <option value="">+ add task</option>
+                  {availableTaskTypes.map((t) => (
+                    <option value={t} key={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              )
+            ) : (
+              <span className="label post-add-task-hint">Only Admins can add assignments</span>
+            ))}
+
+          <div className="post-shot-footer">
+            <span className="post-shot-progress mono">
+              {assignedCount}/{totalTasks} task{totalTasks === 1 ? "" : "s"} assigned
+            </span>
+            <span
+              className={`btn btn-primary${fullyAssigned ? "" : " btn-disabled"}`}
+              onClick={fullyAssigned ? () => update({ dispatched: true }) : undefined}
+            >
+              {shot.dispatched ? "Re-push Assignment" : "Push Assignment"}
+            </span>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -618,6 +692,8 @@ function SceneGroup({
   onAddShot,
   editingIds,
   toggleEditing,
+  expandedShotIds,
+  toggleShotExpanded,
   updateShot,
   removeShot,
   move,
@@ -731,6 +807,8 @@ function SceneGroup({
                   isLast={i === shots.length - 1}
                   isEditing={editingIds.includes(shot.id)}
                   onToggleEdit={() => toggleEditing(shot.id)}
+                  isExpanded={expandedShotIds.includes(shot.id)}
+                  onToggleExpand={() => toggleShotExpanded(shot.id)}
                   onMove={(idx, dir) => move(shots[idx].id, dir)}
                   onChange={updateShot}
                   onDelete={() => removeShot(shot.id)}
@@ -757,6 +835,7 @@ export default function PostReports() {
   const [artists] = useLocalStorageState("vfx-supe-artists", []);
   const [editingIds, setEditingIds] = useState([]);
   const [expandedSceneIds, setExpandedSceneIds] = useState([]);
+  const [expandedShotIds, setExpandedShotIds] = useState([]);
   const [addingScene, setAddingScene] = useState(false);
   const [rootHandle, setRootHandle] = useState(null);
   const [folderError, setFolderError] = useState("");
@@ -789,6 +868,10 @@ export default function PostReports() {
     setExpandedSceneIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
+  const toggleShotExpanded = (id) => {
+    setExpandedShotIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
   // Artists are a single roster shared across every project, but each
   // project keeps its own shots — so a rename has to reach every project's
   // task assignments, not just the one currently open. The active project
@@ -819,15 +902,37 @@ export default function PostReports() {
     setShots((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
   };
 
-  const removeShot = (id) => {
+  const removeShot = async (id) => {
+    const shot = shots.find((s) => s.id === id);
     setShots((prev) => prev.filter((s) => s.id !== id));
     setEditingIds((prev) => prev.filter((x) => x !== id));
+    setExpandedShotIds((prev) => prev.filter((x) => x !== id));
+
+    // Best-effort: if this shot's folder was ever created on disk, move it
+    // into that scene's zzz_DELETED/ folder rather than leaving it — or losing
+    // track of it — under its old name. Never blocks removing the tracker
+    // entry itself if the on-disk move fails (permission revoked, handle
+    // stale, etc.) — just logs it, since the tracked record is gone either way.
+    if (shot?.foldersCreatedAt && rootHandle) {
+      try {
+        const ok = await ensurePermission(rootHandle);
+        if (ok) {
+          await moveShotFolderToDeleted(rootHandle, {
+            scene: padScene(shot.scene),
+            shotCode: shot.foldersCreatedForCode,
+          });
+        }
+      } catch (err) {
+        console.error("Couldn't move deleted shot's folder into zzz_DELETED/:", err);
+      }
+    }
   };
 
   const addShotToScene = (scene) => {
     const row = blankShot(scene.id, scene.scene);
     setShots((prev) => [...prev, row]);
     setEditingIds((prev) => [...prev, row.id]);
+    setExpandedShotIds((prev) => [...prev, row.id]);
     setExpandedSceneIds((prev) => (prev.includes(scene.id) ? prev : [...prev, scene.id]));
   };
 
@@ -944,6 +1049,8 @@ export default function PostReports() {
                   onAddShot={() => addShotToScene(scene)}
                   editingIds={editingIds}
                   toggleEditing={toggleEditing}
+                  expandedShotIds={expandedShotIds}
+                  toggleShotExpanded={toggleShotExpanded}
                   updateShot={updateShot}
                   removeShot={removeShot}
                   move={(shotId, direction) => moveShot(scene.id, shotId, direction)}
@@ -974,6 +1081,8 @@ export default function PostReports() {
                           isLast={i === ungroupedShots.length - 1}
                           isEditing={editingIds.includes(shot.id)}
                           onToggleEdit={() => toggleEditing(shot.id)}
+                          isExpanded={expandedShotIds.includes(shot.id)}
+                          onToggleExpand={() => toggleShotExpanded(shot.id)}
                           onMove={(idx, dir) => moveShot(UNGROUPED, ungroupedShots[idx].id, dir)}
                           onChange={updateShot}
                           onDelete={() => removeShot(shot.id)}

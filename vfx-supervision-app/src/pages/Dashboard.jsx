@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
+import { getAssignees } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./Dashboard.css";
 
@@ -36,7 +37,7 @@ export default function Dashboard() {
   const unassignedTaskCount = useMemo(
     () =>
       postReports.reduce(
-        (sum, shot) => sum + shot.tasks.filter((t) => !t.assignee?.trim()).length,
+        (sum, shot) => sum + shot.tasks.filter((t) => getAssignees(t).length === 0).length,
         0
       ),
     [postReports]
@@ -63,7 +64,7 @@ export default function Dashboard() {
       .filter((shot) => (shot.boardStatus ?? "bidding") !== "final")
       .map((shot) => {
         const importance = computeImportance(shot);
-        const unassigned = shot.tasks.filter((t) => !t.assignee?.trim()).length;
+        const unassigned = shot.tasks.filter((t) => getAssignees(t).length === 0).length;
         const overdue = isOverdue(shot.dueDate);
         const reasons = [];
         if (importance.tier === "high") reasons.push({ label: "High importance", tone: "danger" });

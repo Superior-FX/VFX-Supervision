@@ -101,11 +101,13 @@ export async function createSceneFolder(rootHandle, { scene }) {
   return { path: sceneName };
 }
 
-// Builds SC[SCENE]/[SHOW]_SC[SCENE]_[SHOT]/ with its numbered subfolders,
-// plus the per-shot metadata JSON, under rootHandle.
-export async function createShotFolders(rootHandle, { show, scene, shotCode, pipeline, meta }) {
+// Builds SC[SCENE]/[SHOT]/ with its numbered subfolders, plus the per-shot
+// metadata JSON, under rootHandle. The shot folder is named for just the
+// shot code — SC[SCENE]/ already establishes the show/scene context, so
+// repeating it on every shot folder underneath would be redundant.
+export async function createShotFolders(rootHandle, { scene, shotCode, pipeline, meta }) {
   const sceneName = `SC${scene}`;
-  const shotName = `${show}_${sceneName}_${shotCode}`;
+  const shotName = shotCode;
 
   const sceneDir = await subdir(rootHandle, sceneName);
   const shotDir = await subdir(sceneDir, shotName);
@@ -127,4 +129,80 @@ export async function createShotFolders(rootHandle, { show, scene, shotCode, pip
   await writable.close();
 
   return { path: `${sceneName}/${shotName}` };
+}
+
+// Copies every entry of sourceDir directly into an existing destDir (no
+// wrapping folder of its own) — the shared recursion step behind both
+// copyDirRecursive (which wraps the copy in a new named folder) and the
+// legacy-folder migration below (which merges straight into one that
+// already exists).
+async function mergeDirInto(sourceDir, destDir) {
+  for await (const [childName, handle] of sourceDir.entries()) {
+    if (handle.kind === "directory") {
+      await copyDirRecursive(handle, destDir, childName);
+    } else {
+      const file = await handle.getFile();
+      const destFile = await destDir.getFileHandle(childName, { create: true });
+      const writable = await destFile.createWritable();
+      await writable.write(await file.arrayBuffer());
+      await writable.close();
+    }
+  }
+}
+
+// Recursively copies every entry of sourceDir into a new-or-existing
+// directory of the given name under destParentDir. Plain copy via the
+// standard handle APIs (entries/getFileHandle/getDirectoryHandle) rather
+// than a native move/rename — that API isn't reliably available across
+// browsers yet, so this stays portable at the cost of an extra read pass.
+async function copyDirRecursive(sourceDir, destParentDir, name) {
+  const destDir = await destParentDir.getDirectoryHandle(name, { create: true });
+  await mergeDirInto(sourceDir, destDir);
+  return destDir;
+}
+
+// "zzz_" keeps this folder sorted to the bottom of a scene's folder listing
+// (after any shot code, whether it starts with a digit or a letter) in both
+// plain alphabetical and natural-sort file browsers.
+const DELETED_FOLDER_NAME = "zzz_DELETED";
+// The unprefixed name this folder used to get, before the "zzz_" prefix was
+// added — migrated into the new name below so a scene never ends up with
+// two separate "already deleted" folders side by side.
+const LEGACY_DELETED_FOLDER_NAME = "DELETED";
+
+// Moves a shot's folder into SC[SCENE]/zzz_DELETED/[SHOT]/ instead of
+// removing it outright, so nothing an artist already dropped in there is
+// lost. zzz_DELETED/ is created lazily — the first shot deleted in a scene
+// makes it, every deletion after that just lands inside the existing one.
+// A no-op (not an error) if the scene or shot folder was never created on
+// disk in the first place.
+export async function moveShotFolderToDeleted(rootHandle, { scene, shotCode }) {
+  const sceneName = `SC${scene}`;
+  let sceneDir;
+  try {
+    sceneDir = await rootHandle.getDirectoryHandle(sceneName);
+  } catch {
+    return { moved: false };
+  }
+
+  let shotDir;
+  try {
+    shotDir = await sceneDir.getDirectoryHandle(shotCode);
+  } catch {
+    return { moved: false };
+  }
+
+  const deletedDir = await sceneDir.getDirectoryHandle(DELETED_FOLDER_NAME, { create: true });
+
+  try {
+    const legacyDir = await sceneDir.getDirectoryHandle(LEGACY_DELETED_FOLDER_NAME);
+    await mergeDirInto(legacyDir, deletedDir);
+    await sceneDir.removeEntry(LEGACY_DELETED_FOLDER_NAME, { recursive: true });
+  } catch {
+    // No legacy DELETED/ folder in this scene — nothing to migrate.
+  }
+
+  await copyDirRecursive(shotDir, deletedDir, shotCode);
+  await sceneDir.removeEntry(shotCode, { recursive: true });
+  return { moved: true };
 }

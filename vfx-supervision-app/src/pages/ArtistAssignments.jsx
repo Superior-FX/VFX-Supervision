@@ -2,13 +2,15 @@ import { Fragment, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { taskStatusInfo } from "../data/taskStatus.js";
 import { CURRENT_ARTIST_NAME, resolveCurrentArtist } from "../lib/currentArtist.js";
+import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
+import { assigneesLabel, getAssignees, hasAssignee } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "../styles/reportsTable.css";
 import "./ArtistAssignments.css";
 
 function assigneeSummary(tasks) {
-  const names = [...new Set(tasks.map((t) => t.assignee?.trim()).filter(Boolean))];
+  const names = [...new Set(tasks.flatMap((t) => getAssignees(t)))];
   if (names.length === 0) return "Unassigned";
   if (names.length <= 2) return names.join(", ");
   return `${names[0]}, ${names[1]} +${names.length - 2}`;
@@ -38,9 +40,7 @@ export default function ArtistAssignments() {
 
   const filteredShots =
     onlyMine && currentArtist
-      ? shotsWithTasks.filter((s) =>
-          s.tasks.some((t) => t.assignee?.trim().toLowerCase() === currentArtist.name.trim().toLowerCase())
-        )
+      ? shotsWithTasks.filter((s) => s.tasks.some((t) => hasAssignee(t, currentArtist.name)))
       : shotsWithTasks;
 
   const totalAssignments = filteredShots.reduce((sum, s) => sum + s.tasks.length, 0);
@@ -93,9 +93,13 @@ export default function ArtistAssignments() {
               {filteredShots.map((shot) => {
                 const isExpanded = expandedId === shot.id;
                 const status = shotStatus(shot);
+                const importance = computeImportance(shot);
                 return (
                   <Fragment key={shot.id}>
-                    <tr className="artist-assignments-row" onClick={() => setExpandedId(isExpanded ? null : shot.id)}>
+                    <tr
+                      className={`artist-assignments-row${importance.colorKey ? ` importance-${importance.colorKey}` : ""}`}
+                      onClick={() => setExpandedId(isExpanded ? null : shot.id)}
+                    >
                       <td className="artist-assignments-expand-cell">{isExpanded ? "▲" : "▼"}</td>
                       <td>
                         <span className="report-shot-code">{shot.shotCode}</span>
@@ -123,7 +127,7 @@ export default function ArtistAssignments() {
                                   <span className={`pill${task.source === "inhouse" ? " pill-accent" : ""}`}>
                                     {task.source === "vendor" ? "Outsourced" : "In-house"}
                                   </span>
-                                  <span className="report-mono">{task.assignee || "Unassigned"}</span>
+                                  <span className="report-mono">{assigneesLabel(task)}</span>
                                   <span className={`pill${taskStatus.tone ? ` pill-${taskStatus.tone}` : ""}`}>
                                     {taskStatus.label}
                                   </span>

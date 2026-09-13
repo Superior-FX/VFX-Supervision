@@ -14,3 +14,4 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-09-10T22:31:39-05:00 — **Will Cox** (Atom-Smasher) — `b4f937a` Finish Enter-key support: convert ShotCard and ArtistDirectory
 - 2026-09-11T01:53:58-05:00 — **Will Cox** (Atom-Smasher) — `5931cb4` Scene-first shot tracking, split shot description, DMP task, artist rename cascade
 - 2026-09-11T01:54:28-05:00 — **Will Cox** (Atom-Smasher) — `e2a826a` Add SHARED_STATE.md build-activity log via a shared post-commit hook
+- 2026-09-11T02:14:40-05:00 — **Will Cox** (Atom-Smasher) — `dd21745` Log the SHARED_STATE hook's own commit

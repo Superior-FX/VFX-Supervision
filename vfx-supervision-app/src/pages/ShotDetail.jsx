@@ -25,7 +25,7 @@ export default function ShotDetail() {
   const isInHouse = true;
 
   const folderPath = shot
-    ? buildFolderPath({ show: project?.showCode, sequence: shot.sequence, scene: shot.scene, shotCode: shot.shotCode })
+    ? buildFolderPath({ show: project?.showCode, scene: shot.scene, shotCode: shot.shotCode })
     : null;
 
   const copyPath = () => {

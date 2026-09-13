@@ -93,6 +93,14 @@
   gap: 12px;
 }
 
+.post-shot-expand {
+  cursor: pointer;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  width: 10px;
+  flex: none;
+}
+
 .post-shot-thumb {
   width: 56px;
   height: 40px;
@@ -197,6 +205,47 @@
   white-space: nowrap;
   background: var(--card-bg);
   border: 1px solid var(--border-soft);
+}
+
+.post-task-assignee-list {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.post-task-assignee-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.post-task-add-assignee,
+.post-task-remove-assignee {
+  cursor: pointer;
+  color: var(--text-tertiary);
+  background: var(--card-bg);
+  border: 1px solid var(--border-soft);
+  border-radius: 5px;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 600 13px var(--font-mono);
+  line-height: 1;
+}
+
+.post-task-add-assignee:hover {
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.post-task-remove-assignee:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-soft);
 }
 
 .post-task-remove {

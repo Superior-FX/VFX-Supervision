@@ -1,6 +1,7 @@
 import { taskStatusInfo } from "../data/taskStatus.js";
 import { resolveCurrentArtist } from "../lib/currentArtist.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
+import { hasAssignee } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "../styles/reportsTable.css";
 import "./ArtistReport.css";
@@ -25,7 +26,7 @@ export default function ArtistReport() {
   const rows = currentArtist
     ? postReports.flatMap((shot) =>
         shot.tasks
-          .filter((task) => task.assignee?.trim().toLowerCase() === currentArtist.name.trim().toLowerCase())
+          .filter((task) => hasAssignee(task, currentArtist.name))
           .map((task) => ({ shot, task }))
       )
     : [];

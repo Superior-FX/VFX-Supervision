@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { resolveCurrentArtist } from "../lib/currentArtist.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
+import { hasAssignee } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./Upload.css";
 
@@ -36,7 +37,7 @@ export default function Upload() {
   const [confirmation, setConfirmation] = useState(null);
 
   const currentArtist = resolveCurrentArtist(artists);
-  const myTask = (t) => t.assignee?.trim().toLowerCase() === currentArtist?.name.trim().toLowerCase();
+  const myTask = (t) => hasAssignee(t, currentArtist?.name);
 
   const myShots = currentArtist
     ? postReports.filter((s) => s.tasks.some((t) => myTask(t) && t.status === "wip"))
