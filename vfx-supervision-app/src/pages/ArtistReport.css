@@ -39,3 +39,64 @@
   font: 11px var(--font-mono);
   color: var(--text-tertiary);
 }
+
+.artist-report-row {
+  cursor: pointer;
+}
+
+.artist-report-row:hover {
+  background: var(--surface);
+}
+
+/* Same importance color-coding as Post Reports, Shot Board, and Shot
+   Tracking — a table row has no left border of its own under
+   border-collapse, so it's drawn as an inset shadow on the first cell. */
+.artist-report-row.importance-danger td:first-child {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+.artist-report-row.importance-warning td:first-child {
+  box-shadow: inset 3px 0 0 var(--warning);
+}
+
+.artist-report-expand-cell {
+  width: 20px;
+  color: var(--text-tertiary);
+  font-size: 10px;
+}
+
+.artist-report-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.artist-report-task-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.artist-report-task-type {
+  font: 700 11px var(--font-mono);
+  color: var(--text-primary);
+  min-width: 170px;
+  flex-shrink: 0;
+}
+
+.artist-report-view-shot {
+  align-self: flex-start;
+  cursor: pointer;
+  font: 700 11px var(--font-body);
+  color: var(--accent);
+  padding-top: 2px;
+}
+
+.artist-report-view-shot:hover {
+  text-decoration: underline;
+}

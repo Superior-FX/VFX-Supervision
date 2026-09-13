@@ -3,6 +3,7 @@
 // FileSystemDirectoryHandle isn't JSON-serializable, so it's persisted to
 // IndexedDB separately from the rest of the app's localStorage state, one
 // handle per project (keyed by project id).
+import { taskFolderSlug } from "../data/postTasks.js";
 
 const DB_NAME = "vfx-supe-fs";
 const STORE_NAME = "handles";
@@ -143,11 +144,34 @@ export async function createSceneFolder(rootHandle, { scene }) {
   return { path: sceneName };
 }
 
+// Creates (or reuses) the folder for one task type under a shot's
+// 02_tasks/ — every task type gets a project/ (source files) and render/
+// (submitted output) split. Compositing's project/ further splits into
+// nuke/ and AE/, since comp work happens in either app; every other task
+// type's project/ stays flat. Returns null (no-op) for a task type with no
+// folder slug defined (see TASK_FOLDER_SLUGS).
+export async function ensureTaskFolder(tasksDir, taskType) {
+  const slug = taskFolderSlug(taskType);
+  if (!slug) return null;
+  const taskDir = await subdir(tasksDir, slug);
+  const projectDir = await subdir(taskDir, "project");
+  await subdir(taskDir, "render");
+  if (taskType === "Compositing") {
+    await subdir(projectDir, "nuke");
+    await subdir(projectDir, "AE");
+  }
+  return taskDir;
+}
+
 // Builds SC[SCENE]/[SHOT]/ with its numbered subfolders, plus the per-shot
 // metadata JSON, under rootHandle. The shot folder is named for just the
 // shot code — SC[SCENE]/ already establishes the show/scene context, so
 // repeating it on every shot folder underneath would be redundant.
-export async function createShotFolders(rootHandle, { scene, shotCode, pipeline, meta }) {
+//
+// 02_tasks/ is created empty here — a task only gets its own subfolder
+// once the shot is actually pushed (see addTaskFolder / pushAssignment in
+// PostReports.jsx), not just because it was assigned.
+export async function createShotFolders(rootHandle, { scene, shotCode, meta }) {
   const sceneName = `SC${scene}`;
   const shotName = shotCode;
 
@@ -156,14 +180,8 @@ export async function createShotFolders(rootHandle, { scene, shotCode, pipeline,
 
   await subdir(shotDir, "00_plates");
   await subdir(shotDir, "01_reference");
-  await subdir(shotDir, "02_roto_matte");
-  if (pipeline === "ai_assist" || pipeline === "hybrid") {
-    await subdir(shotDir, "03_ai_gen");
-  }
-  const compDir = await subdir(shotDir, "04_comp");
-  await subdir(compDir, "nuke");
-  await subdir(compDir, "renders");
-  await subdir(shotDir, "05_review");
+  await subdir(shotDir, "02_tasks");
+  await subdir(shotDir, "03_review");
 
   const fileHandle = await shotDir.getFileHandle(`${shotName}_shot.json`, { create: true });
   const writable = await fileHandle.createWritable();
@@ -171,6 +189,76 @@ export async function createShotFolders(rootHandle, { scene, shotCode, pipeline,
   await writable.close();
 
   return { path: `${sceneName}/${shotName}` };
+}
+
+// Adds one task type's folder to an already-existing shot — called when a
+// new task is assigned to a shot whose folders were already created, so
+// 02_tasks/ picks up new subfolders over the shot's life instead of only
+// ever reflecting whatever tasks existed the moment folders were made.
+// A no-op (not an error) if the shot's folders don't exist on disk yet.
+export async function addTaskFolder(rootHandle, { scene, shotCode, taskType }) {
+  const sceneName = `SC${scene}`;
+  let shotDir;
+  try {
+    const sceneDir = await rootHandle.getDirectoryHandle(sceneName);
+    shotDir = await sceneDir.getDirectoryHandle(shotCode);
+  } catch {
+    return null;
+  }
+  const tasksDir = await subdir(shotDir, "02_tasks");
+  return ensureTaskFolder(tasksDir, taskType);
+}
+
+// Resolves the folder a task's submitted work should land in — every task
+// type's render/ subfolder (not project/, which holds source files like
+// nuke/AE scripts, not submitted output). Throws if the shot's folders
+// don't exist on disk (caller should already be gating on that with
+// foldersCreatedAt, but this is the authoritative check against the real
+// filesystem).
+export async function getTaskUploadFolder(rootHandle, { scene, shotCode, taskType }) {
+  const sceneName = `SC${scene}`;
+  const sceneDir = await rootHandle.getDirectoryHandle(sceneName);
+  const shotDir = await sceneDir.getDirectoryHandle(shotCode);
+  const tasksDir = await subdir(shotDir, "02_tasks");
+  const taskDir = await ensureTaskFolder(tasksDir, taskType);
+  if (!taskDir) return null;
+  return subdir(taskDir, "render");
+}
+
+// Copies one real File (e.g. from an <input>/showOpenFilePicker result)
+// into destDir under the given name.
+export async function copyFileInto(destDir, name, file) {
+  const destFile = await destDir.getFileHandle(name, { create: true });
+  const writable = await destFile.createWritable();
+  await writable.write(await file.arrayBuffer());
+  await writable.close();
+}
+
+// Opens a single-file picker for a video, no destination side effects —
+// the caller copies its returned File wherever it needs to.
+export async function pickVideoFile() {
+  const [handle] = await window.showOpenFilePicker({
+    excludeAcceptAllOption: false,
+    multiple: false,
+    types: [{ description: "Video", accept: { "video/*": [".mov", ".mp4", ".mxf", ".avi"] } }],
+  });
+  return handle.getFile();
+}
+
+// Opens a folder picker for an image sequence's source folder — read-only,
+// since nothing is written back into it.
+export async function pickSequenceFolder() {
+  return window.showDirectoryPicker({ mode: "read" });
+}
+
+// Every file directly inside a picked folder, as real File objects — no
+// recursion into subfolders, a sequence is a flat folder of frames.
+export async function readFolderFiles(dirHandle) {
+  const files = [];
+  for await (const [name, handle] of dirHandle.entries()) {
+    if (handle.kind === "file") files.push(await handle.getFile());
+  }
+  return files;
 }
 
 // Copies every entry of sourceDir directly into an existing destDir (no
@@ -246,5 +334,30 @@ export async function moveShotFolderToDeleted(rootHandle, { scene, shotCode }) {
 
   await copyDirRecursive(shotDir, deletedDir, shotCode);
   await sceneDir.removeEntry(shotCode, { recursive: true });
+  return { moved: true };
+}
+
+// Same "zzz_" sort-to-bottom idea, one level up — a scene isn't nested
+// inside another scene, so its deleted folder sits at the project root
+// instead of inside itself.
+const DELETED_SCENES_FOLDER_NAME = "zzz_DELETED_SCENES";
+
+// Moves an entire scene's folder (every shot inside it, untouched) into
+// [SHOW]/zzz_DELETED_SCENES/SC[SCENE]/ instead of removing it outright.
+// Created lazily — the first scene deleted in the project makes it, every
+// deletion after that just lands inside the existing one. A no-op (not an
+// error) if the scene folder was never created on disk in the first place.
+export async function moveSceneFolderToDeleted(rootHandle, { scene }) {
+  const sceneName = `SC${scene}`;
+  let sceneDir;
+  try {
+    sceneDir = await rootHandle.getDirectoryHandle(sceneName);
+  } catch {
+    return { moved: false };
+  }
+
+  const deletedDir = await subdir(rootHandle, DELETED_SCENES_FOLDER_NAME);
+  await copyDirRecursive(sceneDir, deletedDir, sceneName);
+  await rootHandle.removeEntry(sceneName, { recursive: true });
   return { moved: true };
 }

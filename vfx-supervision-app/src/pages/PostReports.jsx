@@ -5,17 +5,20 @@ import { POST_TASK_TYPES } from "../data/postTasks.js";
 import { taskStatusInfo } from "../data/taskStatus.js";
 import { buildFolderPath, buildSceneFolderPath, padScene } from "../lib/folderPath.js";
 import {
+  addTaskFolder,
   createSceneFolder,
   createShotFolders,
   ensurePermission,
   isFsAccessSupported,
   loadRootHandle,
+  moveSceneFolderToDeleted,
   moveShotFolderToDeleted,
   pickProjectRootFolder,
 } from "../lib/fsAccess.js";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject, useProjects } from "../lib/projects.js";
 import { CURRENT_ROLE } from "../lib/role.js";
+import { sortByShotCode } from "../lib/sortShots.js";
 import { assigneeRows, assigneesLabel, getAssignees, renameAssigneeOnTask } from "../lib/taskAssignees.js";
 import { useEnterKey } from "../lib/useEnterKey.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
@@ -93,23 +96,6 @@ function blankShot(sceneId, sceneNumber) {
     foldersCreatedForCode: null,
     submittedAt: new Date().toISOString(),
   };
-}
-
-// Swaps a shot with its same-scene neighbor above/below, wherever the two
-// actually sit in the flat storage array — scenes interleave in that array,
-// so "adjacent within the scene" usually isn't "adjacent overall".
-function moveShotInScene(allShots, sceneKey, shotId, direction) {
-  const sceneShots = allShots.filter((s) => (s.sceneId ?? UNGROUPED) === sceneKey);
-  const idx = sceneShots.findIndex((s) => s.id === shotId);
-  const targetIdx = idx + direction;
-  if (idx === -1 || targetIdx < 0 || targetIdx >= sceneShots.length) return allShots;
-
-  const otherId = sceneShots[targetIdx].id;
-  const aIndex = allShots.findIndex((s) => s.id === shotId);
-  const bIndex = allShots.findIndex((s) => s.id === otherId);
-  const next = [...allShots];
-  [next[aIndex], next[bIndex]] = [next[bIndex], next[aIndex]];
-  return next;
 }
 
 // Task assignees are stored as name snapshots, not live artist references —
@@ -281,14 +267,10 @@ function buildShotMeta(project, sceneNumber, shot) {
 
 function ShotCard({
   shot,
-  index,
-  isFirst,
-  isLast,
   isEditing,
   onToggleEdit,
   isExpanded,
   onToggleExpand,
-  onMove,
   onChange,
   onDelete,
   project,
@@ -299,6 +281,7 @@ function ShotCard({
 }) {
   const [addTaskType, setAddTaskType] = useState("");
   const [folderStatus, setFolderStatus] = useState(null); // "creating" | "error" | null
+  const [pushStatus, setPushStatus] = useState(null); // "error" | null
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const deleteMatches = deleteConfirmText.trim().toUpperCase() === "DELETE";
@@ -310,6 +293,9 @@ function ShotCard({
   const addTask = (type) => {
     if (!type) return;
     update({ tasks: [...shot.tasks, { id: crypto.randomUUID(), type, source: "inhouse", assignees: [""], status: "assigned" }] });
+    // No on-disk folder yet — a task only gets its 02_tasks/ subfolder once
+    // the shot is actually pushed (see pushAssignment below), not the
+    // moment it's added.
   };
 
   const updateTask = (taskId, patch) => {
@@ -344,7 +330,6 @@ function ShotCard({
       await createShotFolders(rootHandle, {
         scene: padScene(sceneNumber),
         shotCode: shot.shotCode,
-        pipeline: shot.pipeline,
         meta: buildShotMeta(project, sceneNumber, shot),
       });
       update({ foldersCreatedAt: new Date().toISOString(), foldersCreatedForCode: shot.shotCode });
@@ -352,6 +337,34 @@ function ShotCard({
     } catch (err) {
       console.error("Folder creation failed:", err);
       setFolderStatus("error");
+    }
+  };
+
+  // A task only gets its own 02_tasks/ subfolder once the shot is actually
+  // pushed to artists — not the moment it's assigned — so an in-progress
+  // shot's growing task list doesn't scatter empty folders before there's
+  // real work ready to start. Re-pushing picks up any task types added
+  // since the last push (ensureTaskFolder/getDirectoryHandle are
+  // idempotent, so this never duplicates or disturbs an existing one).
+  const pushAssignment = async () => {
+    if (!fullyAssigned) return;
+    update({ dispatched: true });
+
+    if (shot.foldersCreatedAt && rootHandle) {
+      try {
+        const ok = await ensurePermission(rootHandle);
+        if (!ok) {
+          setPushStatus("error");
+          return;
+        }
+        for (const type of new Set(shot.tasks.map((t) => t.type))) {
+          await addTaskFolder(rootHandle, { scene: padScene(sceneNumber), shotCode: shot.shotCode, taskType: type });
+        }
+        setPushStatus(null);
+      } catch (err) {
+        console.error("Couldn't create task folders on push:", err);
+        setPushStatus("error");
+      }
     }
   };
 
@@ -457,24 +470,6 @@ function ShotCard({
         </div>
         <div className="post-shot-header-actions">
           {shot.dispatched && <span className="pill pill-success">Pushed</span>}
-          {isEditing && (
-            <>
-              <span
-                className={`report-edit-btn report-move-btn${isFirst ? " disabled" : ""}`}
-                onClick={isFirst ? undefined : () => onMove(index, -1)}
-                title="Move up"
-              >
-                ▲
-              </span>
-              <span
-                className={`report-edit-btn report-move-btn${isLast ? " disabled" : ""}`}
-                onClick={isLast ? undefined : () => onMove(index, 1)}
-                title="Move down"
-              >
-                ▼
-              </span>
-            </>
-          )}
           <span className="report-edit-btn" onClick={onToggleEdit} title={isEditing ? "Done" : "Edit"}>
             {isEditing ? <CheckIcon /> : <PencilIcon />}
           </span>
@@ -611,9 +606,12 @@ function ShotCard({
             <span className="post-shot-progress mono">
               {assignedCount}/{totalTasks} task{totalTasks === 1 ? "" : "s"} assigned
             </span>
+            {pushStatus === "error" && (
+              <span className="project-create-error">Couldn't create this shot's task folders on disk.</span>
+            )}
             <span
               className={`btn btn-primary${fullyAssigned ? "" : " btn-disabled"}`}
-              onClick={fullyAssigned ? () => update({ dispatched: true }) : undefined}
+              onClick={fullyAssigned ? pushAssignment : undefined}
             >
               {shot.dispatched ? "Re-push Assignment" : "Push Assignment"}
             </span>
@@ -696,20 +694,20 @@ function SceneGroup({
   toggleShotExpanded,
   updateShot,
   removeShot,
-  move,
   project,
   rootHandle,
   artists,
   isAdmin,
 }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [folderStatus, setFolderStatus] = useState(null);
-  const canDelete = shots.length === 0;
+  const deleteMatches = deleteConfirmText.trim().toUpperCase() === "DELETE";
   const folderPath = buildSceneFolderPath({ show: project?.showCode, scene: scene.scene });
   const readyForFolder = Boolean(folderPath && rootHandle);
 
   useEnterKey(() => {
-    if (confirmingDelete) onDeleteScene();
+    if (confirmingDelete && deleteMatches) onDeleteScene();
   });
 
   const createFolder = async () => {
@@ -739,14 +737,14 @@ function SceneGroup({
           {shots.length} shot{shots.length === 1 ? "" : "s"}
         </span>
         {scene.folderCreatedAt && <span className="pill pill-success">Folder created</span>}
-        {canDelete && !confirmingDelete && (
+        {!confirmingDelete && (
           <span
             className="report-edit-btn post-shot-delete-btn post-scene-delete-btn"
             onClick={(e) => {
               e.stopPropagation();
               setConfirmingDelete(true);
             }}
-            title="Delete empty scene"
+            title="Delete scene"
           >
             <TrashIcon />
           </span>
@@ -756,14 +754,30 @@ function SceneGroup({
       {confirmingDelete && (
         <div className="post-scene-confirm" onClick={(e) => e.stopPropagation()}>
           <span className="post-shot-confirm-label">
-            Delete SC{scene.scene}? It has no shots, so this only removes it from tracking — nothing on disk is
-            deleted.
+            Type DELETE to permanently remove SC{scene.scene}
+            {shots.length > 0
+              ? ` and its ${shots.length} shot${shots.length === 1 ? "" : "s"} — its folder will be moved into this project's zzz_DELETED_SCENES/ folder`
+              : " — nothing on disk is deleted, it has no shots"}
+            .
           </span>
+          <input
+            className="report-edit-input mono post-task-confirm-input"
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            placeholder="DELETE"
+            autoFocus
+          />
           <div className="post-shot-confirm-actions">
-            <span className="btn btn-danger" onClick={onDeleteScene}>
-              Delete
+            <span className={`btn btn-danger${deleteMatches ? "" : " btn-disabled"}`} onClick={deleteMatches ? onDeleteScene : undefined}>
+              Confirm delete
             </span>
-            <span className="btn btn-secondary" onClick={() => setConfirmingDelete(false)}>
+            <span
+              className="btn btn-secondary"
+              onClick={() => {
+                setConfirmingDelete(false);
+                setDeleteConfirmText("");
+              }}
+            >
               Cancel
             </span>
           </div>
@@ -798,18 +812,14 @@ function SceneGroup({
             <span className="post-tasks-empty">No shots in this scene yet.</span>
           ) : (
             <div className="post-shot-list">
-              {shots.map((shot, i) => (
+              {shots.map((shot) => (
                 <ShotCard
                   key={shot.id}
                   shot={shot}
-                  index={i}
-                  isFirst={i === 0}
-                  isLast={i === shots.length - 1}
                   isEditing={editingIds.includes(shot.id)}
                   onToggleEdit={() => toggleEditing(shot.id)}
                   isExpanded={expandedShotIds.includes(shot.id)}
                   onToggleExpand={() => toggleShotExpanded(shot.id)}
-                  onMove={(idx, dir) => move(shots[idx].id, dir)}
                   onChange={updateShot}
                   onDelete={() => removeShot(shot.id)}
                   project={project}
@@ -912,18 +922,25 @@ export default function PostReports() {
     // into that scene's zzz_DELETED/ folder rather than leaving it — or losing
     // track of it — under its old name. Never blocks removing the tracker
     // entry itself if the on-disk move fails (permission revoked, handle
-    // stale, etc.) — just logs it, since the tracked record is gone either way.
+    // stale, etc.) — but surfaces as a visible banner rather than only a
+    // console log, so a real failure isn't mistaken for success.
     if (shot?.foldersCreatedAt && rootHandle) {
       try {
         const ok = await ensurePermission(rootHandle);
-        if (ok) {
-          await moveShotFolderToDeleted(rootHandle, {
-            scene: padScene(shot.scene),
-            shotCode: shot.foldersCreatedForCode,
-          });
+        if (!ok) {
+          setFolderError(`Couldn't get permission to remove ${shot.shotCode}'s folder — it may still be on disk.`);
+          return;
         }
+        const result = await moveShotFolderToDeleted(rootHandle, {
+          scene: padScene(shot.scene),
+          shotCode: shot.foldersCreatedForCode,
+        });
+        if (result.moved) setFolderError("");
       } catch (err) {
         console.error("Couldn't move deleted shot's folder into zzz_DELETED/:", err);
+        setFolderError(
+          `${shot.shotCode} was removed from tracking, but its folder couldn't be fully removed from disk — check it manually.`
+        );
       }
     }
   };
@@ -946,13 +963,33 @@ export default function PostReports() {
     setScenes((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   };
 
-  const removeScene = (id) => {
-    setScenes((prev) => prev.filter((s) => s.id !== id));
-    setExpandedSceneIds((prev) => prev.filter((x) => x !== id));
-  };
+  const removeScene = async (scene) => {
+    setScenes((prev) => prev.filter((s) => s.id !== scene.id));
+    setExpandedSceneIds((prev) => prev.filter((x) => x !== scene.id));
+    setShots((prev) => prev.filter((s) => s.sceneId !== scene.id));
 
-  const moveShot = (sceneKey, shotId, direction) => {
-    setShots((prev) => moveShotInScene(prev, sceneKey, shotId, direction));
+    // Best-effort, same pattern as shot deletion: move the whole scene
+    // folder (every shot inside it, untouched) into zzz_DELETED_SCENES/
+    // rather than leaving it behind under a now-untracked scene number.
+    // Never blocks removing the tracker entries if the on-disk move fails
+    // — but unlike a purely-logged failure, this surfaces as a visible
+    // banner so a real failure (vs. e.g. a stale Explorer view) is obvious.
+    if (rootHandle) {
+      try {
+        const ok = await ensurePermission(rootHandle);
+        if (!ok) {
+          setFolderError(`Couldn't get permission to remove SC${scene.scene}'s folder — it may still be on disk.`);
+          return;
+        }
+        const result = await moveSceneFolderToDeleted(rootHandle, { scene: padScene(scene.scene) });
+        if (result.moved) setFolderError("");
+      } catch (err) {
+        console.error("Couldn't move deleted scene's folder into zzz_DELETED_SCENES/:", err);
+        setFolderError(
+          `SC${scene.scene} was removed from tracking, but its folder couldn't be fully removed from disk — check it manually.`
+        );
+      }
+    }
   };
 
   const scenesById = useMemo(() => Object.fromEntries(scenes.map((sc) => [sc.id, sc])), [scenes]);
@@ -964,6 +1001,7 @@ export default function PostReports() {
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(shot);
     }
+    for (const [key, list] of map) map.set(key, sortByShotCode(list));
     return map;
   }, [shots, scenesById]);
 
@@ -1045,7 +1083,7 @@ export default function PostReports() {
                   isExpanded={expandedSceneIds.includes(scene.id)}
                   onToggleExpand={() => toggleSceneExpanded(scene.id)}
                   onUpdateScene={(patch) => updateScene(scene.id, patch)}
-                  onDeleteScene={() => removeScene(scene.id)}
+                  onDeleteScene={() => removeScene(scene)}
                   onAddShot={() => addShotToScene(scene)}
                   editingIds={editingIds}
                   toggleEditing={toggleEditing}
@@ -1053,7 +1091,6 @@ export default function PostReports() {
                   toggleShotExpanded={toggleShotExpanded}
                   updateShot={updateShot}
                   removeShot={removeShot}
-                  move={(shotId, direction) => moveShot(scene.id, shotId, direction)}
                   project={project}
                   rootHandle={rootHandle}
                   artists={artists}
@@ -1072,18 +1109,14 @@ export default function PostReports() {
                   </div>
                   <div className="post-scene-body">
                     <div className="post-shot-list">
-                      {ungroupedShots.map((shot, i) => (
+                      {ungroupedShots.map((shot) => (
                         <ShotCard
                           key={shot.id}
                           shot={shot}
-                          index={i}
-                          isFirst={i === 0}
-                          isLast={i === ungroupedShots.length - 1}
                           isEditing={editingIds.includes(shot.id)}
                           onToggleEdit={() => toggleEditing(shot.id)}
                           isExpanded={expandedShotIds.includes(shot.id)}
                           onToggleExpand={() => toggleShotExpanded(shot.id)}
-                          onMove={(idx, dir) => moveShot(UNGROUPED, ungroupedShots[idx].id, dir)}
                           onChange={updateShot}
                           onDelete={() => removeShot(shot.id)}
                           project={project}

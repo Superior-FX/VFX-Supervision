@@ -19,38 +19,26 @@
   letter-spacing: 0.5px;
 }
 
-.dropzone {
-  height: 200px;
-  border: 1.5px dashed var(--accent);
+.upload-buttons {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   gap: 10px;
-  background: var(--card-bg);
-  cursor: pointer;
+  flex-wrap: wrap;
 }
 
-.dropzone-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--accent);
-}
-
-.dropzone-text {
-  font: 700 13px var(--font-body);
-  color: var(--text-primary);
-}
-
-.dropzone-hint {
-  font: 9px var(--font-mono);
+.upload-hint {
   color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.upload-error {
+  font: 12px var(--font-body);
+  color: var(--danger);
+}
+
+.upload-no-files-hint {
+  color: var(--text-tertiary);
+  font-weight: 400;
+  padding: 4px 0;
 }
 
 .file-list {
@@ -79,12 +67,26 @@
 }
 
 .file-name {
+  flex: 1;
   font: 11px var(--font-mono);
   color: var(--text-primary);
 }
 
 .file-size {
-  margin-left: auto;
+  flex: none;
+}
+
+.file-remove {
+  flex: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  font: 700 14px var(--font-mono);
+  line-height: 1;
+  padding: 2px 4px;
+}
+
+.file-remove:hover {
+  color: var(--danger);
 }
 
 .attach-field {

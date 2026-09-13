@@ -26,14 +26,59 @@ on *Girl on the Plane* (GOTP), generalized for reuse on any show.
     [SHOT]/                      # named for just the shot code — SC[SCENE]/ already gives it show/scene context
       00_plates/            # raw/graded camera plates as delivered
       01_reference/         # HDRI, chrome/grey ball, clean plates, set reference stills
-      02_roto_matte/        # roto and mattes (manual or AI-assist)
-      03_ai_gen/            # ONLY for hybrid/AI-assist shots — omit for traditional-only
-      04_comp/
-        nuke/                # .nk scripts
-        renders/             # comp output, organized by version
-      05_review/             # dailies / client review exports
+      02_tasks/             # one subfolder per task type actually pushed on this shot (see table below)
+        01_comp/
+          project/
+            nuke/                # .nk scripts
+            AE/                  # .aep projects
+          render/                # comp output, organized by version — artists upload here
+        02_roto_matte/
+          project/               # source files (flat — no nuke/AE split outside comp)
+          render/                # artists upload here
+        03_ai/
+        ...                    # only the task types this shot's pushed assignments actually have
+      03_review/             # dailies / client review exports
       [SHOT]_shot.json      # per-shot metadata (see schema below)
 ```
+
+### Task folders (`02_tasks/`)
+
+Each task type gets a fixed numbered slot — the same task type always lands
+in the same folder across every shot and every show, so gaps in the
+numbering (a shot skipping tasks it doesn't have) are normal and expected.
+Only the task types actually assigned to a shot get a folder; the rest of
+the slots below simply don't exist for that shot.
+
+Every task folder gets a `project/` (source files) and `render/`
+(submitted output — where Upload Shot lands an artist's work) split.
+Compositing's `project/` further splits into `nuke/` and `AE/`, since comp
+work happens in either app; every other task type's `project/` stays flat.
+
+| Task type | Folder |
+|---|---|
+| Compositing | `01_comp` (`project/{nuke,AE}` + `render/`) |
+| Roto / Paint | `02_roto_matte` |
+| AI Generation | `03_ai` |
+| Particle / Fluid Simulation | `04_particle_fluid` |
+| 3D Tracking / Matchmove | `05_tracking` |
+| Modeling | `06_modeling` |
+| Texturing / Look Dev | `07_texturing` |
+| Rigging | `08_rigging` |
+| Animation | `09_animation` |
+| Lighting / Rendering | `10_lighting` |
+| Digital Matte Painting (DMP) | `11_dmp` |
+| Color / Grading | `12_color` |
+| QC / Delivery | `13_qc` |
+
+A task's folder is created when the shot is pushed (Push/Re-push
+Assignment in Post Reports) — not the moment the task is assigned.
+`02_tasks/` itself exists (empty) as soon as the shot's folders are
+created; individual task subfolders wait until there's actually a real
+assignment going out, so an in-progress shot's growing task list doesn't
+scatter empty folders before there's real work ready to start. Re-pushing
+picks up any task types added since the last push. See `TASK_FOLDER_SLUGS`
+/ `ensureTaskFolder` in `src/lib/fsAccess.js` and `src/data/postTasks.js`
+for the source of truth.
 
 ### Notes on structure
 - **Scenes are created ahead of their shots.** `SC[SCENE]/` exists as its own
@@ -48,17 +93,26 @@ on *Girl on the Plane* (GOTP), generalized for reuse on any show.
   `[SHOW]_SC[SCENE]_[SHOT]` form is still used for individual files inside
   the shot (see File Naming Convention below), where the file may end up out
   of its folder context (e.g. sent to a vendor, attached to review notes).
-- **`03_ai_gen/` is conditional.** Only create it when the shot's pipeline type is
-  `AI-assist` or `Hybrid`. Traditional-only shots (e.g. hero sim work) should not
-  have this folder — its presence implies AI involvement in review/QC.
 - **Deleting a shot in Post Reports moves its folder, not removes it.** The
   shot folder is relocated to `SC[SCENE]/zzz_DELETED/[SHOT]/`, created lazily
   the first time a shot is deleted in that scene, so nothing an artist already
   dropped in there is lost. The `zzz_` prefix keeps it sorted to the bottom of
   the scene folder's listing, after every real shot code.
-- **`04_comp/renders/`** holds versioned output following the naming convention
-  below, organized into per-version subfolders (`v001/`, `v002/`) to prevent
-  frame collisions between versions.
+- **Deleting a scene works the same way, one level up.** The whole
+  `SC[SCENE]/` folder (every shot inside it, untouched) relocates to
+  `[SHOW]/zzz_DELETED_SCENES/SC[SCENE]/`, created lazily the first time a
+  scene is deleted in the project. A scene can be deleted whether or not it
+  still has shots in it — deleting a populated scene removes all of its
+  shots from tracking too, not just the scene record.
+- **Every task's `render/` folder** (e.g. `02_tasks/01_comp/render/`) holds
+  versioned submitted output following the naming convention below,
+  organized into per-version subfolders (`v001/`, `v002/`) to prevent frame
+  collisions between versions. Artists uploading through Upload Shot land
+  here automatically, regardless of task type.
+- **Shots created before this task-folder scheme existed keep their old
+  layout** (`00_plates/01_reference/02_roto_matte/03_ai_gen/04_comp/05_review/`)
+  — nothing migrates it automatically. Only shots whose folders are created
+  from here on use `02_tasks/`.
 
 ---
 
@@ -117,8 +171,11 @@ on what the shot needs.
    root folder name.
 2. For each scene in the shot list, create `SC[SCENE]/` — do this as soon as
    the scene is known, ahead of having any shots to put in it.
-3. For each shot/sub-shot, create the shot folder and its five numbered
-   subfolders, adding `03_ai_gen/` only where the pipeline type calls for it.
+3. For each shot/sub-shot, create the shot folder with `00_plates/`,
+   `01_reference/`, `02_tasks/` (empty), and `03_review/`. Add a `02_tasks/`
+   subfolder for each task type once that assignment is actually pushed to
+   artists (see the task-folder table above) — not just because it exists
+   on the shot tracker.
 4. Populate the per-shot JSON from the shot tracker.
 
 See the `vfx-shot-folder-structure` skill for a script that automates steps

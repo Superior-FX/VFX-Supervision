@@ -14,3 +14,15 @@ export const TASK_STATUSES = {
 export function taskStatusInfo(status) {
   return TASK_STATUSES[status] ?? TASK_STATUSES.assigned;
 }
+
+// The single most "urgent"/active status across a list of tasks, in
+// priority order — used wherever a group of tasks (a shot's, or one
+// artist's on that shot) needs to collapse down to one status badge.
+export function aggregateTaskStatus(tasks) {
+  const statuses = tasks.map((t) => t.status || "assigned");
+  if (statuses.includes("needs_revision")) return taskStatusInfo("needs_revision");
+  if (statuses.includes("wip")) return taskStatusInfo("wip");
+  if (statuses.includes("pending")) return taskStatusInfo("pending");
+  if (statuses.length > 0 && statuses.every((s) => s === "final")) return taskStatusInfo("final");
+  return taskStatusInfo("assigned");
+}

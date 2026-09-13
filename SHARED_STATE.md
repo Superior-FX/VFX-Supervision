@@ -17,3 +17,4 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-09-11T02:14:40-05:00 — **Will Cox** (Atom-Smasher) — `dd21745` Log the SHARED_STATE hook's own commit
 - 2026-09-13T01:03:31-05:00 — **Will Cox** (Atom-Smasher) — `1ac5059` Post Reports: shot collapse/expand, multi-artist tasks, folder fixes
 - 2026-09-13T01:12:59-05:00 — **Will Cox** (Atom-Smasher) — `38016e4` Pin dev-server port and add full data export/import
+- 2026-09-13T01:33:55-05:00 — **Will Cox** (Atom-Smasher) — `968a8cb` Real Superior-FX logo, Home nav link, folder-backed export/import

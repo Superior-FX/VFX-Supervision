@@ -1,9 +1,10 @@
 import { Fragment, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { taskStatusInfo } from "../data/taskStatus.js";
+import { aggregateTaskStatus, taskStatusInfo } from "../data/taskStatus.js";
 import { CURRENT_ARTIST_NAME, resolveCurrentArtist } from "../lib/currentArtist.js";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
+import { sortByDueComplexityName } from "../lib/sortShots.js";
 import { assigneesLabel, getAssignees, hasAssignee } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "../styles/reportsTable.css";
@@ -14,16 +15,6 @@ function assigneeSummary(tasks) {
   if (names.length === 0) return "Unassigned";
   if (names.length <= 2) return names.join(", ");
   return `${names[0]}, ${names[1]} +${names.length - 2}`;
-}
-
-// Most "urgent"/active status across a shot's tasks, in priority order.
-function shotStatus(shot) {
-  const statuses = shot.tasks.map((t) => t.status || "assigned");
-  if (statuses.includes("needs_revision")) return taskStatusInfo("needs_revision");
-  if (statuses.includes("wip")) return taskStatusInfo("wip");
-  if (statuses.includes("pending")) return taskStatusInfo("pending");
-  if (statuses.length > 0 && statuses.every((s) => s === "final")) return taskStatusInfo("final");
-  return taskStatusInfo("assigned");
 }
 
 export default function ArtistAssignments() {
@@ -38,10 +29,11 @@ export default function ArtistAssignments() {
 
   const shotsWithTasks = postReports.filter((s) => s.tasks.length > 0);
 
-  const filteredShots =
+  const filteredShots = sortByDueComplexityName(
     onlyMine && currentArtist
       ? shotsWithTasks.filter((s) => s.tasks.some((t) => hasAssignee(t, currentArtist.name)))
-      : shotsWithTasks;
+      : shotsWithTasks
+  );
 
   const totalAssignments = filteredShots.reduce((sum, s) => sum + s.tasks.length, 0);
 
@@ -92,7 +84,7 @@ export default function ArtistAssignments() {
             <tbody>
               {filteredShots.map((shot) => {
                 const isExpanded = expandedId === shot.id;
-                const status = shotStatus(shot);
+                const status = aggregateTaskStatus(shot.tasks);
                 const importance = computeImportance(shot);
                 return (
                   <Fragment key={shot.id}>

@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { buildFolderPath } from "../lib/folderPath.js";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
+import { sortByDueComplexityName } from "../lib/sortShots.js";
 import { getAssignees } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./ShotBoard.css";
@@ -48,7 +49,7 @@ export default function ShotBoard() {
 
       <div className="board-columns">
         {COLUMNS.map((col) => {
-          const colShots = shots.filter((s) => (s.boardStatus ?? "bidding") === col.id);
+          const colShots = sortByDueComplexityName(shots.filter((s) => (s.boardStatus ?? "bidding") === col.id));
           return (
             <div className="board-column" key={col.id}>
               <span className="label board-column-label">
@@ -60,7 +61,6 @@ export default function ShotBoard() {
                   const importance = computeImportance(shot);
                   const folderPath = buildFolderPath({
                     show: project?.showCode,
-                    sequence: shot.sequence,
                     scene: shot.scene,
                     shotCode: shot.shotCode,
                   });

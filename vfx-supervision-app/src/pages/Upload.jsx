@@ -1,23 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { resolveCurrentArtist } from "../lib/currentArtist.js";
+import { padScene } from "../lib/folderPath.js";
+import {
+  copyFileInto,
+  ensurePermission,
+  getTaskUploadFolder,
+  isFsAccessSupported,
+  loadRootHandle,
+  pickSequenceFolder,
+  pickVideoFile,
+  readFolderFiles,
+} from "../lib/fsAccess.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
+import { groupSequenceFiles } from "../lib/sequenceGrouping.js";
+import { sortByDueComplexityName } from "../lib/sortShots.js";
 import { hasAssignee } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./Upload.css";
-
-const FILES = [
-  { name: "SH_042_020_v004.mov", size: "220MB" },
-  { name: "SH_042_020_v004.exr.zip", size: "1.1GB" },
-];
-
-function UploadIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path d="M12 16V4M12 4l-5 5M12 4l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 function FileIcon() {
   return (
@@ -28,50 +27,157 @@ function FileIcon() {
   );
 }
 
+function formatBytes(bytes) {
+  if (bytes == null) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
 export default function Upload() {
   const project = useActiveProject();
   const [postReports, setPostReports] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
   const [artists] = useLocalStorageState("vfx-supe-artists", []);
-  const [selectedId, setSelectedId] = useState("");
+  const [selectedShotId, setSelectedShotId] = useState("");
+  const [selectedTaskId, setSelectedTaskId] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState([]); // { id, name, kind: "video" | "sequence" | "file", size?, count? }
   const [note, setNote] = useState("");
   const [confirmation, setConfirmation] = useState(null);
+  const [rootHandle, setRootHandle] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const supported = isFsAccessSupported();
 
   const currentArtist = resolveCurrentArtist(artists);
   const myTask = (t) => hasAssignee(t, currentArtist?.name);
 
+  useEffect(() => {
+    if (!project) return;
+    loadRootHandle(project.id)
+      .then(setRootHandle)
+      .catch(() => {});
+  }, [project]);
+
+  // Same "what's actually actionable right now" scoping as before: only
+  // shots where this artist has a task in wip show up at all.
   const myShots = currentArtist
-    ? postReports.filter((s) => s.tasks.some((t) => myTask(t) && t.status === "wip"))
+    ? sortByDueComplexityName(postReports.filter((s) => s.tasks.some((t) => myTask(t) && t.status === "wip")))
     : [];
 
-  const selectedShot = myShots.find((s) => s.id === selectedId);
+  const selectedShot = myShots.find((s) => s.id === selectedShotId);
+  const myWipTasksOnShot = selectedShot ? selectedShot.tasks.filter((t) => myTask(t) && t.status === "wip") : [];
+  const selectedTask = myWipTasksOnShot.find((t) => t.id === selectedTaskId);
+
+  const resetAll = () => {
+    setSelectedShotId("");
+    setSelectedTaskId("");
+    setSelectedFiles([]);
+    setNote("");
+    setUploadError("");
+  };
+
+  // Choosing a shot or task invalidates whatever was picked downstream of
+  // it — never leave an old task/file selection attached to a new shot.
+  const chooseShot = (id) => {
+    setSelectedShotId(id);
+    setSelectedTaskId("");
+    setSelectedFiles([]);
+    setUploadError("");
+  };
+
+  const chooseTask = (id) => {
+    setSelectedTaskId(id);
+    setSelectedFiles([]);
+    setUploadError("");
+  };
+
+  const resolveDestination = async () => {
+    const ok = await ensurePermission(rootHandle);
+    if (!ok) throw new Error("Project folder access was denied.");
+    const dir = await getTaskUploadFolder(rootHandle, {
+      scene: padScene(selectedShot.scene),
+      shotCode: selectedShot.shotCode,
+      taskType: selectedTask.type,
+    });
+    if (!dir) throw new Error(`No folder is set up for "${selectedTask.type}" yet.`);
+    return dir;
+  };
+
+  const uploadVideo = async () => {
+    setUploadError("");
+    try {
+      const file = await pickVideoFile();
+      setUploading(true);
+      const destDir = await resolveDestination();
+      await copyFileInto(destDir, file.name, file);
+      setSelectedFiles((prev) => [...prev, { id: crypto.randomUUID(), name: file.name, kind: "video", size: file.size }]);
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        console.error("Video upload failed:", err);
+        setUploadError(err?.message || "Couldn't upload that file.");
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const uploadSequence = async () => {
+    setUploadError("");
+    try {
+      const folderHandle = await pickSequenceFolder();
+      setUploading(true);
+      const files = await readFolderFiles(folderHandle);
+      if (files.length === 0) {
+        setUploadError("That folder is empty.");
+        return;
+      }
+      const groups = groupSequenceFiles(files);
+      const destDir = await resolveDestination();
+      for (const group of groups) {
+        for (const file of group.files) {
+          await copyFileInto(destDir, file.name, file);
+        }
+      }
+      setSelectedFiles((prev) => [
+        ...prev,
+        ...groups.map((g) => ({ id: crypto.randomUUID(), name: g.name, kind: g.kind, count: g.files.length })),
+      ]);
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        console.error("Sequence upload failed:", err);
+        setUploadError(err?.message || "Couldn't upload that folder.");
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeSelectedFile = (id) => {
+    setSelectedFiles((prev) => prev.filter((f) => f.id !== id));
+  };
+
+  const canSubmit = Boolean(selectedTask) && selectedFiles.length > 0;
 
   const submit = () => {
-    if (!selectedShot || !currentArtist) return;
+    if (!canSubmit) return;
     setPostReports((prev) =>
       prev.map((s) =>
         s.id === selectedShot.id
-          ? {
-              ...s,
-              tasks: s.tasks.map((t) => (myTask(t) && t.status === "wip" ? { ...t, status: "pending" } : t)),
-            }
+          ? { ...s, tasks: s.tasks.map((t) => (t.id === selectedTask.id ? { ...t, status: "pending" } : t)) }
           : s
       )
     );
-    setConfirmation(`${selectedShot.shotCode} submitted — now pending supervisor review`);
+    setConfirmation(`${selectedShot.shotCode} — ${selectedTask.type} submitted — now pending supervisor review`);
     setTimeout(() => setConfirmation(null), 4000);
-    setSelectedId("");
-    setNote("");
+    resetAll();
   };
 
   return (
     <div className="upload">
       <div className="upload-header">
         <span className="upload-title">UPLOAD SHOT</span>
-        {currentArtist ? (
-          <span className="pill pill-accent">{currentArtist.name}</span>
-        ) : (
-          selectedShot && <span className="pill">to {selectedShot.shotCode}</span>
-        )}
+        {currentArtist && <span className="pill pill-accent">{currentArtist.name}</span>}
       </div>
       {confirmation && <div className="upload-confirmation">{confirmation}</div>}
 
@@ -81,66 +187,107 @@ export default function Upload() {
         </div>
       )}
 
-      <div className="dropzone">
-        <div className="dropzone-icon">
-          <UploadIcon />
-        </div>
-        <span className="dropzone-text">Drag file here or browse</span>
-        <span className="dropzone-hint">.mov .mp4 .exr .dpx — up to 4K</span>
-      </div>
+      {currentArtist && (
+        <>
+          <span className="label">Attach to</span>
+          <select className="attach-select" value={selectedShotId} onChange={(e) => chooseShot(e.target.value)}>
+            <option value="">Select a shot…</option>
+            {myShots.map((s) => (
+              <option value={s.id} key={s.id}>
+                {s.shotCode}
+              </option>
+            ))}
+          </select>
+          {myShots.length === 0 && (
+            <span className="label upload-no-shots-hint">
+              No shots in progress for {currentArtist.name} — click Start in Artist Report first.
+            </span>
+          )}
 
-      <span className="label">Selected files</span>
-      <div className="file-list">
-        {FILES.map((file) => (
-          <div className="card file-row" key={file.name}>
-            <div className="file-icon">
-              <FileIcon />
-            </div>
-            <span className="file-name">{file.name}</span>
-            <span className="pill file-size">{file.size}</span>
-          </div>
-        ))}
-      </div>
+          {selectedShot && (
+            <>
+              <span className="label">Submitting for</span>
+              <select className="attach-select" value={selectedTaskId} onChange={(e) => chooseTask(e.target.value)}>
+                <option value="">Select a task…</option>
+                {myWipTasksOnShot.map((t) => (
+                  <option value={t.id} key={t.id}>
+                    {t.type}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
 
-      <span className="label">Attach to</span>
-      <select
-        className="attach-select"
-        value={selectedId}
-        onChange={(e) => setSelectedId(e.target.value)}
-        disabled={!currentArtist}
-      >
-        <option value="">{currentArtist ? "Select a shot…" : "No artist profile linked"}</option>
-        {myShots.map((s) => (
-          <option value={s.id} key={s.id}>
-            {s.shotCode}
-          </option>
-        ))}
-      </select>
-      {currentArtist && myShots.length === 0 && (
-        <span className="label upload-no-shots-hint">
-          No shots in progress for {currentArtist.name} — click Start in Artist Report first.
-        </span>
+          {selectedTask && (
+            <>
+              <span className="label">Upload</span>
+              {!supported ? (
+                <span className="label upload-hint">Automatic uploads need Chrome or Edge.</span>
+              ) : !rootHandle ? (
+                <span className="label upload-hint">
+                  No project folder set — ask an Admin to grant one in Post Reports.
+                </span>
+              ) : !selectedShot.foldersCreatedAt ? (
+                <span className="label upload-hint">
+                  This shot's folders haven't been created yet — ask your supervisor to create them in Post Reports.
+                </span>
+              ) : (
+                <div className="upload-buttons">
+                  <span className={`btn btn-secondary${uploading ? " btn-disabled" : ""}`} onClick={uploading ? undefined : uploadVideo}>
+                    Upload Video…
+                  </span>
+                  <span
+                    className={`btn btn-secondary${uploading ? " btn-disabled" : ""}`}
+                    onClick={uploading ? undefined : uploadSequence}
+                  >
+                    Upload Image Sequence…
+                  </span>
+                </div>
+              )}
+              {uploading && <span className="label">Uploading…</span>}
+              {uploadError && <span className="upload-error">{uploadError}</span>}
+
+              <span className="label">Selected files</span>
+              <div className="file-list">
+                {selectedFiles.length === 0 && (
+                  <span className="label upload-no-files-hint">No files imported yet.</span>
+                )}
+                {selectedFiles.map((f) => (
+                  <div className="card file-row" key={f.id}>
+                    <div className="file-icon">
+                      <FileIcon />
+                    </div>
+                    <span className="file-name">{f.name}</span>
+                    {f.kind === "sequence" && <span className="pill file-size">{f.count} frames</span>}
+                    {f.kind === "video" && <span className="pill file-size">{formatBytes(f.size)}</span>}
+                    <span className="file-remove" onClick={() => removeSelectedFile(f.id)} title="Remove">
+                      ×
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <span className="label">Version note</span>
+              <div className="upload-note">
+                <textarea
+                  placeholder="What changed in this version…"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+              </div>
+
+              <div className="upload-actions">
+                <div className="btn btn-secondary" onClick={resetAll}>
+                  Cancel
+                </div>
+                <div className={`btn btn-primary${canSubmit ? "" : " btn-disabled"}`} onClick={canSubmit ? submit : undefined}>
+                  Submit
+                </div>
+              </div>
+            </>
+          )}
+        </>
       )}
-
-      <span className="label">Version note</span>
-      <div className="upload-note">
-        <textarea
-          placeholder="What changed in this version…"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-        />
-      </div>
-
-      <div className="upload-actions">
-        <div className="btn btn-secondary">Cancel</div>
-        <div className="btn btn-secondary">Upload</div>
-        <div
-          className={`btn btn-primary${selectedShot ? "" : " btn-disabled"}`}
-          onClick={selectedShot ? submit : undefined}
-        >
-          Submit
-        </div>
-      </div>
     </div>
   );
 }
