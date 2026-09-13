@@ -71,10 +71,24 @@
   border-left-color: var(--warning);
 }
 
+/* Layered independently of the importance left-border color (a task can
+   be both high-importance and sent back for revision at once) so it
+   always reads clearly regardless of which importance tier applies. */
+.board-card.needs-revision {
+  background: var(--danger-soft);
+}
+
 .board-card-top {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.board-card-top-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .board-card-thumb {
@@ -100,9 +114,66 @@
   flex: none;
 }
 
+.board-card-task {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 700 11px var(--font-body);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-card-revision-pill {
+  font-size: 8px;
+  padding: 1px 6px;
+  flex: none;
+}
+
 .board-card-code {
   font: 11px var(--font-mono);
-  color: var(--text-primary);
+  color: var(--text-secondary);
+}
+
+.board-card-task-count {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.board-card-expand {
+  flex: none;
+  color: var(--text-tertiary);
+  font-size: 10px;
+}
+
+.board-card-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+  cursor: default;
+}
+
+.board-card-task-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--surface);
+  border-radius: 5px;
+}
+
+.board-card-view-shot {
+  align-self: flex-start;
+  cursor: pointer;
+  font: 700 10px var(--font-body);
+  color: var(--accent);
+}
+
+.board-card-view-shot:hover {
+  text-decoration: underline;
 }
 
 .board-card-meta {

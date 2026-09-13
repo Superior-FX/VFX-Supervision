@@ -30,6 +30,11 @@
   font-weight: 400;
 }
 
+.upload-destination-path {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
 .upload-error {
   font: 12px var(--font-body);
   color: var(--danger);

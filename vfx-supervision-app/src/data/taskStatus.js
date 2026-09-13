@@ -26,3 +26,28 @@ export function aggregateTaskStatus(tasks) {
   if (statuses.length > 0 && statuses.every((s) => s === "final")) return taskStatusInfo("final");
   return taskStatusInfo("assigned");
 }
+
+// Which Shot Board column a task's real status places it in — the board
+// is driven live by this, not a separately-tracked field, so a task always
+// sits where its actual progress says it should. needs_revision sits with
+// wip in "progress" (the artist needs to keep working on it either way);
+// its box gets an extra highlight in Shot Board rather than its own column.
+export function boardColumnForStatus(status) {
+  if (status === "wip" || status === "needs_revision") return "progress";
+  if (status === "pending") return "review";
+  if (status === "final") return "final";
+  return "bidding";
+}
+
+// The board column a whole shot would show under, from its most urgent
+// task (same priority order as aggregateTaskStatus) — Shot Board itself
+// works per-task via boardColumnForStatus, but Dashboard's shot-level
+// board-count pulse and "needs attention" list need one column per shot.
+export function shotBoardColumn(tasks) {
+  const statuses = tasks.map((t) => t.status || "assigned");
+  if (statuses.length === 0) return "bidding";
+  if (statuses.includes("needs_revision") || statuses.includes("wip")) return "progress";
+  if (statuses.includes("pending")) return "review";
+  if (statuses.every((s) => s === "final")) return "final";
+  return "bidding";
+}

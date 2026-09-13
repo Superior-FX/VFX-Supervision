@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { shotBoardColumn } from "../data/taskStatus.js";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { getAssignees } from "../lib/taskAssignees.js";
@@ -47,7 +48,7 @@ export default function Dashboard() {
     () =>
       BOARD_COLUMNS.map((col) => ({
         ...col,
-        count: postReports.filter((s) => (s.boardStatus ?? "bidding") === col.id).length,
+        count: postReports.filter((s) => shotBoardColumn(s.tasks) === col.id).length,
       })),
     [postReports]
   );
@@ -61,7 +62,7 @@ export default function Dashboard() {
 
   const attention = useMemo(() => {
     return postReports
-      .filter((shot) => (shot.boardStatus ?? "bidding") !== "final")
+      .filter((shot) => shotBoardColumn(shot.tasks) !== "final")
       .map((shot) => {
         const importance = computeImportance(shot);
         const unassigned = shot.tasks.filter((t) => getAssignees(t).length === 0).length;

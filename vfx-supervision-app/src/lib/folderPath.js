@@ -1,5 +1,6 @@
 // Implements the naming convention documented in
 // references/vfx-shot-folder-structure.md.
+import { taskFolderSlug } from "../data/postTasks.js";
 
 export function padScene(scene) {
   const trimmed = (scene ?? "").toString().trim();
@@ -29,4 +30,16 @@ export function buildFolderPath({ show, scene, shotCode }) {
   if (!showTrim || !sceneTrim || !shotTrim) return null;
 
   return `${showTrim}/SC${sceneTrim}/${shotTrim}`;
+}
+
+// Display-only path for where a task's uploaded work actually lands —
+// [SHOW]/SC[SCENE]/[SHOT]/02_tasks/[slug]/render — so Upload Shot can show
+// the artist exactly where a file is headed before/after they pick it,
+// per task. Mirrors the real resolution in getTaskUploadFolder
+// (src/lib/fsAccess.js) but as a plain string, no disk access.
+export function buildTaskUploadPath({ show, scene, shotCode, taskType }) {
+  const base = buildFolderPath({ show, scene, shotCode });
+  const slug = taskFolderSlug(taskType);
+  if (!base || !slug) return null;
+  return `${base}/02_tasks/${slug}/render`;
 }

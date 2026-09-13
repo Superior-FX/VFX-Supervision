@@ -235,20 +235,23 @@ export async function copyFileInto(destDir, name, file) {
 }
 
 // Opens a single-file picker for a video, no destination side effects —
-// the caller copies its returned File wherever it needs to.
-export async function pickVideoFile() {
+// the caller copies its returned File wherever it needs to. startInDir, if
+// given, opens the dialog at that folder (the resolved task destination)
+// so it's visibly obvious which task/shot an upload is headed for.
+export async function pickVideoFile(startInDir) {
   const [handle] = await window.showOpenFilePicker({
     excludeAcceptAllOption: false,
     multiple: false,
     types: [{ description: "Video", accept: { "video/*": [".mov", ".mp4", ".mxf", ".avi"] } }],
+    ...(startInDir ? { startIn: startInDir } : {}),
   });
   return handle.getFile();
 }
 
 // Opens a folder picker for an image sequence's source folder — read-only,
-// since nothing is written back into it.
-export async function pickSequenceFolder() {
-  return window.showDirectoryPicker({ mode: "read" });
+// since nothing is written back into it. Same startInDir hint as above.
+export async function pickSequenceFolder(startInDir) {
+  return window.showDirectoryPicker({ mode: "read", ...(startInDir ? { startIn: startInDir } : {}) });
 }
 
 // Every file directly inside a picked folder, as real File objects — no

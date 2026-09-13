@@ -18,3 +18,4 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-09-13T01:03:31-05:00 — **Will Cox** (Atom-Smasher) — `1ac5059` Post Reports: shot collapse/expand, multi-artist tasks, folder fixes
 - 2026-09-13T01:12:59-05:00 — **Will Cox** (Atom-Smasher) — `38016e4` Pin dev-server port and add full data export/import
 - 2026-09-13T01:33:55-05:00 — **Will Cox** (Atom-Smasher) — `968a8cb` Real Superior-FX logo, Home nav link, folder-backed export/import
+- 2026-09-13T02:58:05-05:00 — **Will Cox** (Atom-Smasher) — `ca006f1` Consistent shot sorting, Artist Report rework, Upload Shot rebuild, scene deletion, and push-triggered task folders

@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { buildFolderPath } from "../lib/folderPath.js";
+import { boardColumnForStatus } from "../data/taskStatus.js";
+import { buildTaskUploadPath } from "../lib/folderPath.js";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { sortByDueComplexityName } from "../lib/sortShots.js";
@@ -24,22 +26,50 @@ function ImageIcon() {
   );
 }
 
-function assigneeSummary(shot) {
-  const names = [...new Set(shot.tasks.flatMap((t) => getAssignees(t)))];
+function assigneeSummary(task) {
+  const names = getAssignees(task);
   if (names.length === 0) return "Unassigned";
   if (names.length <= 2) return names.join(", ");
   return `${names[0]}, ${names[1]} +${names.length - 2}`;
+}
+
+// Groups a column's task-cards by shot, preserving shot order (already
+// priority-sorted upstream) — a shot with two tasks both landing in the
+// same column collapses to one box instead of two near-duplicate ones.
+function groupByShot(cards) {
+  const order = [];
+  const groups = new Map();
+  for (const card of cards) {
+    if (!groups.has(card.shot.id)) {
+      groups.set(card.shot.id, { shot: card.shot, tasks: [] });
+      order.push(card.shot.id);
+    }
+    groups.get(card.shot.id).tasks.push(card.task);
+  }
+  return order.map((id) => groups.get(id));
 }
 
 export default function ShotBoard() {
   const navigate = useNavigate();
   const project = useActiveProject();
   const [shots] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
+  const [expandedGroups, setExpandedGroups] = useState([]); // "<colId>:<shotId>" keys
+
+  const toggleGroup = (key) => {
+    setExpandedGroups((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  };
+
+  // The board's real unit is a task, not a shot — each task moves through
+  // the columns on its own, live off task.status, so a shot with several
+  // tasks in different stages shows up in several columns at once rather
+  // than being stuck at one column for all of them. Shots are pre-sorted
+  // so higher-priority shots cluster first within a column.
+  const taskCards = sortByDueComplexityName(shots).flatMap((shot) => shot.tasks.map((task) => ({ shot, task })));
 
   return (
     <div className="board">
       <div className="board-header">
-        <span className="board-title">SHOT BOARD — {shots.length} SHOTS</span>
+        <span className="board-title">SHOT BOARD — {taskCards.length} TASKS</span>
         <div className="board-filters">
           <span className="pill">Filter</span>
           <span className="pill">Vendor</span>
@@ -49,26 +79,25 @@ export default function ShotBoard() {
 
       <div className="board-columns">
         {COLUMNS.map((col) => {
-          const colShots = sortByDueComplexityName(shots.filter((s) => (s.boardStatus ?? "bidding") === col.id));
+          const colCards = taskCards.filter(({ task }) => boardColumnForStatus(task.status) === col.id);
+          const groups = groupByShot(colCards);
           return (
             <div className="board-column" key={col.id}>
               <span className="label board-column-label">
-                {col.label} ({colShots.length})
+                {col.label} ({colCards.length})
               </span>
               <div className="board-cards">
-                {colShots.length === 0 && <span className="board-column-empty">No shots</span>}
-                {colShots.map((shot) => {
+                {groups.length === 0 && <span className="board-column-empty">No tasks</span>}
+                {groups.map(({ shot, tasks }) => {
+                  const groupKey = `${col.id}:${shot.id}`;
+                  const isExpanded = expandedGroups.includes(groupKey);
                   const importance = computeImportance(shot);
-                  const folderPath = buildFolderPath({
-                    show: project?.showCode,
-                    scene: shot.scene,
-                    shotCode: shot.shotCode,
-                  });
+                  const anyNeedsRevision = tasks.some((t) => t.status === "needs_revision");
                   return (
                     <div
-                      key={shot.id}
-                      className={`card board-card${importance.colorKey ? ` importance-${importance.colorKey}` : ""}`}
-                      onClick={() => navigate(`/shot/${shot.shotCode}`)}
+                      key={groupKey}
+                      className={`card board-card${importance.colorKey ? ` importance-${importance.colorKey}` : ""}${anyNeedsRevision ? " needs-revision" : ""}`}
+                      onClick={() => toggleGroup(groupKey)}
                     >
                       <div className="board-card-top">
                         {shot.thumbnail ? (
@@ -78,10 +107,43 @@ export default function ShotBoard() {
                             <ImageIcon />
                           </div>
                         )}
-                        <span className="board-card-code">{shot.shotCode}</span>
+                        <div className="board-card-top-text">
+                          <span className="board-card-code">{shot.shotCode}</span>
+                          <span className="board-card-task-count">
+                            {tasks.length} task{tasks.length === 1 ? "" : "s"}
+                          </span>
+                        </div>
+                        <span className="board-card-expand">{isExpanded ? "▼" : "▶"}</span>
                       </div>
-                      <span className="board-card-meta">{assigneeSummary(shot)}</span>
-                      {folderPath && <span className="board-card-folder-path mono">{folderPath}</span>}
+
+                      {isExpanded && (
+                        <div className="board-card-tasks" onClick={(e) => e.stopPropagation()}>
+                          {tasks.map((task) => {
+                            const needsRevision = task.status === "needs_revision";
+                            const uploadPath = buildTaskUploadPath({
+                              show: project?.showCode,
+                              scene: shot.scene,
+                              shotCode: shot.shotCode,
+                              taskType: task.type,
+                            });
+                            return (
+                              <div className="board-card-task-row" key={task.id}>
+                                <span className="board-card-task">
+                                  {task.type}
+                                  {needsRevision && (
+                                    <span className="pill pill-danger board-card-revision-pill">Revise</span>
+                                  )}
+                                </span>
+                                <span className="board-card-meta">{assigneeSummary(task)}</span>
+                                {uploadPath && <span className="board-card-folder-path mono">{uploadPath}</span>}
+                              </div>
+                            );
+                          })}
+                          <span className="board-card-view-shot" onClick={() => navigate(`/shot/${shot.shotCode}`)}>
+                            View shot →
+                          </span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

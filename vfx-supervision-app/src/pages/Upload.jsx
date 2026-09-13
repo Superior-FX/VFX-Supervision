@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { resolveCurrentArtist } from "../lib/currentArtist.js";
-import { padScene } from "../lib/folderPath.js";
+import { buildTaskUploadPath, padScene } from "../lib/folderPath.js";
 import {
   copyFileInto,
   ensurePermission,
@@ -69,6 +69,17 @@ export default function Upload() {
   const myWipTasksOnShot = selectedShot ? selectedShot.tasks.filter((t) => myTask(t) && t.status === "wip") : [];
   const selectedTask = myWipTasksOnShot.find((t) => t.id === selectedTaskId);
 
+  // Where this task's uploads actually land — shown so it's always
+  // visually obvious, per task, before anything is picked.
+  const uploadPath = selectedShot
+    ? buildTaskUploadPath({
+        show: project?.showCode,
+        scene: selectedShot.scene,
+        shotCode: selectedShot.shotCode,
+        taskType: selectedTask?.type,
+      })
+    : null;
+
   const resetAll = () => {
     setSelectedShotId("");
     setSelectedTaskId("");
@@ -107,9 +118,12 @@ export default function Upload() {
   const uploadVideo = async () => {
     setUploadError("");
     try {
-      const file = await pickVideoFile();
-      setUploading(true);
+      // Resolve the destination before opening the picker so it can hint
+      // the dialog to open there (startIn) — makes it visually obvious
+      // which task/shot folder this upload is actually headed for.
       const destDir = await resolveDestination();
+      const file = await pickVideoFile(destDir);
+      setUploading(true);
       await copyFileInto(destDir, file.name, file);
       setSelectedFiles((prev) => [...prev, { id: crypto.randomUUID(), name: file.name, kind: "video", size: file.size }]);
     } catch (err) {
@@ -125,7 +139,17 @@ export default function Upload() {
   const uploadSequence = async () => {
     setUploadError("");
     try {
-      const folderHandle = await pickSequenceFolder();
+      const destDir = await resolveDestination();
+      const folderHandle = await pickSequenceFolder(destDir);
+      // The picker now opens AT the destination (so it's obvious where an
+      // upload is headed) — but that means it's also easy to pick the
+      // destination itself (or somewhere already-uploaded-into) as the
+      // "source", which would read back files this app already wrote and
+      // copy them right over themselves, looking like a duplicate import.
+      if (await folderHandle.isSameEntry(destDir)) {
+        setUploadError("That's the render folder itself — pick the folder where your rendered frames actually live.");
+        return;
+      }
       setUploading(true);
       const files = await readFolderFiles(folderHandle);
       if (files.length === 0) {
@@ -133,7 +157,6 @@ export default function Upload() {
         return;
       }
       const groups = groupSequenceFiles(files);
-      const destDir = await resolveDestination();
       for (const group of groups) {
         for (const file of group.files) {
           await copyFileInto(destDir, file.name, file);
@@ -221,6 +244,7 @@ export default function Upload() {
           {selectedTask && (
             <>
               <span className="label">Upload</span>
+              {uploadPath && <span className="upload-destination-path mono">{uploadPath}</span>}
               {!supported ? (
                 <span className="label upload-hint">Automatic uploads need Chrome or Edge.</span>
               ) : !rootHandle ? (
