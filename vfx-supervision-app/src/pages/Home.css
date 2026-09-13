@@ -68,6 +68,24 @@
   overflow-y: auto;
 }
 
+.home-backup-actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.home-backup-btn {
+  text-align: center;
+  font-size: 11px;
+}
+
+.home-backup-file-input {
+  display: none;
+}
+
 .home-projects-empty {
   padding: 0 6px;
   color: var(--text-tertiary);

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { downloadExport, importAllData, isValidExport } from "../lib/backup.js";
 import {
   createProjectRootFolder,
   deleteRootHandle,
@@ -78,6 +79,43 @@ function ProjectDeleteConfirm({ project, onConfirm, onCancel }) {
       <div className="home-project-confirm-actions">
         <span className={`btn btn-danger${matches ? "" : " btn-disabled"}`} onClick={matches ? onConfirm : undefined}>
           Confirm delete
+        </span>
+        <span className="btn btn-secondary" onClick={onCancel}>
+          Cancel
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ImportConfirm({ fileName, data, onConfirm, onCancel }) {
+  const [text, setText] = useState("");
+  const matches = text.trim().toUpperCase() === "IMPORT";
+  useEnterKey(() => {
+    if (matches) onConfirm();
+  });
+
+  const projectCount = data.projects?.length ?? 0;
+  const exportedAt = data.exportedAt ? new Date(data.exportedAt).toLocaleString() : "unknown date";
+
+  return (
+    <div className="card home-new-project">
+      <span className="label">Import backup</span>
+      <span className="home-project-confirm-label">
+        This replaces everything currently in the app — every project, shot, scene, and the artist roster — with the{" "}
+        {projectCount} project{projectCount === 1 ? "" : "s"} from "{fileName}" (exported {exportedAt}). This can't
+        be undone. Type IMPORT to continue.
+      </span>
+      <input
+        className="report-edit-input mono home-project-confirm-input"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="IMPORT"
+        autoFocus
+      />
+      <div className="home-project-confirm-actions">
+        <span className={`btn btn-danger${matches ? "" : " btn-disabled"}`} onClick={matches ? onConfirm : undefined}>
+          Replace with backup
         </span>
         <span className="btn btn-secondary" onClick={onCancel}>
           Cancel
@@ -192,6 +230,9 @@ export default function Home() {
   const [activeId, setActiveId] = useActiveProjectId();
   const [creating, setCreating] = useState(false);
   const [removingId, setRemovingId] = useState(null);
+  const [importPending, setImportPending] = useState(null); // { fileName, data } | null
+  const [importError, setImportError] = useState("");
+  const fileInputRef = useRef(null);
 
   // If the app just migrated from the old single-project model, the
   // folder handle it had is still sitting under the legacy IndexedDB key —
@@ -231,6 +272,33 @@ export default function Home() {
     }
     deleteRootHandle(id).catch(() => {});
     setRemovingId(null);
+  };
+
+  const handleFileSelected = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file if the user cancels then retries
+    if (!file) return;
+    setImportError("");
+    try {
+      const data = JSON.parse(await file.text());
+      if (!isValidExport(data)) {
+        setImportError("That doesn't look like a VFX Supe backup file.");
+        return;
+      }
+      setImportPending({ fileName: file.name, data });
+    } catch {
+      setImportError("Couldn't read that file — make sure it's a backup exported from this app.");
+    }
+  };
+
+  const confirmImport = () => {
+    if (!importPending) return;
+    importAllData(importPending.data);
+    // Every page's own useLocalStorageState only reads localStorage once,
+    // at mount — a full reload is the simplest way to guarantee everything
+    // (Home included) picks up the freshly-imported data instead of some
+    // components still holding whatever was in memory before the import.
+    window.location.reload();
   };
 
   return (
@@ -278,10 +346,34 @@ export default function Home() {
             )
           )}
         </div>
+
+        <div className="home-backup-actions">
+          <span className="btn btn-secondary home-backup-btn" onClick={downloadExport}>
+            Export All Data
+          </span>
+          <span className="btn btn-secondary home-backup-btn" onClick={() => fileInputRef.current?.click()}>
+            Import Backup…
+          </span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json"
+            className="home-backup-file-input"
+            onChange={handleFileSelected}
+          />
+          {importError && <span className="home-new-project-error">{importError}</span>}
+        </div>
       </aside>
 
       <main className="home-main">
-        {creating ? (
+        {importPending ? (
+          <ImportConfirm
+            fileName={importPending.fileName}
+            data={importPending.data}
+            onConfirm={confirmImport}
+            onCancel={() => setImportPending(null)}
+          />
+        ) : creating ? (
           <NewProjectForm onCreate={createProject} onCancel={() => setCreating(false)} />
         ) : (
           <div className="home-placeholder">

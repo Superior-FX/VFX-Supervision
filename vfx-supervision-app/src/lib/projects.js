@@ -1,8 +1,14 @@
 import { useLocalStorageState } from "./useLocalStorageState.js";
 
 // Base keys that get namespaced per project — kept in one place so deletion
-// (Home.jsx) and the legacy migration (migrateLegacyProject.js) can't drift.
-export const SCOPED_DATA_BASES = ["vfx-supe-post-reports", "vfx-supe-capture-reports", "vfx-supe-script-reports"];
+// (Home.jsx), export/import (lib/backup.js), and the legacy migration
+// (migrateLegacyProject.js) can't drift.
+export const SCOPED_DATA_BASES = [
+  "vfx-supe-post-reports",
+  "vfx-supe-scenes",
+  "vfx-supe-capture-reports",
+  "vfx-supe-script-reports",
+];
 
 export function useProjects() {
   return useLocalStorageState("vfx-supe-projects", []);
