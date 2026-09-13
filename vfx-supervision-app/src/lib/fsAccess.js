@@ -93,6 +93,48 @@ async function subdir(parent, name) {
   return parent.getDirectoryHandle(name, { create: true });
 }
 
+// One shared backup folder for the whole app (not per-project) — same
+// handle store as project roots, just under a fixed key instead of a
+// project id. Picked once; after that, export/import use the saved handle
+// directly with no folder-picker dialog.
+const BACKUP_FOLDER_KEY = "backup-folder";
+
+export async function pickBackupFolder() {
+  const handle = await pickDestinationFolder();
+  await saveRootHandle(BACKUP_FOLDER_KEY, handle);
+  return handle;
+}
+
+export async function loadBackupFolderHandle() {
+  return loadRootHandle(BACKUP_FOLDER_KEY);
+}
+
+// Lists .json files directly inside a directory handle. Backup filenames
+// are timestamped (vfx-supe-backup_2026-09-13T...), so a plain reverse
+// alphabetical sort already puts the most recent export first.
+export async function listJsonFiles(dirHandle) {
+  const names = [];
+  for await (const [name, handle] of dirHandle.entries()) {
+    if (handle.kind === "file" && name.toLowerCase().endsWith(".json")) {
+      names.push(name);
+    }
+  }
+  return names.sort().reverse();
+}
+
+export async function readJsonFile(dirHandle, name) {
+  const fileHandle = await dirHandle.getFileHandle(name);
+  const file = await fileHandle.getFile();
+  return JSON.parse(await file.text());
+}
+
+export async function writeJsonFile(dirHandle, name, data) {
+  const fileHandle = await dirHandle.getFileHandle(name, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(JSON.stringify(data, null, 2));
+  await writable.close();
+}
+
 // Creates just SC[SCENE]/ under the project root — the group folder a scene
 // gets as soon as it's created, before any of its shots exist.
 export async function createSceneFolder(rootHandle, { scene }) {

@@ -16,3 +16,4 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-09-11T01:54:28-05:00 — **Will Cox** (Atom-Smasher) — `e2a826a` Add SHARED_STATE.md build-activity log via a shared post-commit hook
 - 2026-09-11T02:14:40-05:00 — **Will Cox** (Atom-Smasher) — `dd21745` Log the SHARED_STATE hook's own commit
 - 2026-09-13T01:03:31-05:00 — **Will Cox** (Atom-Smasher) — `1ac5059` Post Reports: shot collapse/expand, multi-artist tasks, folder fixes
+- 2026-09-13T01:12:59-05:00 — **Will Cox** (Atom-Smasher) — `38016e4` Pin dev-server port and add full data export/import

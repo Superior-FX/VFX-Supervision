@@ -10,10 +10,18 @@
 // this browser's own permission grants — they can't travel in a JSON file
 // and can't be re-created from one; re-grant with "Choose Destination
 // Folder" after importing, same as setting one up fresh).
+import { writeJsonFile } from "./fsAccess.js";
 import { SCOPED_DATA_BASES } from "./projects.js";
 
 const EXPORT_APP_ID = "vfx-supervision-app";
 const EXPORT_VERSION = 1;
+
+// Full timestamp, not just the date, so writing straight into a folder
+// (exportToFolder) can't silently overwrite an earlier backup from the same
+// day the way a browser download's OS-level "(1)" renaming would avoid.
+function backupFileName() {
+  return `vfx-supe-backup_${new Date().toISOString().replace(/:/g, "-")}.json`;
+}
 
 function readJson(key, fallback) {
   try {
@@ -61,15 +69,25 @@ export function downloadExport() {
   const data = exportAllData();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
-  const stamp = new Date().toISOString().slice(0, 10);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `vfx-supe-backup_${stamp}.json`;
+  a.download = backupFileName();
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
   return data;
+}
+
+// Writes a fresh export straight into a folder the user has already
+// granted access to (see pickBackupFolder in fsAccess.js) — no Save-As
+// dialog, since the handle already lives in IndexedDB from that one-time
+// setup.
+export async function exportToFolder(dirHandle) {
+  const data = exportAllData();
+  const name = backupFileName();
+  await writeJsonFile(dirHandle, name, data);
+  return { data, name };
 }
 
 // Checks the parsed JSON actually looks like one of our own export files,

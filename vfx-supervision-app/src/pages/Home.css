@@ -22,11 +22,11 @@
 }
 
 .home-brand-mark {
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   border-radius: 5px;
-  background: var(--accent-soft);
-  border: 1.5px solid var(--accent);
+  object-fit: contain;
+  flex: none;
 }
 
 .home-brand-name {
@@ -84,6 +84,42 @@
 
 .home-backup-file-input {
   display: none;
+}
+
+.home-backup-folder-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 2px;
+}
+
+.home-backup-status {
+  padding: 0 2px;
+  color: var(--success);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-backup-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.home-backup-file-row {
+  padding: 8px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.home-backup-file-row:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .home-projects-empty {

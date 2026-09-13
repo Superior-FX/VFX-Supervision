@@ -22,11 +22,11 @@
 }
 
 .shell-brand-mark {
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   border-radius: 5px;
-  background: var(--accent-soft);
-  border: 1.5px solid var(--accent);
+  object-fit: contain;
+  flex: none;
 }
 
 .shell-brand-name {

@@ -1,4 +1,5 @@
 import { Navigate, NavLink, Outlet, useNavigate } from "react-router-dom";
+import logo from "../../logo/SuperiorFX_logo_003.jpg";
 import { useActiveProject } from "../lib/projects.js";
 import { CURRENT_ROLE } from "../lib/role.js";
 import "./Layout.css";
@@ -60,8 +61,8 @@ export default function Layout() {
     <div className="shell">
       <aside className="shell-sidebar">
         <div className="shell-brand">
-          <div className="shell-brand-mark" />
-          <span className="shell-brand-name">VFX SUPE</span>
+          <img className="shell-brand-mark" src={logo} alt="Superior-FX" />
+          <span className="shell-brand-name">Superior-FX</span>
         </div>
 
         <div className="shell-project-block">
@@ -75,6 +76,9 @@ export default function Layout() {
         </div>
 
         <nav className="shell-nav">
+          <NavLink to="/" end className={({ isActive }) => `shell-nav-link${isActive ? " active" : ""}`}>
+            Home
+          </NavLink>
           {visibleGroups.map((group, i) => (
             <div className="shell-nav-group" key={group.label ?? `ungrouped-${i}`}>
               {group.label && <span className="shell-nav-group-label">{group.label}</span>}

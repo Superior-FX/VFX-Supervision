@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { downloadExport, importAllData, isValidExport } from "../lib/backup.js";
+import logo from "../../logo/SuperiorFX_logo_003.jpg";
+import { downloadExport, exportToFolder, importAllData, isValidExport } from "../lib/backup.js";
 import {
   createProjectRootFolder,
   deleteRootHandle,
+  ensurePermission,
   isFsAccessSupported,
+  listJsonFiles,
+  loadBackupFolderHandle,
   loadRootHandle,
   migrateLegacyRootHandle,
+  pickBackupFolder,
   pickDestinationFolder,
+  readJsonFile,
 } from "../lib/fsAccess.js";
 import { SCOPED_DATA_BASES, useActiveProjectId, useProjects } from "../lib/projects.js";
 import { useEnterKey } from "../lib/useEnterKey.js";
@@ -125,6 +131,26 @@ function ImportConfirm({ fileName, data, onConfirm, onCancel }) {
   );
 }
 
+function BackupFileList({ folderName, files, onPick, onCancel }) {
+  return (
+    <div className="card home-new-project">
+      <span className="label">Import from {folderName}/</span>
+      <div className="home-backup-file-list">
+        {files.map((name) => (
+          <span className="home-backup-file-row mono" key={name} onClick={() => onPick(name)}>
+            {name}
+          </span>
+        ))}
+      </div>
+      <div className="home-new-project-actions">
+        <span className="btn btn-secondary" onClick={onCancel}>
+          Cancel
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function NewProjectForm({ onCreate, onCancel }) {
   const [name, setName] = useState("");
   const [showCode, setShowCode] = useState("");
@@ -232,6 +258,10 @@ export default function Home() {
   const [removingId, setRemovingId] = useState(null);
   const [importPending, setImportPending] = useState(null); // { fileName, data } | null
   const [importError, setImportError] = useState("");
+  const [backupFolder, setBackupFolder] = useState(null);
+  const [backupFolderError, setBackupFolderError] = useState("");
+  const [exportStatus, setExportStatus] = useState("");
+  const [backupFileList, setBackupFileList] = useState(null); // string[] | null
   const fileInputRef = useRef(null);
 
   // If the app just migrated from the old single-project model, the
@@ -244,6 +274,12 @@ export default function Home() {
       if (!existing) migrateLegacyRootHandle(project.id).catch(() => {});
     });
   }, [projects]);
+
+  useEffect(() => {
+    loadBackupFolderHandle()
+      .then(setBackupFolder)
+      .catch(() => {});
+  }, []);
 
   const openProject = (id) => {
     setActiveId(id);
@@ -272,6 +308,73 @@ export default function Home() {
     }
     deleteRootHandle(id).catch(() => {});
     setRemovingId(null);
+  };
+
+  const pickBackupFolderHandler = async () => {
+    try {
+      const handle = await pickBackupFolder();
+      setBackupFolder(handle);
+      setBackupFolderError("");
+      setExportStatus("");
+    } catch (err) {
+      if (err?.name !== "AbortError") setBackupFolderError("Couldn't set that folder — try again.");
+    }
+  };
+
+  const handleExport = async () => {
+    setExportStatus("");
+    if (backupFolder) {
+      const ok = await ensurePermission(backupFolder);
+      if (ok) {
+        try {
+          const { name } = await exportToFolder(backupFolder);
+          setExportStatus(`Saved ${name} to ${backupFolder.name}/`);
+          return;
+        } catch (err) {
+          console.error("Couldn't write export to the backup folder:", err);
+          setExportStatus("Couldn't write to the backup folder — downloaded instead.");
+        }
+      } else {
+        setExportStatus("Backup folder access was denied — downloaded instead.");
+      }
+    }
+    downloadExport();
+  };
+
+  const openBackupFileList = async () => {
+    setImportError("");
+    if (!backupFolder) return;
+    const ok = await ensurePermission(backupFolder);
+    if (!ok) {
+      setImportError("Couldn't access the backup folder — try setting it again.");
+      return;
+    }
+    try {
+      const names = await listJsonFiles(backupFolder);
+      if (names.length === 0) {
+        setImportError(`No .json backups found in ${backupFolder.name}/ yet.`);
+        return;
+      }
+      setBackupFileList(names);
+    } catch (err) {
+      console.error("Couldn't list files in the backup folder:", err);
+      setImportError("Couldn't read the backup folder — try setting it again.");
+    }
+  };
+
+  const pickBackupFile = async (name) => {
+    setBackupFileList(null);
+    try {
+      const data = await readJsonFile(backupFolder, name);
+      if (!isValidExport(data)) {
+        setImportError(`"${name}" doesn't look like a VFX Supe backup file.`);
+        return;
+      }
+      setImportPending({ fileName: name, data });
+    } catch (err) {
+      console.error(`Couldn't read "${name}" from the backup folder:`, err);
+      setImportError(`Couldn't read "${name}".`);
+    }
   };
 
   const handleFileSelected = async (e) => {
@@ -305,8 +408,8 @@ export default function Home() {
     <div className="home">
       <aside className="home-sidebar">
         <div className="home-brand">
-          <div className="home-brand-mark" />
-          <span className="home-brand-name">VFX SUPE</span>
+          <img className="home-brand-mark" src={logo} alt="Superior-FX" />
+          <span className="home-brand-name">Superior-FX</span>
         </div>
 
         <div className="home-projects-header">
@@ -348,11 +451,30 @@ export default function Home() {
         </div>
 
         <div className="home-backup-actions">
-          <span className="btn btn-secondary home-backup-btn" onClick={downloadExport}>
+          {isFsAccessSupported() && (
+            <span className="label home-backup-folder-label" title={backupFolder ? backupFolder.name : undefined}>
+              Backup folder: {backupFolder ? backupFolder.name : "not set"}
+            </span>
+          )}
+          {isFsAccessSupported() && (
+            <span className="btn btn-secondary home-backup-btn" onClick={pickBackupFolderHandler}>
+              {backupFolder ? "Change Backup Folder…" : "Set Backup Folder…"}
+            </span>
+          )}
+          {backupFolderError && <span className="home-new-project-error">{backupFolderError}</span>}
+
+          <span className="btn btn-secondary home-backup-btn" onClick={handleExport}>
             Export All Data
           </span>
+          {exportStatus && <span className="label home-backup-status">{exportStatus}</span>}
+
+          {backupFolder && (
+            <span className="btn btn-secondary home-backup-btn" onClick={openBackupFileList}>
+              Import from Backup Folder…
+            </span>
+          )}
           <span className="btn btn-secondary home-backup-btn" onClick={() => fileInputRef.current?.click()}>
-            Import Backup…
+            Import from File…
           </span>
           <input
             ref={fileInputRef}
@@ -372,6 +494,13 @@ export default function Home() {
             data={importPending.data}
             onConfirm={confirmImport}
             onCancel={() => setImportPending(null)}
+          />
+        ) : backupFileList ? (
+          <BackupFileList
+            folderName={backupFolder?.name}
+            files={backupFileList}
+            onPick={pickBackupFile}
+            onCancel={() => setBackupFileList(null)}
           />
         ) : creating ? (
           <NewProjectForm onCreate={createProject} onCancel={() => setCreating(false)} />

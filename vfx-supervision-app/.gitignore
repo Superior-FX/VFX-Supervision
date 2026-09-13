@@ -3,3 +3,9 @@ node_modules/
 dist/
 .vite/
 
+# Local data-export backups (see backups/) — these are user data snapshots,
+# not source, so they never get committed. The folder itself is kept via
+# backups/.gitkeep so it exists to point the in-app folder picker at.
+backups/*
+!backups/.gitkeep
+
