@@ -387,6 +387,19 @@
   font: 12px var(--font-body);
 }
 
+.post-reports-folder-disconnected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  background: var(--warning-soft);
+  border: 1px solid var(--warning);
+  color: var(--warning);
+  font: 12px var(--font-body);
+}
+
 .post-shot-folder-row {
   display: flex;
   align-items: center;

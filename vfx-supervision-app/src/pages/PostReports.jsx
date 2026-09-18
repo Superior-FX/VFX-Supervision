@@ -923,8 +923,16 @@ export default function PostReports() {
     // track of it — under its old name. Never blocks removing the tracker
     // entry itself if the on-disk move fails (permission revoked, handle
     // stale, etc.) — but surfaces as a visible banner rather than only a
-    // console log, so a real failure isn't mistaken for success.
-    if (shot?.foldersCreatedAt && rootHandle) {
+    // console log, so a real failure isn't mistaken for success. This
+    // includes the project folder not being connected this session — that
+    // used to fail silently (no banner), which looked identical to success.
+    if (shot?.foldersCreatedAt) {
+      if (!rootHandle) {
+        setFolderError(
+          `${shot.shotCode} was removed from tracking, but its folder is still on disk — reconnect the project folder to move it into zzz_DELETED/.`
+        );
+        return;
+      }
       try {
         const ok = await ensurePermission(rootHandle);
         if (!ok) {
@@ -964,6 +972,14 @@ export default function PostReports() {
   };
 
   const removeScene = async (scene) => {
+    // A scene's folder can exist on disk even when scene.folderCreatedAt was
+    // never set — creating a shot's folders creates its parent scene folder
+    // as a side effect (see createShotFolders), independent of whether the
+    // scene's own "Create folder" button was ever clicked. Check both so a
+    // real on-disk folder isn't missed just because that button wasn't used.
+    const hasOnDiskFolder = Boolean(
+      scene.folderCreatedAt || shots.some((s) => s.sceneId === scene.id && s.foldersCreatedAt)
+    );
     setScenes((prev) => prev.filter((s) => s.id !== scene.id));
     setExpandedSceneIds((prev) => prev.filter((x) => x !== scene.id));
     setShots((prev) => prev.filter((s) => s.sceneId !== scene.id));
@@ -974,7 +990,16 @@ export default function PostReports() {
     // Never blocks removing the tracker entries if the on-disk move fails
     // — but unlike a purely-logged failure, this surfaces as a visible
     // banner so a real failure (vs. e.g. a stale Explorer view) is obvious.
-    if (rootHandle) {
+    // This includes the project folder not being connected this session —
+    // that used to fail silently (no banner), which looked identical to
+    // success (the scene just disappeared from the tracker either way).
+    if (hasOnDiskFolder) {
+      if (!rootHandle) {
+        setFolderError(
+          `SC${scene.scene} was removed from tracking, but its folder is still on disk — reconnect the project folder to move it into zzz_DELETED_SCENES/.`
+        );
+        return;
+      }
       try {
         const ok = await ensurePermission(rootHandle);
         if (!ok) {
@@ -1012,6 +1037,14 @@ export default function PostReports() {
 
   const ungroupedShots = shotsByScene.get(UNGROUPED) ?? [];
 
+  // True once this project has any folder actually on disk (a scene or a
+  // shot). If the project's root handle isn't connected in that case, every
+  // folder-writing action (create, delete-and-move) silently no-ops instead
+  // of reaching disk — so this needs to be obvious the moment the page
+  // loads, not discovered later when a delete "doesn't seem to have worked."
+  const expectsFolder = scenes.some((s) => s.folderCreatedAt) || shots.some((s) => s.foldersCreatedAt);
+  const folderDisconnected = supported && expectsFolder && !rootHandle;
+
   return (
     <div className="post-reports">
       <div className="post-reports-header">
@@ -1047,6 +1080,18 @@ export default function PostReports() {
           ))}
         </div>
       </div>
+
+      {folderDisconnected && (
+        <div className="card post-reports-folder-disconnected">
+          <span>
+            Project folder isn't connected this session — folders already on disk won't be created, updated, or
+            moved into zzz_DELETED until you reconnect it.
+          </span>
+          <span className="btn btn-secondary" onClick={pickFolder}>
+            Reconnect Folder…
+          </span>
+        </div>
+      )}
 
       {tab === "Artists" ? (
         <ArtistDirectory isAdmin={isAdmin} onRenameArtist={renameArtistEverywhere} />
