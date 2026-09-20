@@ -3,6 +3,8 @@ import { CheckIcon, ComplexityDots, PencilIcon } from "../components/SceneVfxFie
 import { STORY_IMPORTANCE_LEVELS } from "../data/importance.js";
 import { POST_TASK_TYPES } from "../data/postTasks.js";
 import { taskStatusInfo } from "../data/taskStatus.js";
+import { COMPLEXITY_LEVELS } from "../data/vfxEffects.js";
+import { downloadCsv } from "../lib/csv.js";
 import { buildFolderPath, buildSceneFolderPath, padScene } from "../lib/folderPath.js";
 import {
   addTaskFolder,
@@ -1045,6 +1047,85 @@ export default function PostReports() {
   const expectsFolder = scenes.some((s) => s.folderCreatedAt) || shots.some((s) => s.foldersCreatedAt);
   const folderDisconnected = supported && expectsFolder && !rootHandle;
 
+  // One row per shot, in the same scene/shot order shown on screen. A CSV
+  // (not an .xlsx) so it opens with no library or backend involved — Google
+  // Sheets opens/imports it natively, same as Excel or Numbers.
+  const exportShotListCsv = () => {
+    const header = [
+      "Scene",
+      "Shot Code",
+      "Priority",
+      "Story Importance",
+      "Complexity",
+      "Pipeline",
+      "Pushed to Post",
+      "Due Date",
+      "Script Description",
+      "Internal Description",
+      "Folder Created",
+      "Tasks",
+    ];
+
+    const shotToRow = (shot) => {
+      const priority = computeImportance({
+        complexity: shot.complexity,
+        storyImportance: shot.storyImportance,
+        dueDate: shot.dueDate,
+      }).tier;
+      const tasksSummary = shot.tasks
+        .map((t) => `${t.type}: ${taskStatusInfo(t.status).label} (${assigneesLabel(t)})`)
+        .join("; ");
+      return [
+        `SC${shot.scene}`,
+        shot.shotCode,
+        priority,
+        STORY_IMPORTANCE_LEVELS[shot.storyImportance - 1] ?? "",
+        COMPLEXITY_LEVELS[shot.complexity - 1] ?? "",
+        shot.pipeline,
+        shot.dispatched ? "Yes" : "No",
+        shot.dueDate,
+        shot.scriptDescription,
+        shot.internalDescription,
+        shot.foldersCreatedAt ? "Yes" : "No",
+        tasksSummary,
+      ];
+    };
+
+    const rows = [header];
+    for (const scene of orderedScenes) {
+      for (const shot of shotsByScene.get(scene.id) ?? []) rows.push(shotToRow(shot));
+    }
+    for (const shot of ungroupedShots) rows.push(shotToRow(shot));
+
+    // Plain CSV can't carry cell colors itself — the color coding lives in
+    // conditional-formatting rules set up once directly in Sheets (on the
+    // Story Importance/Complexity/Due Date columns), which keep applying
+    // across future re-imports. This legend just documents those thresholds
+    // so anyone opening the sheet knows what the colors mean without having
+    // to go find the rules. Written into column N+ (leaving M as a blank
+    // gutter) alongside the header/first few rows, so it never lands inside
+    // the A–L data range those conditional-format rules watch.
+    const legendLines = [
+      "Legend — conditional formatting thresholds (set up once in Sheets):",
+      "Red = Story Importance/Complexity is High/Hero or Pivotal/Critical, or Due Date is ≤3 days away",
+      "Orange = Medium, or Due Date is 4–7 days away",
+      "No fill = Low/Minimal/Minor/Supporting, or no near-term due date",
+    ];
+    // A fixed number, not re-read from header.length inside the loop below —
+    // rows[0] IS the header array (same reference, not a copy), so comparing
+    // against header.length while padding/pushing onto rows[0] would grow
+    // both sides together and loop forever.
+    const legendColumn = header.length + 1;
+    legendLines.forEach((text, i) => {
+      if (!rows[i]) rows[i] = [];
+      while (rows[i].length < legendColumn) rows[i].push("");
+      rows[i].push(text);
+    });
+
+    const showCode = project?.showCode || "vfx-supe";
+    downloadCsv(`${showCode}_shot-list_${new Date().toISOString().slice(0, 10)}.csv`, rows);
+  };
+
   return (
     <div className="post-reports">
       <div className="post-reports-header">
@@ -1059,6 +1140,11 @@ export default function PostReports() {
             {tab === "Shots" && (
               <span className="pill">
                 {scenes.length} scene{scenes.length === 1 ? "" : "s"} · {shots.length} shot{shots.length === 1 ? "" : "s"}
+              </span>
+            )}
+            {tab === "Shots" && (scenes.length > 0 || shots.length > 0) && (
+              <span className="btn btn-secondary post-export-csv-btn" onClick={exportShotListCsv} title="Downloads a .csv — open it directly in Google Sheets">
+                Export to Spreadsheet…
               </span>
             )}
             {tab === "Shots" && !addingScene && (
