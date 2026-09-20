@@ -364,3 +364,28 @@ export async function moveSceneFolderToDeleted(rootHandle, { scene }) {
   await rootHandle.removeEntry(sceneName, { recursive: true });
   return { moved: true };
 }
+
+// Renames SC[OLD]/ to SC[NEW]/ (every shot inside it, untouched) — via
+// copy+remove, same as the moves above, since the File System Access API has
+// no native directory rename. A no-op (not an error) if the old scene folder
+// was never created on disk in the first place, or if the numbers are the
+// same. Caller is responsible for checking SC[NEW] doesn't already belong to
+// a different tracked scene first — this will happily merge into an existing
+// folder of that name (getDirectoryHandle's create:true semantics) rather
+// than refuse.
+export async function renameSceneFolder(rootHandle, { oldScene, newScene }) {
+  const oldName = `SC${oldScene}`;
+  const newName = `SC${newScene}`;
+  if (oldName === newName) return { renamed: false };
+
+  let oldDir;
+  try {
+    oldDir = await rootHandle.getDirectoryHandle(oldName);
+  } catch {
+    return { renamed: false };
+  }
+
+  await copyDirRecursive(oldDir, rootHandle, newName);
+  await rootHandle.removeEntry(oldName, { recursive: true });
+  return { renamed: true };
+}

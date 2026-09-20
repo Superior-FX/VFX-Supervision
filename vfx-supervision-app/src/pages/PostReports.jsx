@@ -16,6 +16,7 @@ import {
   moveSceneFolderToDeleted,
   moveShotFolderToDeleted,
   pickProjectRootFolder,
+  renameSceneFolder,
 } from "../lib/fsAccess.js";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject, useProjects } from "../lib/projects.js";
@@ -691,6 +692,7 @@ function SceneGroup({
   onToggleExpand,
   onUpdateScene,
   onDeleteScene,
+  onRenameScene,
   onAddShot,
   editingIds,
   toggleEditing,
@@ -706,12 +708,38 @@ function SceneGroup({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [folderStatus, setFolderStatus] = useState(null);
+  const [editingScene, setEditingScene] = useState(false);
+  const [sceneNumberDraft, setSceneNumberDraft] = useState(scene.scene);
+  const [renaming, setRenaming] = useState(false);
   const deleteMatches = deleteConfirmText.trim().toUpperCase() === "DELETE";
   const folderPath = buildSceneFolderPath({ show: project?.showCode, scene: scene.scene });
   const readyForFolder = Boolean(folderPath && rootHandle);
 
   useEnterKey(() => {
     if (confirmingDelete && deleteMatches) onDeleteScene();
+  });
+
+  const startEditingScene = (e) => {
+    e.stopPropagation();
+    setSceneNumberDraft(scene.scene);
+    setEditingScene(true);
+  };
+
+  const cancelEditingScene = (e) => {
+    e.stopPropagation();
+    setEditingScene(false);
+  };
+
+  const saveSceneNumber = async () => {
+    if (renaming) return;
+    setRenaming(true);
+    const result = await onRenameScene(sceneNumberDraft);
+    setRenaming(false);
+    if (result.ok) setEditingScene(false);
+  };
+
+  useEnterKey(() => {
+    if (editingScene && !confirmingDelete) saveSceneNumber();
   });
 
   const createFolder = async () => {
@@ -736,12 +764,45 @@ function SceneGroup({
     <div className="card post-scene-group">
       <div className="post-scene-header" onClick={onToggleExpand}>
         <span className="post-scene-expand">{isExpanded ? "▼" : "▶"}</span>
-        <span className="post-scene-label mono">SC{scene.scene}</span>
+        {editingScene ? (
+          <>
+            <span className="post-scene-label mono">SC</span>
+            <input
+              className="report-edit-input mono post-scene-number-input"
+              value={sceneNumberDraft}
+              onChange={(e) => setSceneNumberDraft(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+            />
+            <span
+              className="report-edit-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                saveSceneNumber();
+              }}
+              title={renaming ? "Renaming…" : "Save"}
+            >
+              <CheckIcon />
+            </span>
+            <span className="report-edit-btn" onClick={cancelEditingScene} title="Cancel">
+              ×
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="post-scene-label mono">SC{scene.scene}</span>
+            {!confirmingDelete && (
+              <span className="report-edit-btn" onClick={startEditingScene} title="Rename scene">
+                <PencilIcon />
+              </span>
+            )}
+          </>
+        )}
         <span className="pill mono">
           {shots.length} shot{shots.length === 1 ? "" : "s"}
         </span>
         {scene.folderCreatedAt && <span className="pill pill-success">Folder created</span>}
-        {!confirmingDelete && (
+        {!confirmingDelete && !editingScene && (
           <span
             className="report-edit-btn post-shot-delete-btn post-scene-delete-btn"
             onClick={(e) => {
@@ -1021,6 +1082,57 @@ export default function PostReports() {
     }
   };
 
+  // Unlike delete, a failed folder rename blocks the tracker update instead
+  // of being best-effort: if the on-disk copy+remove fails partway or can't
+  // run at all (no rootHandle), updating scene.scene anyway would make every
+  // future folder-path computation for this scene point at a name that
+  // doesn't match what's actually on disk — worse than just leaving both
+  // sides alone until the user retries. Returns { ok } so the SceneGroup
+  // input knows whether to close (success) or stay open with the error
+  // banner visible (failure).
+  const renameScene = async (scene, rawNewNumber) => {
+    const newNumber = padScene(rawNewNumber);
+    if (!newNumber || newNumber === scene.scene) return { ok: true };
+
+    if (scenes.some((s) => s.id !== scene.id && padScene(s.scene) === newNumber)) {
+      setFolderError(`SC${newNumber} is already in use by another scene — pick a different number.`);
+      return { ok: false };
+    }
+
+    const hasOnDiskFolder = Boolean(
+      scene.folderCreatedAt || shots.some((s) => s.sceneId === scene.id && s.foldersCreatedAt)
+    );
+
+    if (hasOnDiskFolder) {
+      if (!rootHandle) {
+        setFolderError(`Can't rename SC${scene.scene}'s folder to SC${newNumber} — reconnect the project folder first.`);
+        return { ok: false };
+      }
+      try {
+        const ok = await ensurePermission(rootHandle);
+        if (!ok) {
+          setFolderError(`Couldn't get permission to rename SC${scene.scene}'s folder.`);
+          return { ok: false };
+        }
+        await renameSceneFolder(rootHandle, { oldScene: padScene(scene.scene), newScene: newNumber });
+        setFolderError("");
+      } catch (err) {
+        console.error("Couldn't rename scene folder:", err);
+        setFolderError(`SC${scene.scene}'s folder couldn't be renamed on disk — check it manually before retrying.`);
+        return { ok: false };
+      }
+    }
+
+    // Every shot's `scene` field is a denormalized copy of its parent's
+    // number (see blankShot) — Shot Board/Dashboard/Artist views read it
+    // directly rather than joining against the scenes list, so it has to be
+    // cascaded here or their folder-path computations would keep pointing at
+    // the old, now-renamed-away folder name.
+    setScenes((prev) => prev.map((s) => (s.id === scene.id ? { ...s, scene: newNumber } : s)));
+    setShots((prev) => prev.map((s) => (s.sceneId === scene.id ? { ...s, scene: newNumber } : s)));
+    return { ok: true };
+  };
+
   const scenesById = useMemo(() => Object.fromEntries(scenes.map((sc) => [sc.id, sc])), [scenes]);
 
   const shotsByScene = useMemo(() => {
@@ -1242,6 +1354,7 @@ export default function PostReports() {
                   onToggleExpand={() => toggleSceneExpanded(scene.id)}
                   onUpdateScene={(patch) => updateScene(scene.id, patch)}
                   onDeleteScene={() => removeScene(scene)}
+                  onRenameScene={(newNumber) => renameScene(scene, newNumber)}
                   onAddShot={() => addShotToScene(scene)}
                   editingIds={editingIds}
                   toggleEditing={toggleEditing}

@@ -453,6 +453,12 @@
   color: var(--text-primary);
 }
 
+.post-scene-number-input {
+  width: 90px;
+  background: var(--card-bg);
+  border-color: var(--border-soft);
+}
+
 .post-scene-delete-btn {
   margin-left: auto;
 }
