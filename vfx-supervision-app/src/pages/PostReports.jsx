@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import sfxLogo from "../../logo/SuperiorFX_logo_003.jpg";
 import { CheckIcon, ComplexityDots, PencilIcon } from "../components/SceneVfxFields.jsx";
 import { STORY_IMPORTANCE_LEVELS } from "../data/importance.js";
 import { POST_TASK_TYPES } from "../data/postTasks.js";
 import { taskStatusInfo } from "../data/taskStatus.js";
 import { COMPLEXITY_LEVELS } from "../data/vfxEffects.js";
-import { downloadCsv } from "../lib/csv.js";
 import { buildFolderPath, buildSceneFolderPath, padScene } from "../lib/folderPath.js";
 import {
   addTaskFolder,
@@ -24,6 +24,7 @@ import { sortByShotCode } from "../lib/sortShots.js";
 import { assigneeRows, assigneesLabel, getAssignees, renameAssigneeOnTask } from "../lib/taskAssignees.js";
 import { useEnterKey } from "../lib/useEnterKey.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
+import { BRAND } from "../lib/brandColors.js";
 import ArtistDirectory, { artistDepartments } from "./postReports/ArtistDirectory.jsx";
 import "./PostReports.css";
 
@@ -80,7 +81,7 @@ function blankShot(sceneId, sceneNumber) {
     // creation time so Shot Board / Shot Detail (which read shot.scene
     // directly and aren't part of this pass) keep working unchanged.
     scene: sceneNumber,
-    shotCode: "NEW_SHOT",
+    shotCode: "",
     pipeline: "traditional",
     scriptDescription: "",
     internalDescription: "",
@@ -434,11 +435,12 @@ function ShotCard({
           {isEditing ? (
             <input
               className="report-edit-input mono"
+              placeholder="NEW_SHOT"
               value={shot.shotCode}
               onChange={(e) => update({ shotCode: e.target.value })}
             />
           ) : (
-            <span className="report-shot-code">{shot.shotCode}</span>
+            <span className="report-shot-code">{shot.shotCode || "Unnamed Shot"}</span>
           )}
           {isEditing ? (
             <div className="post-shot-description-fields">
@@ -1047,23 +1049,41 @@ export default function PostReports() {
   const expectsFolder = scenes.some((s) => s.folderCreatedAt) || shots.some((s) => s.foldersCreatedAt);
   const folderDisconnected = supported && expectsFolder && !rootHandle;
 
-  // One row per shot, in the same scene/shot order shown on screen. A CSV
-  // (not an .xlsx) so it opens with no library or backend involved — Google
-  // Sheets opens/imports it natively, same as Excel or Numbers.
-  const exportShotListCsv = () => {
-    const header = [
-      "Scene",
-      "Shot Code",
-      "Priority",
-      "Story Importance",
-      "Complexity",
-      "Pipeline",
-      "Pushed to Post",
-      "Due Date",
-      "Script Description",
-      "Internal Description",
-      "Folder Created",
-      "Tasks",
+  // Level-scale columns (Story Importance/Complexity) and the Due Date
+  // column each get their own tier, independent of one another — same
+  // thresholds computeImportance uses (>=4 high, ==3 medium), just applied
+  // per-column instead of collapsed into one combined signal, so a shot that's
+  // simple-but-story-critical (or vice versa) still shows which dimension is
+  // driving attention.
+  const tierFromLevel = (level) => (level >= 4 ? "high" : level === 3 ? "medium" : null);
+  const tierFromDueDate = (dueDate) => {
+    if (!dueDate) return null;
+    const days = (new Date(dueDate).getTime() - Date.now()) / 86400000;
+    if (days <= 3) return "high";
+    if (days <= 7) return "medium";
+    return null;
+  };
+
+  // One row per shot, in the same scene/shot order shown on screen. A real
+  // .xlsx (not CSV) — cell colors and the branded header banner need actual
+  // formatting data that plain CSV can't carry, so they're baked in here
+  // instead of depending on someone manually setting up conditional
+  // formatting in the destination sheet. Opens directly in Excel, Numbers,
+  // or Google Sheets (upload to Drive, or File > Import).
+  const exportShotListXlsx = async () => {
+    const columns = [
+      { header: "Scene", width: 10 },
+      { header: "Shot Code", width: 14 },
+      { header: "Priority", width: 10 },
+      { header: "Story Importance", width: 16 },
+      { header: "Complexity", width: 12 },
+      { header: "Pipeline", width: 12 },
+      { header: "Pushed to Post", width: 14 },
+      { header: "Due Date", width: 12 },
+      { header: "Script Description", width: 30 },
+      { header: "Internal Description", width: 30 },
+      { header: "Folder Created", width: 14 },
+      { header: "Tasks", width: 40 },
     ];
 
     const shotToRow = (shot) => {
@@ -1091,39 +1111,42 @@ export default function PostReports() {
       ];
     };
 
-    const rows = [header];
+    const rows = [];
     for (const scene of orderedScenes) {
       for (const shot of shotsByScene.get(scene.id) ?? []) rows.push(shotToRow(shot));
     }
     for (const shot of ungroupedShots) rows.push(shotToRow(shot));
 
-    // Plain CSV can't carry cell colors itself — the color coding lives in
-    // conditional-formatting rules set up once directly in Sheets (on the
-    // Story Importance/Complexity/Due Date columns), which keep applying
-    // across future re-imports. This legend just documents those thresholds
-    // so anyone opening the sheet knows what the colors mean without having
-    // to go find the rules. Written into column N+ (leaving M as a blank
-    // gutter) alongside the header/first few rows, so it never lands inside
-    // the A–L data range those conditional-format rules watch.
-    const legendLines = [
-      "Legend — conditional formatting thresholds (set up once in Sheets):",
-      "Red = Story Importance/Complexity is High/Hero or Pivotal/Critical, or Due Date is ≤3 days away",
-      "Orange = Medium, or Due Date is 4–7 days away",
-      "No fill = Low/Minimal/Minor/Supporting, or no near-term due date",
-    ];
-    // A fixed number, not re-read from header.length inside the loop below —
-    // rows[0] IS the header array (same reference, not a copy), so comparing
-    // against header.length while padding/pushing onto rows[0] would grow
-    // both sides together and loop forever.
-    const legendColumn = header.length + 1;
-    legendLines.forEach((text, i) => {
-      if (!rows[i]) rows[i] = [];
-      while (rows[i].length < legendColumn) rows[i].push("");
-      rows[i].push(text);
-    });
+    const cellTier = (rowData, colIdx) => {
+      if (colIdx === 3) return tierFromLevel(STORY_IMPORTANCE_LEVELS.indexOf(rowData[3]) + 1);
+      if (colIdx === 4) return tierFromLevel(COMPLEXITY_LEVELS.indexOf(rowData[4]) + 1);
+      if (colIdx === 7) return tierFromDueDate(rowData[7]);
+      return null;
+    };
 
     const showCode = project?.showCode || "vfx-supe";
-    downloadCsv(`${showCode}_shot-list_${new Date().toISOString().slice(0, 10)}.csv`, rows);
+    const logoBuffer = await fetch(sfxLogo).then((res) => res.arrayBuffer());
+    // Dynamic import: exceljs is a real ~1MB dependency (needed for actual
+    // cell fills/branding, which plain CSV can't carry) — loading it only
+    // when someone clicks Export keeps it out of everyone else's initial
+    // bundle instead of shipping it on every page load.
+    const { downloadStyledWorkbook } = await import("../lib/xlsx.js");
+
+    await downloadStyledWorkbook({
+      filename: `${showCode}_shot-list_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      sheetName: "Shot List",
+      title: `${project?.name || showCode} — Shot List`,
+      subtitle: `Exported ${new Date().toLocaleDateString()} — Superior-FX VFX Supervision`,
+      columns,
+      rows,
+      cellTier,
+      legend: [
+        { color: BRAND.redSoft, text: "High complexity/importance, or due ≤3 days away" },
+        { color: BRAND.orangeSoft, text: "Medium complexity/importance, or due 4–7 days away" },
+        { color: null, text: "No fill = Low/normal, or no near-term due date" },
+      ],
+      logoBuffer,
+    });
   };
 
   return (
@@ -1143,7 +1166,11 @@ export default function PostReports() {
               </span>
             )}
             {tab === "Shots" && (scenes.length > 0 || shots.length > 0) && (
-              <span className="btn btn-secondary post-export-csv-btn" onClick={exportShotListCsv} title="Downloads a .csv — open it directly in Google Sheets">
+              <span
+                className="btn btn-secondary post-export-csv-btn"
+                onClick={exportShotListXlsx}
+                title="Downloads a styled .xlsx — open in Excel, Numbers, or upload to Google Drive to view as a Sheet"
+              >
                 Export to Spreadsheet…
               </span>
             )}
