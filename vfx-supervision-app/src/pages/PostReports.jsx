@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import sfxLogo from "../../logo/SuperiorFX_logo_003.jpg";
 import { CheckIcon, ComplexityDots, PencilIcon } from "../components/SceneVfxFields.jsx";
 import { STORY_IMPORTANCE_LEVELS } from "../data/importance.js";
@@ -114,6 +115,7 @@ function renameAssigneeInShots(shotList, oldName, newName) {
 }
 
 function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
+  const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const status = taskStatusInfo(task.status);
@@ -148,6 +150,9 @@ function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
         <span className="post-task-assignee mono">{assigneesLabel(task)}</span>
         {task.status === "pending" && (
           <div className="post-task-review-actions">
+            <span className="post-task-review-link" onClick={() => navigate(`/review?task=${task.id}`)}>
+              Review →
+            </span>
             <span className="btn btn-danger post-task-review-btn" onClick={() => onChange({ status: "needs_revision" })}>
               Revise
             </span>

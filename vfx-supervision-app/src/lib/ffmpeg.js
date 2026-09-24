@@ -57,3 +57,39 @@ export async function generateThumbnail(file, { onProgress } = {}) {
 
   return bytesToDataUrl(data, "image/jpeg");
 }
+
+// Transcodes an uploaded video down to a small, universally-playable h.264
+// mp4 for supervisor review — 1280px wide (height kept even, required by
+// libx264 4:2:0), 24fps, CRF 23. Returns a Blob (never a data: URL — a
+// review proxy easily runs tens of MB, far past what localStorage can
+// hold, so it's written straight to disk by the caller instead).
+export async function generateReviewProxy(file, { onProgress } = {}) {
+  onProgress?.("Loading ffmpeg…");
+  const { fetchFile } = await import("@ffmpeg/util");
+  const ffmpeg = await getFFmpeg();
+
+  const inputName = `input.${extensionOf(file)}`;
+  const outputName = "proxy.mp4";
+
+  await ffmpeg.writeFile(inputName, await fetchFile(file));
+
+  onProgress?.("Encoding review proxy…");
+  await ffmpeg.exec([
+    "-i", inputName,
+    "-vf", "scale=1280:-2",
+    "-r", "24",
+    "-c:v", "libx264",
+    "-crf", "23",
+    "-preset", "veryfast",
+    "-pix_fmt", "yuv420p",
+    "-c:a", "aac",
+    "-movflags", "+faststart",
+    outputName,
+  ]);
+
+  const data = await ffmpeg.readFile(outputName);
+  await ffmpeg.deleteFile(inputName).catch(() => {});
+  await ffmpeg.deleteFile(outputName).catch(() => {});
+
+  return new Blob([data.buffer], { type: "video/mp4" });
+}

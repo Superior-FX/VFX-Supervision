@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { resolveCurrentArtist } from "../lib/currentArtist.js";
+import { generateReviewProxy } from "../lib/ffmpeg.js";
 import { buildTaskUploadPath, padScene } from "../lib/folderPath.js";
 import {
   copyFileInto,
   ensurePermission,
+  getTaskReviewFolder,
   getTaskUploadFolder,
   isFsAccessSupported,
   loadRootHandle,
@@ -46,7 +48,12 @@ export default function Upload() {
   const [confirmation, setConfirmation] = useState(null);
   const [rootHandle, setRootHandle] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadStage, setUploadStage] = useState("");
   const [uploadError, setUploadError] = useState("");
+  // Filename of the review proxy generated for this submission's video, if
+  // any — sequence-only submissions never get one, and Review & Dailies
+  // just shows "no proxy" for those tasks.
+  const [reviewFileName, setReviewFileName] = useState(null);
   const supported = isFsAccessSupported();
 
   const currentArtist = resolveCurrentArtist(artists);
@@ -86,6 +93,7 @@ export default function Upload() {
     setSelectedFiles([]);
     setNote("");
     setUploadError("");
+    setReviewFileName(null);
   };
 
   // Choosing a shot or task invalidates whatever was picked downstream of
@@ -95,12 +103,14 @@ export default function Upload() {
     setSelectedTaskId("");
     setSelectedFiles([]);
     setUploadError("");
+    setReviewFileName(null);
   };
 
   const chooseTask = (id) => {
     setSelectedTaskId(id);
     setSelectedFiles([]);
     setUploadError("");
+    setReviewFileName(null);
   };
 
   const resolveDestination = async () => {
@@ -124,8 +134,28 @@ export default function Upload() {
       const destDir = await resolveDestination();
       const file = await pickVideoFile(destDir);
       setUploading(true);
+      setUploadStage("Uploading…");
       await copyFileInto(destDir, file.name, file);
       setSelectedFiles((prev) => [...prev, { id: crypto.randomUUID(), name: file.name, kind: "video", size: file.size }]);
+
+      // Best-effort: a review proxy makes Review & Dailies usable, but its
+      // failure (e.g. an exotic codec ffmpeg.wasm can't decode) shouldn't
+      // block the actual submitted file from having been uploaded above.
+      try {
+        const proxyBlob = await generateReviewProxy(file, { onProgress: setUploadStage });
+        const reviewDir = await getTaskReviewFolder(rootHandle, {
+          scene: padScene(selectedShot.scene),
+          shotCode: selectedShot.shotCode,
+          taskType: selectedTask.type,
+        });
+        if (reviewDir) {
+          const proxyName = `${file.name.replace(/\.[^.]+$/, "")}_proxy.mp4`;
+          await copyFileInto(reviewDir, proxyName, proxyBlob);
+          setReviewFileName(proxyName);
+        }
+      } catch (proxyErr) {
+        console.error("Review proxy generation failed:", proxyErr);
+      }
     } catch (err) {
       if (err?.name !== "AbortError") {
         console.error("Video upload failed:", err);
@@ -133,6 +163,7 @@ export default function Upload() {
       }
     } finally {
       setUploading(false);
+      setUploadStage("");
     }
   };
 
@@ -187,7 +218,21 @@ export default function Upload() {
     setPostReports((prev) =>
       prev.map((s) =>
         s.id === selectedShot.id
-          ? { ...s, tasks: s.tasks.map((t) => (t.id === selectedTask.id ? { ...t, status: "pending" } : t)) }
+          ? {
+              ...s,
+              tasks: s.tasks.map((t) =>
+                t.id === selectedTask.id
+                  ? {
+                      ...t,
+                      status: "pending",
+                      versionNote: note.trim() || undefined,
+                      // Keep the previous proxy if this submission was
+                      // sequence-only (no new video, so nothing to replace it).
+                      reviewFile: reviewFileName ?? t.reviewFile,
+                    }
+                  : t
+              ),
+            }
           : s
       )
     );
@@ -268,7 +313,7 @@ export default function Upload() {
                   </span>
                 </div>
               )}
-              {uploading && <span className="label">Uploading…</span>}
+              {uploading && <span className="label">{uploadStage || "Uploading…"}</span>}
               {uploadError && <span className="upload-error">{uploadError}</span>}
 
               <span className="label">Selected files</span>

@@ -225,6 +225,29 @@ export async function getTaskUploadFolder(rootHandle, { scene, shotCode, taskTyp
   return subdir(taskDir, "render");
 }
 
+// Resolves the folder a task's review proxy should land in —
+// 03_review/<slug>/, alongside (but separate from) 02_tasks/<slug>/render/,
+// so dailies review never mixes proxies in with submitted source output.
+// Same null-for-unknown-type and throw-if-shot-missing behavior as
+// getTaskUploadFolder.
+export async function getTaskReviewFolder(rootHandle, { scene, shotCode, taskType }) {
+  const sceneName = `SC${scene}`;
+  const sceneDir = await rootHandle.getDirectoryHandle(sceneName);
+  const shotDir = await sceneDir.getDirectoryHandle(shotCode);
+  const slug = taskFolderSlug(taskType);
+  if (!slug) return null;
+  const reviewDir = await subdir(shotDir, "03_review");
+  return subdir(reviewDir, slug);
+}
+
+// Reads back a single file from a directory handle as a real File — used to
+// pull a review proxy off disk for playback (an object URL is then made
+// from the result).
+export async function readFileFrom(dirHandle, name) {
+  const fileHandle = await dirHandle.getFileHandle(name);
+  return fileHandle.getFile();
+}
+
 // Copies one real File (e.g. from an <input>/showOpenFilePicker result)
 // into destDir under the given name.
 export async function copyFileInto(destDir, name, file) {

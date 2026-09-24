@@ -136,6 +136,14 @@ export default function ShotBoard() {
                                 </span>
                                 <span className="board-card-meta">{assigneeSummary(task)}</span>
                                 {uploadPath && <span className="board-card-folder-path mono">{uploadPath}</span>}
+                                {task.status === "pending" && (
+                                  <span
+                                    className="board-card-review-link"
+                                    onClick={() => navigate(`/review?task=${task.id}`)}
+                                  >
+                                    Review →
+                                  </span>
+                                )}
                               </div>
                             );
                           })}

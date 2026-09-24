@@ -189,6 +189,17 @@
   white-space: nowrap;
 }
 
+.board-card-review-link {
+  align-self: flex-start;
+  cursor: pointer;
+  font: 700 10px var(--font-body);
+  color: var(--accent);
+}
+
+.board-card-review-link:hover {
+  text-decoration: underline;
+}
+
 .board-column-empty {
   font: 11px var(--font-mono);
   color: var(--text-tertiary);

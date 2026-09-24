@@ -277,6 +277,17 @@
   font-size: 10px;
 }
 
+.post-task-review-link {
+  align-self: center;
+  cursor: pointer;
+  font: 700 10px var(--font-body);
+  color: var(--accent);
+}
+
+.post-task-review-link:hover {
+  text-decoration: underline;
+}
+
 .post-shot-delete-btn {
   color: var(--danger);
   border-color: var(--danger);

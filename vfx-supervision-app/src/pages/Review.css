@@ -19,72 +19,80 @@
   letter-spacing: 0.5px;
 }
 
+.review-empty {
+  padding: 16px;
+  color: var(--text-tertiary);
+  font: 12px var(--font-body);
+}
+
+.review-select {
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font: 12px var(--font-mono);
+  padding: 0 12px;
+}
+
+.review-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.review-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.review-meta-assignee {
+  font: 12px var(--font-body);
+  color: var(--text-tertiary);
+}
+
+.review-video {
+  width: 100%;
+  max-height: 400px;
+  border-radius: 10px;
+  background: #000;
+}
+
 .review-frame {
   height: 300px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-tertiary);
+  text-align: center;
+  padding: 0 24px;
 }
 
 .review-frame span {
   font: 700 13px var(--font-body);
 }
 
-.review-toolbar {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
+.review-version-note {
+  padding: 10px 12px;
+  font: 12px var(--font-body);
+  color: var(--text-primary);
 }
 
-.review-tool {
-  cursor: pointer;
-}
-
-.review-tool.active {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.review-scrub-hint {
-  margin-left: auto;
-  font: 700 12px var(--font-body);
-  color: var(--text-tertiary);
-}
-
-.review-scrubber {
-  height: 26px;
-  position: relative;
-  overflow: hidden;
-}
-
-.review-scrubber-fill {
-  position: absolute;
-  inset: 0;
-  width: 38%;
-  background: var(--accent-soft);
-  border-right: 1.5px solid var(--accent);
-}
-
-.filmstrip {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-}
-
-.filmstrip-frame {
-  width: 76px;
-  height: 52px;
-  flex: none;
-  border-radius: 5px;
-  background: var(--surface);
+.review-note textarea {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  border-radius: 8px;
   border: 1px solid var(--border);
-  cursor: pointer;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font: 12px var(--font-body);
+  padding: 10px 12px;
 }
 
-.filmstrip-frame.active {
-  border-color: var(--accent-border);
+.review-note textarea:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 .review-actions {
