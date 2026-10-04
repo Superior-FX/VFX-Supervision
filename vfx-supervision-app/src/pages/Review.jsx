@@ -1,28 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import FolderStatusBanner from "../components/FolderStatusBanner.jsx";
 import { assigneesLabel } from "../lib/taskAssignees.js";
 import { padScene } from "../lib/folderPath.js";
-import { formatVersion, getTaskReviewFolder, loadRootHandle, readFileFrom } from "../lib/fsAccess.js";
+import { formatVersion, getTaskReviewFolder, readFileFrom } from "../lib/fsAccess.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { sortByDueComplexityName } from "../lib/sortShots.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
+import { useProjectFolder } from "../lib/useProjectFolder.js";
 import "./Review.css";
 
 export default function Review() {
   const project = useActiveProject();
   const [searchParams, setSearchParams] = useSearchParams();
   const [postReports, setPostReports] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
-  const [rootHandle, setRootHandle] = useState(null);
+  const folder = useProjectFolder(project);
+  const rootHandle = folder.rootHandle;
   const [supNote, setSupNote] = useState("");
   const [videoUrl, setVideoUrl] = useState(null);
   const [videoError, setVideoError] = useState("");
 
-  useEffect(() => {
-    if (!project) return;
-    loadRootHandle(project.id)
-      .then(setRootHandle)
-      .catch(() => {});
-  }, [project]);
 
   // Every task still awaiting a supervisor call, one row per task (same
   // shape as Shot Board's cards) — this page's real unit is a task, not a
@@ -48,7 +45,15 @@ export default function Review() {
   useEffect(() => {
     setVideoUrl(null);
     setVideoError("");
-    if (!current || !rootHandle || !current.task.reviewFile) return;
+    if (!current || !current.task.reviewFile) return;
+    if (folder.status !== "connected") {
+      // The banner above explains why and has the fix; once it's applied,
+      // status flips and this effect re-runs.
+      if (folder.status === "missing" || folder.status === "needs-permission") {
+        setVideoError("Can't play the proxy until the project folder is connected — see above.");
+      }
+      return;
+    }
     let cancelled = false;
     let objectUrl = null;
     (async () => {
@@ -74,7 +79,7 @@ export default function Review() {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [current?.task.id, current?.task.reviewFile, rootHandle]);
+  }, [current?.task.id, current?.task.reviewFile, rootHandle, folder.status]);
 
   const chooseTask = (taskId) => {
     setSearchParams(taskId ? { task: taskId } : {});
@@ -107,6 +112,13 @@ export default function Review() {
         <span className="review-title">REVIEW &amp; DAILIES</span>
         <span className="pill">{queue.length} pending</span>
       </div>
+
+      <FolderStatusBanner
+        folder={folder}
+        show={queue.some(({ task }) => task.reviewFile)}
+        showCode={project?.showCode}
+        impact="review proxies can't be played"
+      />
 
       {queue.length === 0 && (
         <div className="card review-empty">Nothing waiting on supervisor review right now.</div>

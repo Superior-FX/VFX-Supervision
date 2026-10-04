@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import sfxLogo from "../../logo/SuperiorFX_logo_003.jpg";
+import FolderStatusBanner from "../components/FolderStatusBanner.jsx";
 import { CheckIcon, ComplexityDots, PencilIcon } from "../components/SceneVfxFields.jsx";
 import { STORY_IMPORTANCE_LEVELS } from "../data/importance.js";
 import { POST_TASK_TYPES } from "../data/postTasks.js";
@@ -13,7 +14,6 @@ import {
   createShotFolders,
   ensurePermission,
   isFsAccessSupported,
-  loadRootHandle,
   moveSceneFolderToDeleted,
   moveShotFolderToDeleted,
   pickProjectRootFolder,
@@ -26,6 +26,7 @@ import { sortByShotCode } from "../lib/sortShots.js";
 import { assigneeRows, assigneesLabel, getAssignees, renameAssigneeOnTask } from "../lib/taskAssignees.js";
 import { useEnterKey } from "../lib/useEnterKey.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
+import { useProjectFolder } from "../lib/useProjectFolder.js";
 import { BRAND } from "../lib/brandColors.js";
 import ArtistDirectory, { artistDepartments } from "./postReports/ArtistDirectory.jsx";
 import "./PostReports.css";
@@ -917,23 +918,17 @@ export default function PostReports() {
   const [expandedSceneIds, setExpandedSceneIds] = useState([]);
   const [expandedShotIds, setExpandedShotIds] = useState([]);
   const [addingScene, setAddingScene] = useState(false);
-  const [rootHandle, setRootHandle] = useState(null);
+  const folder = useProjectFolder(project);
+  const rootHandle = folder.rootHandle;
   const [folderError, setFolderError] = useState("");
   const [tab, setTab] = useState(TABS[0]);
   const supported = isFsAccessSupported();
   const isAdmin = CURRENT_ROLE === "Admin";
 
-  useEffect(() => {
-    if (!project) return;
-    loadRootHandle(project.id)
-      .then(setRootHandle)
-      .catch(() => {});
-  }, [project]);
-
   const pickFolder = async () => {
     try {
       const handle = await pickProjectRootFolder(project.id, project.showCode);
-      setRootHandle(handle);
+      folder.adoptHandle(handle);
       setFolderError("");
     } catch (err) {
       if (err?.name !== "AbortError") setFolderError("Couldn't get folder access — try again.");
@@ -1164,7 +1159,6 @@ export default function PostReports() {
   // of reaching disk — so this needs to be obvious the moment the page
   // loads, not discovered later when a delete "doesn't seem to have worked."
   const expectsFolder = scenes.some((s) => s.folderCreatedAt) || shots.some((s) => s.foldersCreatedAt);
-  const folderDisconnected = supported && expectsFolder && !rootHandle;
 
   // Level-scale columns (Story Importance/Complexity) and the Due Date
   // column each get their own tier, independent of one another — same
@@ -1272,7 +1266,10 @@ export default function PostReports() {
         <div className="post-reports-header-top">
           <span className="post-reports-title">POST REPORTS</span>
           <div className="post-reports-header-actions">
-            {tab === "Shots" && supported && !rootHandle && (
+            {/* First-time setup only — once folders exist on disk, the
+                banner's Reconnect (which never creates a new show folder)
+                is the way back. */}
+            {tab === "Shots" && supported && !rootHandle && !expectsFolder && folder.status !== "loading" && (
               <span className="btn btn-secondary" onClick={pickFolder}>
                 Choose Destination Folder…
               </span>
@@ -1311,17 +1308,12 @@ export default function PostReports() {
         </div>
       </div>
 
-      {folderDisconnected && (
-        <div className="card post-reports-folder-disconnected">
-          <span>
-            Project folder isn't connected this session — folders already on disk won't be created, updated, or
-            moved into zzz_DELETED until you reconnect it.
-          </span>
-          <span className="btn btn-secondary" onClick={pickFolder}>
-            Reconnect Folder…
-          </span>
-        </div>
-      )}
+      <FolderStatusBanner
+        folder={folder}
+        show={expectsFolder}
+        showCode={project?.showCode}
+        impact="scene and shot folders won't be created, renamed, or moved into zzz_DELETED"
+      />
 
       {tab === "Artists" ? (
         <ArtistDirectory isAdmin={isAdmin} onRenameArtist={renameArtistEverywhere} />

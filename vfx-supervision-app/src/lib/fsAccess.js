@@ -83,6 +83,30 @@ export async function pickProjectRootFolder(projectId, folderName) {
   return createProjectRootFolder(projectId, destinationHandle, folderName);
 }
 
+// Reconnects a project to folders that already exist on disk (after a
+// browser-profile switch, a backup import, cleared site data…). Unlike
+// pickProjectRootFolder this never creates anything: either the show folder
+// itself or the folder containing it can be picked, and if neither holds a
+// folder by that name it fails instead of starting an empty new one.
+export async function reconnectProjectRootFolder(projectId, folderName) {
+  const picked = await window.showDirectoryPicker({ mode: "readwrite" });
+  let root = picked.name.toLowerCase() === folderName.toLowerCase() ? picked : null;
+  if (!root) {
+    try {
+      root = await picked.getDirectoryHandle(folderName);
+    } catch (err) {
+      if (err?.name !== "NotFoundError" && err?.name !== "TypeMismatchError") throw err;
+    }
+  }
+  if (!root) {
+    throw new Error(
+      `There's no "${folderName}" folder there — pick the ${folderName} folder itself, or the folder it's in.`
+    );
+  }
+  await saveRootHandle(projectId, root);
+  return root;
+}
+
 export async function ensurePermission(handle) {
   if (!handle) return false;
   const opts = { mode: "readwrite" };

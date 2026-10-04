@@ -26,3 +26,4 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-09-20T01:36:30-05:00 — **Will Cox** (Atom-Smasher) — `0b8ef69` Add scene rename with automatic on-disk folder rename
 - 2026-09-24T01:57:12-05:00 — **Will Cox** (Atom-Smasher) — `4c6ca56` Wire up ffmpeg review-proxy pipeline and live Review & Dailies
 - 2026-10-03T22:36:38-05:00 — **Will Cox** (Atom-Smasher) — `3d7b0ef` Upload Shot: versioning, sequence proxies, progress bar, undo on disk
+- 2026-10-04T01:17:25-05:00 — **Will Cox** (Atom-Smasher) — `bb6f212` Upload Shot: version proxies only, vid/seq suffix, ffmpeg crash recovery

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import FolderStatusBanner from "../components/FolderStatusBanner.jsx";
 import { resolveCurrentArtist } from "../lib/currentArtist.js";
 import { generateReviewProxy, generateSequenceReviewProxy, isProxyableFrame } from "../lib/ffmpeg.js";
 import { buildTaskReviewPath, buildTaskUploadPath, padScene } from "../lib/folderPath.js";
@@ -11,7 +12,6 @@ import {
   getTaskUploadFolder,
   isFsAccessSupported,
   latestProxyVersionIn,
-  loadRootHandle,
   pickSequenceFolder,
   pickVideoFile,
   readFolderFiles,
@@ -21,6 +21,7 @@ import { groupSequenceFiles } from "../lib/sequenceGrouping.js";
 import { sortByDueComplexityName } from "../lib/sortShots.js";
 import { hasAssignee } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
+import { useProjectFolder } from "../lib/useProjectFolder.js";
 import "./Upload.css";
 
 function FileIcon() {
@@ -61,7 +62,8 @@ export default function Upload() {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [note, setNote] = useState("");
   const [confirmation, setConfirmation] = useState(null);
-  const [rootHandle, setRootHandle] = useState(null);
+  const folder = useProjectFolder(project);
+  const rootHandle = folder.rootHandle;
   const [uploading, setUploading] = useState(false);
   const [uploadStage, setUploadStage] = useState("");
   // 0..1 for the current stage, or null when its length is unknown
@@ -93,12 +95,6 @@ export default function Upload() {
   const currentArtist = resolveCurrentArtist(artists);
   const myTask = (t) => hasAssignee(t, currentArtist?.name);
 
-  useEffect(() => {
-    if (!project) return;
-    loadRootHandle(project.id)
-      .then(setRootHandle)
-      .catch(() => {});
-  }, [project]);
 
   // Same "what's actually actionable right now" scoping as before: only
   // shots where this artist has a task in wip show up at all.
@@ -488,6 +484,12 @@ export default function Upload() {
         {currentArtist && <span className="pill pill-accent">{currentArtist.name}</span>}
       </div>
       {confirmation && <div className="upload-confirmation">{confirmation}</div>}
+      <FolderStatusBanner
+        folder={folder}
+        show={myShots.some((s) => s.foldersCreatedAt)}
+        showCode={project?.showCode}
+        impact="renders and review proxies can't be uploaded"
+      />
 
       {!currentArtist && (
         <div className="card upload-no-artist-hint">
@@ -603,7 +605,7 @@ export default function Upload() {
                 <span className="label upload-hint">Automatic uploads need Chrome or Edge.</span>
               ) : !rootHandle ? (
                 <span className="label upload-hint">
-                  No project folder set — ask an Admin to grant one in Post Reports.
+                  The project folder isn't connected — reconnect it above to upload.
                 </span>
               ) : !selectedShot.foldersCreatedAt ? (
                 <span className="label upload-hint">
