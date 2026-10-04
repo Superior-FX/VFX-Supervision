@@ -262,3 +262,8 @@
   cursor: default;
   pointer-events: none;
 }
+
+.upload-proxy-warning {
+  font: 12px var(--font-body);
+  color: var(--warning);
+}

@@ -4,21 +4,60 @@
 const CORE_BASE_URL = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm";
 
 let ffmpegPromise = null;
+// Core downloaded once per page load — instances get recycled (see
+// resetFFmpeg), and re-fetching the ~30MB wasm each time would be slow.
+let coreUrlsPromise = null;
+
+function getCoreUrls() {
+  if (!coreUrlsPromise) {
+    coreUrlsPromise = (async () => {
+      const { toBlobURL } = await import("@ffmpeg/util");
+      return {
+        coreURL: await toBlobURL(`${CORE_BASE_URL}/ffmpeg-core.js`, "text/javascript"),
+        wasmURL: await toBlobURL(`${CORE_BASE_URL}/ffmpeg-core.wasm`, "application/wasm"),
+      };
+    })();
+    coreUrlsPromise.catch(() => {
+      coreUrlsPromise = null;
+    });
+  }
+  return coreUrlsPromise;
+}
 
 async function getFFmpeg() {
   if (!ffmpegPromise) {
     ffmpegPromise = (async () => {
       const { FFmpeg } = await import("@ffmpeg/ffmpeg");
-      const { toBlobURL } = await import("@ffmpeg/util");
       const ffmpeg = new FFmpeg();
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${CORE_BASE_URL}/ffmpeg-core.js`, "text/javascript"),
-        wasmURL: await toBlobURL(`${CORE_BASE_URL}/ffmpeg-core.wasm`, "application/wasm"),
-      });
+      await ffmpeg.load(await getCoreUrls());
       return ffmpeg;
     })();
+    ffmpegPromise.catch(() => {
+      ffmpegPromise = null;
+    });
   }
   return ffmpegPromise;
+}
+
+// Throws away the current instance (and all its in-memory files) so the
+// next getFFmpeg() starts on a fresh heap. Needed after a crash — a wasm
+// instance that hit "memory access out of bounds" stays broken, so every
+// later call would fail the same way — and periodically during long
+// sequences so memory can't build up.
+async function resetFFmpeg() {
+  const current = ffmpegPromise;
+  ffmpegPromise = null;
+  if (!current) return;
+  try {
+    (await current).terminate();
+  } catch {
+    // already dead — nothing to clean up
+  }
+}
+
+function isWasmCrash(err) {
+  const msg = String(err?.message ?? err);
+  return /memory access out of bounds|out of memory|RuntimeError|unreachable|Aborted/i.test(msg);
 }
 
 function bytesToDataUrl(bytes, mime) {
@@ -81,7 +120,20 @@ async function execWithProgress(ffmpeg, args, onFraction) {
 // libx264 4:2:0), 24fps, CRF 23. Returns a Blob (never a data: URL — a
 // review proxy easily runs tens of MB, far past what localStorage can
 // hold, so it's written straight to disk by the caller instead).
-export async function generateReviewProxy(file, { onProgress } = {}) {
+export async function generateReviewProxy(file, opts = {}) {
+  try {
+    return await transcodeReviewProxy(file, opts);
+  } catch (err) {
+    // A crashed instance stays broken — drop it so the next upload works.
+    if (isWasmCrash(err)) {
+      await resetFFmpeg();
+      throw new Error(`ffmpeg ran out of memory transcoding this video — it may be too large for the in-browser encoder (${err.message})`);
+    }
+    throw err;
+  }
+}
+
+async function transcodeReviewProxy(file, { onProgress } = {}) {
   onProgress?.("Loading ffmpeg…");
   const { fetchFile } = await import("@ffmpeg/util");
   const ffmpeg = await getFFmpeg();
@@ -120,36 +172,77 @@ export function isProxyableFrame(file) {
 }
 
 // Builds the same 1280px / 24fps / h.264 review proxy as generateReviewProxy,
-// but from an image sequence. Frames are downscaled to JPEG one at a time
-// (and the full-res source deleted from ffmpeg's in-memory FS right away)
-// before the encode — writing a whole EXR/DPX sequence into wasm memory up
-// front would blow past its ~2GB heap on any real-length shot. Renumbering
-// to 1..N on the way also makes gaps/odd start frames a non-issue.
+// but from an image sequence. Nothing intermediate ever touches disk: each
+// frame is downscaled to a small JPEG inside ffmpeg's in-memory FS and
+// pulled straight back out into JS memory (the full-res source is dropped
+// immediately), then all the JPEGs are encoded together and discarded.
+// Renumbering to 1..N on the way also makes gaps/odd start frames a non-issue.
+//
+// ffmpeg.wasm's heap is small and doesn't give memory back, so the instance
+// is recycled every RECYCLE_EVERY_FRAMES frames, and a frame that crashes it
+// ("memory access out of bounds") is retried once on a fresh instance.
+const RECYCLE_EVERY_FRAMES = 40;
+
+async function frameToJpeg(ffmpeg, frame, fetchFile) {
+  const ext = extensionOf(frame);
+  const inputName = `frame_in.${ext}`;
+  const jpgName = "frame_out.jpg";
+  try {
+    await ffmpeg.writeFile(inputName, await fetchFile(frame));
+    // EXR is scene-linear; without a transfer curve it plays back far too dark.
+    const decodeOpts = ext === "exr" ? ["-apply_trc", "iec61966_2_1"] : [];
+    const code = await ffmpeg.exec([...decodeOpts, "-i", inputName, "-vf", "scale=1280:-2", "-q:v", "3", jpgName]);
+    if (code !== 0) throw new Error(`ffmpeg couldn't decode ${frame.name}`);
+    return await ffmpeg.readFile(jpgName);
+  } finally {
+    await ffmpeg.deleteFile(inputName).catch(() => {});
+    await ffmpeg.deleteFile(jpgName).catch(() => {});
+  }
+}
+
 export async function generateSequenceReviewProxy(frames, { onProgress, fps = 24 } = {}) {
   onProgress?.("Loading ffmpeg…");
   const { fetchFile } = await import("@ffmpeg/util");
-  const ffmpeg = await getFFmpeg();
+  // Start clean — an earlier run may have left this instance's heap full.
+  await resetFFmpeg();
+  let ffmpeg = await getFFmpeg();
 
   const sorted = [...frames].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-  const jpgNames = [];
-  const outputName = "proxy.mp4";
+  const jpegs = [];
 
   try {
     for (let i = 0; i < sorted.length; i++) {
       onProgress?.(`Building review proxy… frame ${i + 1}/${sorted.length}`, i / sorted.length);
-      const ext = extensionOf(sorted[i]);
-      const inputName = `frame_in.${ext}`;
-      const jpgName = `frame_${String(i + 1).padStart(5, "0")}.jpg`;
-      await ffmpeg.writeFile(inputName, await fetchFile(sorted[i]));
-      // EXR is scene-linear; without a transfer curve it plays back far too dark.
-      const decodeOpts = ext === "exr" ? ["-apply_trc", "iec61966_2_1"] : [];
-      const code = await ffmpeg.exec([...decodeOpts, "-i", inputName, "-vf", "scale=1280:-2", "-q:v", "3", jpgName]);
-      await ffmpeg.deleteFile(inputName).catch(() => {});
-      if (code !== 0) throw new Error(`ffmpeg couldn't decode ${sorted[i].name}`);
-      jpgNames.push(jpgName);
+      if (i > 0 && i % RECYCLE_EVERY_FRAMES === 0) {
+        await resetFFmpeg();
+        ffmpeg = await getFFmpeg();
+      }
+      try {
+        jpegs.push(await frameToJpeg(ffmpeg, sorted[i], fetchFile));
+      } catch (err) {
+        if (!isWasmCrash(err)) throw err;
+        await resetFFmpeg();
+        ffmpeg = await getFFmpeg();
+        try {
+          jpegs.push(await frameToJpeg(ffmpeg, sorted[i], fetchFile));
+        } catch (retryErr) {
+          if (!isWasmCrash(retryErr)) throw retryErr;
+          throw new Error(
+            `ffmpeg ran out of memory decoding ${sorted[i].name} even on a fresh start — that frame is too large ` +
+              `for the in-browser decoder (very high resolution, or a multi-layer EXR).`
+          );
+        }
+      }
     }
 
+    // Fresh instance for the encode, holding only the small JPEGs.
     onProgress?.("Encoding review proxy…", 0);
+    await resetFFmpeg();
+    ffmpeg = await getFFmpeg();
+    for (let i = 0; i < jpegs.length; i++) {
+      await ffmpeg.writeFile(`frame_${String(i + 1).padStart(5, "0")}.jpg`, jpegs[i]);
+    }
+    jpegs.length = 0;
     const code = await execWithProgress(ffmpeg, [
       "-framerate", String(fps),
       "-i", "frame_%05d.jpg",
@@ -158,14 +251,18 @@ export async function generateSequenceReviewProxy(frames, { onProgress, fps = 24
       "-preset", "veryfast",
       "-pix_fmt", "yuv420p",
       "-movflags", "+faststart",
-      outputName,
+      "proxy.mp4",
     ], (f) => onProgress?.("Encoding review proxy…", f));
     if (code !== 0) throw new Error("ffmpeg couldn't encode the review proxy");
 
-    const data = await ffmpeg.readFile(outputName);
+    const data = await ffmpeg.readFile("proxy.mp4");
     return new Blob([data.buffer], { type: "video/mp4" });
+  } catch (err) {
+    if (isWasmCrash(err)) throw new Error(`ffmpeg ran out of memory building the review proxy (${err.message})`);
+    throw err;
   } finally {
-    for (const name of jpgNames) await ffmpeg.deleteFile(name).catch(() => {});
-    await ffmpeg.deleteFile(outputName).catch(() => {});
+    // Drops every in-memory frame and the encoded mp4 in one go, and leaves
+    // a clean instance for whatever runs next.
+    await resetFFmpeg();
   }
 }

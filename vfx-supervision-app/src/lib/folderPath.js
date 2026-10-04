@@ -37,10 +37,18 @@ export function buildFolderPath({ show, scene, shotCode }) {
 // the artist exactly where a file is headed before/after they pick it,
 // per task. Mirrors the real resolution in getTaskUploadFolder
 // (src/lib/fsAccess.js) but as a plain string, no disk access.
-export function buildTaskUploadPath({ show, scene, shotCode, taskType, version }) {
+export function buildTaskUploadPath({ show, scene, shotCode, taskType }) {
   const base = buildFolderPath({ show, scene, shotCode });
   const slug = taskFolderSlug(taskType);
   if (!base || !slug) return null;
-  const render = `${base}/02_tasks/${slug}/render`;
-  return version ? `${render}/v${String(version).padStart(3, "0")}` : render;
+  return `${base}/02_tasks/${slug}/render`;
+}
+
+// Display-only counterpart for where a task's versioned review proxies
+// land — mirrors getTaskReviewFolder.
+export function buildTaskReviewPath({ show, scene, shotCode, taskType }) {
+  const base = buildFolderPath({ show, scene, shotCode });
+  const slug = taskFolderSlug(taskType);
+  if (!base || !slug) return null;
+  return `${base}/03_review/${slug}`;
 }

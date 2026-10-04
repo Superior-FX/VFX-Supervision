@@ -1,17 +1,16 @@
 import { useEffect, useState } from "react";
 import { resolveCurrentArtist } from "../lib/currentArtist.js";
 import { generateReviewProxy, generateSequenceReviewProxy, isProxyableFrame } from "../lib/ffmpeg.js";
-import { buildTaskUploadPath, padScene } from "../lib/folderPath.js";
+import { buildTaskReviewPath, buildTaskUploadPath, padScene } from "../lib/folderPath.js";
 import {
-  clearDirectory,
   copyFileInto,
   ensurePermission,
+  fileExists,
   formatVersion,
   getTaskReviewFolder,
   getTaskUploadFolder,
-  getVersionFolder,
   isFsAccessSupported,
-  latestVersionIn,
+  latestProxyVersionIn,
   loadRootHandle,
   pickSequenceFolder,
   pickVideoFile,
@@ -53,9 +52,12 @@ export default function Upload() {
   const [artists] = useLocalStorageState("vfx-supe-artists", []);
   const [selectedShotId, setSelectedShotId] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState("");
-  // { id, name, kind: "video" | "sequence" | "file", size?, count?, writtenNames }
-  // — writtenNames is every file actually copied into the version folder
-  // for this entry, so × can delete exactly those.
+  // { id, name, kind: "video" | "sequence" | "file", size?, count?, names,
+  //   createdNames, inPlace }
+  // names: every file this entry covers. createdNames: the ones this
+  // submission newly copied into render/ — the only ones × / Cancel may
+  // delete. A file that replaced an existing one of the same name, or work
+  // picked from inside render/ itself (inPlace), is never deleted.
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [note, setNote] = useState("");
   const [confirmation, setConfirmation] = useState(null);
@@ -66,23 +68,25 @@ export default function Upload() {
   // (indeterminate bar, e.g. while ffmpeg itself is loading).
   const [uploadProgress, setUploadProgress] = useState(null);
   const [uploadError, setUploadError] = useState("");
-  // The review proxy written for this submission, if any: { name, dir,
-  // sourceId } — sourceId is the selectedFiles entry it was made from, so
-  // removing that entry removes the proxy too.
-  const [sessionProxy, setSessionProxy] = useState(null);
-  const reviewFileName = sessionProxy?.name ?? null;
-  // Versioning: each submission lands in render/vNNN/. "up" (the default)
-  // starts a new version; "overwrite" replaces the latest one and needs an
-  // explicit approval click first. Once the first file of a submission is
-  // copied, sessionVersion locks every further upload into that same folder.
+  // Shown when an upload went through but no review proxy came out of it —
+  // otherwise that only ever reached the browser console.
+  const [proxyWarning, setProxyWarning] = useState("");
+  // Review proxies written for this submission: [{ name, sourceId }]. A video
+  // and a sequence each get their own (…_vid_proxy / …_seq_proxy); sourceId
+  // is the selectedFiles entry a proxy was made from, so removing that entry
+  // removes its proxy too. The most recent one is what Review & Dailies plays.
+  const [sessionProxies, setSessionProxies] = useState([]);
+  const reviewFileName = sessionProxies.at(-1)?.name ?? null;
+  // Versioning applies to review proxies only — renders always go straight
+  // into render/. "up" (the default) gives this submission's proxy the next
+  // version number; "overwrite" reuses the latest number and, on Submit,
+  // deletes that version's old proxy. Overwrite needs an approval click
+  // first. sessionVersion locks once the first file is uploaded.
   const [diskLatestVersion, setDiskLatestVersion] = useState(null);
   const [versionMode, setVersionMode] = useState("up");
   const [overwriteApproved, setOverwriteApproved] = useState(false);
   const [sessionVersion, setSessionVersion] = useState(null);
-  // Handles for undoing this submission on disk: { renderDir, versionDir,
-  // createdFresh } — createdFresh means this submission made the version
-  // folder (version up), so discarding removes it; for an overwrite the
-  // folder predates it and can only be emptied.
+  // { renderDir, reviewDir } for this submission, set with sessionVersion.
   const [sessionDirs, setSessionDirs] = useState(null);
   const supported = isFsAccessSupported();
 
@@ -106,21 +110,23 @@ export default function Upload() {
   const myWipTasksOnShot = selectedShot ? selectedShot.tasks.filter((t) => myTask(t) && t.status === "wip") : [];
   const selectedTask = myWipTasksOnShot.find((t) => t.id === selectedTaskId);
 
-  // Peek at render/ for existing version folders as soon as a task is
-  // picked, if folder access is already granted (asking for it here would
-  // need a click). Re-checked for real at upload time either way.
+  const taskFolderArgs = () => ({
+    scene: padScene(selectedShot.scene),
+    shotCode: selectedShot.shotCode,
+    taskType: selectedTask.type,
+  });
+
+  // Peek at the review folder for existing proxy versions as soon as a task
+  // is picked, if folder access is already granted (asking for it here
+  // would need a click). Re-checked for real at upload time either way.
   useEffect(() => {
     setDiskLatestVersion(null);
     if (!selectedTask || !rootHandle || !selectedShot?.foldersCreatedAt) return;
     let cancelled = false;
     (async () => {
       if ((await rootHandle.queryPermission({ mode: "readwrite" })) !== "granted") return;
-      const renderDir = await getTaskUploadFolder(rootHandle, {
-        scene: padScene(selectedShot.scene),
-        shotCode: selectedShot.shotCode,
-        taskType: selectedTask.type,
-      });
-      if (renderDir && !cancelled) setDiskLatestVersion(await latestVersionIn(renderDir));
+      const reviewDir = await getTaskReviewFolder(rootHandle, taskFolderArgs());
+      if (reviewDir && !cancelled) setDiskLatestVersion(await latestProxyVersionIn(reviewDir, selectedShot.shotCode));
     })().catch(() => {});
     return () => {
       cancelled = true;
@@ -131,17 +137,20 @@ export default function Upload() {
   const plannedVersion = sessionVersion ?? (versionMode === "up" ? knownLatestVersion + 1 : knownLatestVersion);
   const awaitingOverwriteApproval = versionMode === "overwrite" && !overwriteApproved && sessionVersion == null;
 
-  // Where this task's uploads actually land — shown so it's always
+  // Where this task's renders and proxy land — shown so it's always
   // visually obvious, per task, before anything is picked.
-  const uploadPath = selectedShot
-    ? buildTaskUploadPath({
-        show: project?.showCode,
-        scene: selectedShot.scene,
-        shotCode: selectedShot.shotCode,
-        taskType: selectedTask?.type,
-        version: selectedTask ? plannedVersion : undefined,
-      })
-    : null;
+  const pathArgs = selectedShot && {
+    show: project?.showCode,
+    scene: selectedShot.scene,
+    shotCode: selectedShot.shotCode,
+    taskType: selectedTask?.type,
+  };
+  const uploadPath = pathArgs ? buildTaskUploadPath(pathArgs) : null;
+  const reviewPath = pathArgs && selectedTask ? buildTaskReviewPath(pathArgs) : null;
+
+  // kind: "vid" (made from an uploaded video) or "seq" (from an image
+  // sequence).
+  const proxyNameFor = (version, kind) => `${selectedShot.shotCode}_${formatVersion(version)}_${kind}_proxy.mp4`;
 
   const resetVersioning = () => {
     setVersionMode("up");
@@ -161,29 +170,24 @@ export default function Upload() {
     setSelectedFiles([]);
     setNote("");
     setUploadError("");
-    setSessionProxy(null);
+    setProxyWarning("");
+    setSessionProxies([]);
     resetVersioning();
   };
 
-  // Undoes everything this submission put on disk: a version folder it
-  // created is removed outright; an overwritten one is emptied (its old
-  // contents are already gone). The review proxy it wrote is deleted too.
-  // Removed files are deleted, not moved anywhere — they're copies, and the
-  // artist's originals are untouched.
+  // Undoes everything this submission put on disk: the render files it
+  // newly copied in and the proxies it wrote. Deleted outright, not moved —
+  // they're copies, and the artist's originals are untouched.
   const discardUploadedFiles = async () => {
     if (!sessionDirs) return;
-    const { renderDir, versionDir, createdFresh } = sessionDirs;
-    if (createdFresh) {
-      await renderDir.removeEntry(versionDir.name, { recursive: true }).catch(ignoreNotFound);
-    } else {
-      await clearDirectory(versionDir);
+    for (const name of selectedFiles.flatMap((f) => f.createdNames)) {
+      await sessionDirs.renderDir.removeEntry(name).catch(ignoreNotFound);
     }
-    if (sessionProxy) await sessionProxy.dir.removeEntry(sessionProxy.name).catch(ignoreNotFound);
+    for (const proxy of sessionProxies) await sessionDirs.reviewDir.removeEntry(proxy.name).catch(ignoreNotFound);
   };
 
   // Wraps a shot/task change or Cancel so files already uploaded for an
-  // abandoned submission don't linger in render/ (where the next "version
-  // up" would otherwise skip past them).
+  // abandoned submission don't linger.
   const withDiscard = async (then) => {
     try {
       await discardUploadedFiles();
@@ -204,7 +208,8 @@ export default function Upload() {
     setSelectedTaskId("");
     setSelectedFiles([]);
     setUploadError("");
-    setSessionProxy(null);
+    setProxyWarning("");
+    setSessionProxies([]);
     resetVersioning();
   };
 
@@ -212,7 +217,8 @@ export default function Upload() {
     setSelectedTaskId(id);
     setSelectedFiles([]);
     setUploadError("");
-    setSessionProxy(null);
+    setProxyWarning("");
+    setSessionProxies([]);
     resetVersioning();
   };
 
@@ -221,70 +227,79 @@ export default function Upload() {
     setUploadProgress(fraction);
   };
 
-  // Works out which version folder this upload goes into, without touching
-  // anything on disk yet — the picker can still be cancelled, and neither
-  // an empty new vNNN folder nor a wiped overwrite target should be left
-  // behind if it is. pickerStart is where the file dialog opens.
+  // Resolves render/ + the review folder and which proxy version this
+  // upload belongs to. Nothing is written yet — the picker can still be
+  // cancelled.
   const resolveDestination = async () => {
     const ok = await ensurePermission(rootHandle);
     if (!ok) throw new Error("Project folder access was denied.");
-    const renderDir = await getTaskUploadFolder(rootHandle, {
-      scene: padScene(selectedShot.scene),
-      shotCode: selectedShot.shotCode,
-      taskType: selectedTask.type,
-    });
-    if (!renderDir) throw new Error(`No folder is set up for "${selectedTask.type}" yet.`);
+    const renderDir = await getTaskUploadFolder(rootHandle, taskFolderArgs());
+    const reviewDir = await getTaskReviewFolder(rootHandle, taskFolderArgs());
+    if (!renderDir || !reviewDir) throw new Error(`No folder is set up for "${selectedTask.type}" yet.`);
 
-    if (sessionVersion != null) {
-      const dir = await getVersionFolder(renderDir, sessionVersion);
-      return { renderDir, version: sessionVersion, clearFirst: false, pickerStart: dir };
-    }
-    const latest = Math.max(await latestVersionIn(renderDir), selectedTask.version ?? 0);
+    if (sessionVersion != null) return { renderDir, reviewDir, version: sessionVersion };
+    const latest = Math.max(await latestProxyVersionIn(reviewDir, selectedShot.shotCode), selectedTask.version ?? 0);
     setDiskLatestVersion(latest);
     if (versionMode === "overwrite") {
       if (latest === 0) throw new Error("There's no earlier version to overwrite yet.");
       if (!overwriteApproved) throw new Error(`Approve the overwrite of ${formatVersion(latest)} first.`);
-      const dir = await getVersionFolder(renderDir, latest);
-      return { renderDir, version: latest, clearFirst: true, pickerStart: dir };
+      return { renderDir, reviewDir, version: latest };
     }
-    return { renderDir, version: latest + 1, clearFirst: false, pickerStart: renderDir };
+    return { renderDir, reviewDir, version: latest + 1 };
   };
 
-  // Called once the artist has actually picked something: creates (or, for
-  // an approved overwrite, empties) the version folder and locks the rest
-  // of this submission into it.
-  const openVersionFolder = async ({ renderDir, version, clearFirst }) => {
-    const firstOfSession = sessionVersion == null;
-    // A version-up folder normally doesn't exist yet; if a stale empty one
-    // does, this submission still owns it and may remove it on discard.
-    const createdFresh = firstOfSession && !clearFirst;
-    const dir = await getVersionFolder(renderDir, version);
-    if (clearFirst) await clearDirectory(dir);
-    setSessionVersion(version);
-    if (firstOfSession) setSessionDirs({ renderDir, versionDir: dir, createdFresh });
-    return dir;
+  // Called once the artist has actually picked something: locks the rest
+  // of this submission to that version.
+  const beginSession = (dest) => {
+    if (sessionVersion != null) return;
+    setSessionVersion(dest.version);
+    setSessionDirs({ renderDir: dest.renderDir, reviewDir: dest.reviewDir });
   };
 
-  const proxyNameFor = (version) => `${selectedShot.shotCode}_${formatVersion(version)}_proxy.mp4`;
+  // Copies into render/, reporting whether the file is new there (and so
+  // safe for × / Cancel to delete later) or replaced an existing one.
+  const copyIntoRender = async (renderDir, file, opts) => {
+    const existed = await fileExists(renderDir, file.name);
+    await copyFileInto(renderDir, file.name, file, opts);
+    return !existed;
+  };
+
+  const writeProxy = async (dest, blob, kind, sourceId) => {
+    const name = proxyNameFor(dest.version, kind);
+    await copyFileInto(dest.reviewDir, name, blob);
+    setSessionProxies((prev) => [...prev.filter((p) => p.name !== name), { name, sourceId }]);
+  };
 
   const uploadVideo = async () => {
     setUploadError("");
+    setProxyWarning("");
     try {
-      // Resolve the destination before opening the picker so it can hint
-      // the dialog to open there (startIn) — makes it visually obvious
-      // which task/shot folder this upload is actually headed for.
       const dest = await resolveDestination();
-      const file = await pickVideoFile(dest.pickerStart);
+      const { file, handle } = await pickVideoFile(dest.renderDir);
       setUploading(true);
-      const destDir = await openVersionFolder(dest);
-      reportProgress("Copying video…", 0);
-      await copyFileInto(destDir, file.name, file, {
-        onProgress: (written, total) => reportProgress("Copying video…", written / total),
-      });
+      beginSession(dest);
+      // A video already sitting in render/ (e.g. rendered straight there)
+      // doesn't need copying — it's used where it is.
+      const inPlace = (await dest.renderDir.resolve(handle)) !== null;
+      let created = false;
+      if (!inPlace) {
+        reportProgress("Copying video…", 0);
+        created = await copyIntoRender(dest.renderDir, file, {
+          onProgress: (written, total) => reportProgress("Copying video…", written / total),
+        });
+      }
       const entryId = crypto.randomUUID();
       setSelectedFiles((prev) => [
         ...prev,
-        { id: entryId, name: file.name, kind: "video", size: file.size, writtenNames: [file.name] },
+        {
+          id: entryId,
+          name: file.name,
+          kind: "video",
+          size: file.size,
+          names: [file.name],
+          createdNames: created ? [file.name] : [],
+          inPlace,
+        },
       ]);
 
       // Best-effort: a review proxy makes Review & Dailies usable, but its
@@ -292,18 +307,10 @@ export default function Upload() {
       // block the actual submitted file from having been uploaded above.
       try {
         const proxyBlob = await generateReviewProxy(file, { onProgress: reportProgress });
-        const reviewDir = await getTaskReviewFolder(rootHandle, {
-          scene: padScene(selectedShot.scene),
-          shotCode: selectedShot.shotCode,
-          taskType: selectedTask.type,
-        });
-        if (reviewDir) {
-          const proxyName = proxyNameFor(dest.version);
-          await copyFileInto(reviewDir, proxyName, proxyBlob);
-          setSessionProxy({ name: proxyName, dir: reviewDir, sourceId: entryId });
-        }
+        await writeProxy(dest, proxyBlob, "vid", entryId);
       } catch (proxyErr) {
         console.error("Review proxy generation failed:", proxyErr);
+        setProxyWarning(`The video uploaded, but no review proxy could be made: ${proxyErr?.message || proxyErr}`);
       }
     } catch (err) {
       if (err?.name !== "AbortError") {
@@ -318,34 +325,32 @@ export default function Upload() {
 
   const uploadSequence = async () => {
     setUploadError("");
+    setProxyWarning("");
     try {
       const dest = await resolveDestination();
-      const folderHandle = await pickSequenceFolder(dest.pickerStart);
-      // The picker opens at the destination (so it's obvious where an
-      // upload is headed) — which also makes it easy to pick render/ or one
-      // of its version folders as the "source". That would copy files this
-      // app already wrote over themselves, and for an overwrite it would
-      // pick the very folder about to be emptied.
-      if ((await dest.renderDir.resolve(folderHandle)) !== null) {
-        setUploadError("That's inside the render folder — pick the folder where your rendered frames actually live.");
-        return;
-      }
+      const folderHandle = await pickSequenceFolder(dest.renderDir);
       setUploading(true);
       const files = await readFolderFiles(folderHandle);
       if (files.length === 0) {
         setUploadError("That folder is empty.");
         return;
       }
-      const destDir = await openVersionFolder(dest);
+      beginSession(dest);
+      // Frames already inside render/ (rendered straight there, or into a
+      // subfolder of it) are used where they are — copying them onto
+      // themselves would be pointless.
+      const inPlace = (await dest.renderDir.resolve(folderHandle)) !== null;
       const groups = groupSequenceFiles(files);
-      const totalFiles = files.length;
-      let copied = 0;
-      reportProgress(`Copying frames… 0/${totalFiles}`, 0);
-      for (const group of groups) {
-        for (const file of group.files) {
-          await copyFileInto(destDir, file.name, file);
-          copied++;
-          reportProgress(`Copying frames… ${copied}/${totalFiles}`, copied / totalFiles);
+      const created = new Set();
+      if (!inPlace) {
+        let copied = 0;
+        reportProgress(`Copying frames… 0/${files.length}`, 0);
+        for (const group of groups) {
+          for (const file of group.files) {
+            if (await copyIntoRender(dest.renderDir, file)) created.add(file.name);
+            copied++;
+            reportProgress(`Copying frames… ${copied}/${files.length}`, copied / files.length);
+          }
         }
       }
       const entries = groups.map((g) => ({
@@ -353,7 +358,9 @@ export default function Upload() {
         name: g.name,
         kind: g.kind,
         count: g.files.length,
-        writtenNames: g.files.map((f) => f.name),
+        names: g.files.map((f) => f.name),
+        createdNames: g.files.map((f) => f.name).filter((n) => created.has(n)),
+        inPlace,
       }));
       setSelectedFiles((prev) => [...prev, ...entries]);
 
@@ -365,19 +372,15 @@ export default function Upload() {
       if (proxySource) {
         try {
           const proxyBlob = await generateSequenceReviewProxy(proxySource.files, { onProgress: reportProgress });
-          const reviewDir = await getTaskReviewFolder(rootHandle, {
-            scene: padScene(selectedShot.scene),
-            shotCode: selectedShot.shotCode,
-            taskType: selectedTask.type,
-          });
-          if (reviewDir) {
-            const proxyName = proxyNameFor(dest.version);
-            await copyFileInto(reviewDir, proxyName, proxyBlob);
-            setSessionProxy({ name: proxyName, dir: reviewDir, sourceId: entries[groups.indexOf(proxySource)].id });
-          }
+          await writeProxy(dest, proxyBlob, "seq", entries[groups.indexOf(proxySource)].id);
         } catch (proxyErr) {
           console.error("Sequence review proxy generation failed:", proxyErr);
+          setProxyWarning(`The frames uploaded, but no review proxy could be made: ${proxyErr?.message || proxyErr}`);
         }
+      } else {
+        setProxyWarning(
+          "The files uploaded, but no review proxy was made — that folder has no numbered image sequence (exr, dpx, png, jpg, tif or tga)."
+        );
       }
     } catch (err) {
       if (err?.name !== "AbortError") {
@@ -390,10 +393,9 @@ export default function Upload() {
     }
   };
 
-  // × deletes that entry's files from the version folder (a sequence's
-  // every frame), plus the review proxy if it was made from them. Removing
-  // the last entry discards the whole submission, unlocking the version
-  // choice again.
+  // × deletes the render files this entry newly copied in (a sequence's
+  // every frame), plus the proxy made from it. Removing the last entry
+  // discards the whole submission, unlocking the version choice again.
   const removeSelectedFile = async (id) => {
     const entry = selectedFiles.find((f) => f.id === id);
     if (!entry || !sessionDirs) return;
@@ -403,20 +405,18 @@ export default function Upload() {
       if (remaining.length === 0) {
         await discardUploadedFiles();
         setSelectedFiles([]);
-        setSessionProxy(null);
+        setSessionProxies([]);
         resetVersioning();
         return;
       }
-      // A later upload with the same filename replaced the earlier copy on
-      // disk — keep any file another entry still refers to.
-      const stillUsed = new Set(remaining.flatMap((f) => f.writtenNames));
-      for (const name of entry.writtenNames) {
-        if (!stillUsed.has(name)) await sessionDirs.versionDir.removeEntry(name).catch(ignoreNotFound);
+      // Keep any file another entry still refers to.
+      const stillUsed = new Set(remaining.flatMap((f) => f.names));
+      for (const name of entry.createdNames) {
+        if (!stillUsed.has(name)) await sessionDirs.renderDir.removeEntry(name).catch(ignoreNotFound);
       }
-      if (sessionProxy?.sourceId === id) {
-        await sessionProxy.dir.removeEntry(sessionProxy.name).catch(ignoreNotFound);
-        setSessionProxy(null);
-      }
+      const ownProxies = sessionProxies.filter((p) => p.sourceId === id);
+      for (const proxy of ownProxies) await sessionDirs.reviewDir.removeEntry(proxy.name).catch(ignoreNotFound);
+      if (ownProxies.length) setSessionProxies((prev) => prev.filter((p) => p.sourceId !== id));
       setSelectedFiles(remaining);
     } catch (err) {
       console.error("Couldn't remove file:", err);
@@ -426,8 +426,25 @@ export default function Upload() {
 
   const canSubmit = Boolean(selectedTask) && selectedFiles.length > 0 && sessionVersion != null;
 
-  const submit = () => {
+  const submit = async () => {
     if (!canSubmit) return;
+    // An approved overwrite replaces the version's proxy: delete whichever
+    // of its old proxies this submission didn't just rewrite. Done here, not
+    // at upload time, so Cancel never leaves the version with no proxy.
+    const deletedProxies = [];
+    if (versionMode === "overwrite") {
+      const keep = new Set(sessionProxies.map((p) => p.name));
+      const legacyName = `${selectedShot.shotCode}_${formatVersion(sessionVersion)}_proxy.mp4`; // from before the vid/seq suffix
+      for (const name of [proxyNameFor(sessionVersion, "vid"), proxyNameFor(sessionVersion, "seq"), legacyName]) {
+        if (keep.has(name)) continue;
+        try {
+          await sessionDirs.reviewDir.removeEntry(name);
+          deletedProxies.push(name);
+        } catch (err) {
+          if (err?.name !== "NotFoundError") console.error(`Couldn't delete old proxy ${name}:`, err);
+        }
+      }
+    }
     setPostReports((prev) =>
       prev.map((s) =>
         s.id === selectedShot.id
@@ -446,9 +463,10 @@ export default function Upload() {
                         { version: sessionVersion, submittedAt: new Date().toISOString(), note: note.trim() || undefined },
                       ].sort((a, b) => a.version - b.version),
                       versionNote: note.trim() || undefined,
-                      // Keep the previous proxy if this submission was
-                      // sequence-only (no new video, so nothing to replace it).
-                      reviewFile: reviewFileName ?? t.reviewFile,
+                      // Keep the previous proxy if no new one was made (e.g.
+                      // a stray-files-only upload) — unless it was just
+                      // deleted by the overwrite.
+                      reviewFile: reviewFileName ?? (deletedProxies.includes(t.reviewFile) ? undefined : t.reviewFile),
                     }
                   : t
               ),
@@ -526,10 +544,10 @@ export default function Upload() {
 
           {selectedTask && (
             <>
-              <span className="label">Version</span>
+              <span className="label">Proxy version</span>
               {sessionVersion != null ? (
                 <span className="upload-version-locked">
-                  Uploading into <span className="pill pill-accent mono">{formatVersion(sessionVersion)}</span>
+                  This submission is <span className="pill pill-accent mono">{formatVersion(sessionVersion)}</span>
                   {versionMode === "overwrite" && <span className="upload-version-overwrite-tag">overwrite</span>}
                 </span>
               ) : (
@@ -554,9 +572,8 @@ export default function Upload() {
                   {versionMode === "overwrite" && (
                     <div className="card upload-overwrite-warning">
                       <span>
-                        Overwriting deletes everything currently in{" "}
-                        <span className="mono">{formatVersion(knownLatestVersion)}</span> and replaces it with what you upload
-                        now. The old files are not kept.
+                        Overwriting replaces the <span className="mono">{formatVersion(knownLatestVersion)}</span> review
+                        proxy with one made from what you upload now. The old proxy is deleted when you submit.
                       </span>
                       {overwriteApproved ? (
                         <span className="upload-overwrite-approved">Overwrite approved</span>
@@ -571,7 +588,17 @@ export default function Upload() {
               )}
 
               <span className="label">Upload</span>
-              {uploadPath && <span className="upload-destination-path mono">{uploadPath}</span>}
+              {uploadPath && (
+                <span className="upload-destination-path mono">
+                  Renders → {uploadPath}
+                  {reviewPath && (
+                    <>
+                      <br />
+                      Proxy → {reviewPath}/{selectedShot.shotCode}_{formatVersion(plannedVersion)}_…_proxy.mp4
+                    </>
+                  )}
+                </span>
+              )}
               {!supported ? (
                 <span className="label upload-hint">Automatic uploads need Chrome or Edge.</span>
               ) : !rootHandle ? (
@@ -621,6 +648,12 @@ export default function Upload() {
                 </div>
               )}
               {uploadError && <span className="upload-error">{uploadError}</span>}
+              {proxyWarning && <span className="upload-proxy-warning">{proxyWarning}</span>}
+              {sessionProxies.length > 0 && (
+                <span className="upload-destination-path mono">
+                  Proxy written: {sessionProxies.map((p) => p.name).join(", ")}
+                </span>
+              )}
 
               <span className="label">Selected files</span>
               <div className="file-list">
@@ -633,12 +666,13 @@ export default function Upload() {
                       <FileIcon />
                     </div>
                     <span className="file-name">{f.name}</span>
+                    {f.inPlace && <span className="pill file-size">in render/</span>}
                     {f.kind === "sequence" && <span className="pill file-size">{f.count} frames</span>}
                     {f.kind === "video" && <span className="pill file-size">{formatBytes(f.size)}</span>}
                     <span
                       className={`file-remove${uploading ? " file-remove-disabled" : ""}`}
                       onClick={uploading ? undefined : () => removeSelectedFile(f.id)}
-                      title="Remove (deletes the uploaded copy)"
+                      title={f.inPlace ? "Remove from this submission (the files stay in render/)" : "Remove (deletes the uploaded copy)"}
                     >
                       ×
                     </span>

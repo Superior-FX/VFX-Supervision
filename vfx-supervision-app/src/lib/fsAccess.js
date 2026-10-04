@@ -248,34 +248,35 @@ export async function readFileFrom(dirHandle, name) {
   return fileHandle.getFile();
 }
 
-// Version folders inside a task's render/ — "v001", "v002", … Anything else
-// in render/ (e.g. files submitted before versioning existed) is ignored.
-const VERSION_FOLDER_RE = /^v(\d{3,})$/;
+// Versions live only on review proxies, never on render/ itself: a task's
+// proxies in 03_review/<slug>/ are named <shot>_vNNN[_vid|_seq]_proxy.mp4.
+// Anything else there (e.g. proxies from before versioning) is ignored.
+const PROXY_VERSION_RE = /^v(\d{3,})(?:_vid|_seq)?_proxy\.mp4$/i;
 
 export function formatVersion(n) {
   return `v${String(n).padStart(3, "0")}`;
 }
 
-// Highest version folder number in renderDir, or 0 if there are none yet.
-export async function latestVersionIn(renderDir) {
+// Highest proxy version for this shot in reviewDir, or 0 if none yet.
+export async function latestProxyVersionIn(reviewDir, shotCode) {
+  const prefix = `${shotCode}_`;
   let latest = 0;
-  for await (const [name, handle] of renderDir.entries()) {
-    const match = handle.kind === "directory" && name.match(VERSION_FOLDER_RE);
+  for await (const [name, handle] of reviewDir.entries()) {
+    if (handle.kind !== "file" || !name.startsWith(prefix)) continue;
+    const match = name.slice(prefix.length).match(PROXY_VERSION_RE);
     if (match) latest = Math.max(latest, Number(match[1]));
   }
   return latest;
 }
 
-export async function getVersionFolder(renderDir, version) {
-  return subdir(renderDir, formatVersion(version));
-}
-
-// Empties a folder in place (the folder itself stays) — backs an
-// artist-approved overwrite of an existing version.
-export async function clearDirectory(dir) {
-  const names = [];
-  for await (const name of dir.keys()) names.push(name);
-  for (const name of names) await dir.removeEntry(name, { recursive: true });
+export async function fileExists(dir, name) {
+  try {
+    await dir.getFileHandle(name);
+    return true;
+  } catch (err) {
+    if (err?.name === "NotFoundError" || err?.name === "TypeMismatchError") return false;
+    throw err;
+  }
 }
 
 // Copies one real File (e.g. from an <input>/showOpenFilePicker result)
@@ -310,7 +311,9 @@ export async function pickVideoFile(startInDir) {
     types: [{ description: "Video", accept: { "video/*": [".mov", ".mp4", ".mxf", ".avi"] } }],
     ...(startInDir ? { startIn: startInDir } : {}),
   });
-  return handle.getFile();
+  // The handle comes back too so the caller can tell whether the video
+  // already lives inside the destination folder.
+  return { file: await handle.getFile(), handle };
 }
 
 // Opens a folder picker for an image sequence's source folder — read-only,
