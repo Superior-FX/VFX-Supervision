@@ -24,3 +24,4 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-09-20T00:11:29-05:00 — **Will Cox** (Atom-Smasher) — `4f0e752` Add CSV export to Post Reports for Google Sheets
 - 2026-09-20T01:00:13-05:00 — **Will Cox** (Atom-Smasher) — `3eaa67c` Switch Post Reports export to a real styled .xlsx
 - 2026-09-20T01:36:30-05:00 — **Will Cox** (Atom-Smasher) — `0b8ef69` Add scene rename with automatic on-disk folder rename
+- 2026-09-24T01:57:12-05:00 — **Will Cox** (Atom-Smasher) — `4c6ca56` Wire up ffmpeg review-proxy pipeline and live Review & Dailies

@@ -58,6 +58,24 @@ export async function generateThumbnail(file, { onProgress } = {}) {
   return bytesToDataUrl(data, "image/jpeg");
 }
 
+// Runs an ffmpeg command, reporting its 0..1 progress to onFraction as it
+// goes. ffmpeg.wasm's own estimate occasionally jumps outside 0..1 (or is
+// NaN when it can't tell the input's duration), so those are dropped.
+async function execWithProgress(ffmpeg, args, onFraction) {
+  const handler = ({ progress }) => {
+    if (Number.isFinite(progress) && progress >= 0 && progress <= 1) onFraction?.(progress);
+  };
+  ffmpeg.on("progress", handler);
+  try {
+    return await ffmpeg.exec(args);
+  } finally {
+    ffmpeg.off("progress", handler);
+  }
+}
+
+// onProgress(stage, fraction) — fraction is 0..1, or null while a stage's
+// length is unknown (shown as an indeterminate bar).
+
 // Transcodes an uploaded video down to a small, universally-playable h.264
 // mp4 for supervisor review — 1280px wide (height kept even, required by
 // libx264 4:2:0), 24fps, CRF 23. Returns a Blob (never a data: URL — a
@@ -73,8 +91,8 @@ export async function generateReviewProxy(file, { onProgress } = {}) {
 
   await ffmpeg.writeFile(inputName, await fetchFile(file));
 
-  onProgress?.("Encoding review proxy…");
-  await ffmpeg.exec([
+  onProgress?.("Encoding review proxy…", 0);
+  await execWithProgress(ffmpeg, [
     "-i", inputName,
     "-vf", "scale=1280:-2",
     "-r", "24",
@@ -85,11 +103,69 @@ export async function generateReviewProxy(file, { onProgress } = {}) {
     "-c:a", "aac",
     "-movflags", "+faststart",
     outputName,
-  ]);
+  ], (f) => onProgress?.("Encoding review proxy…", f));
 
   const data = await ffmpeg.readFile(outputName);
   await ffmpeg.deleteFile(inputName).catch(() => {});
   await ffmpeg.deleteFile(outputName).catch(() => {});
 
   return new Blob([data.buffer], { type: "video/mp4" });
+}
+
+// Still-image formats a frame sequence can be proxied from.
+const SEQUENCE_FRAME_EXTS = new Set(["exr", "dpx", "png", "jpg", "jpeg", "tif", "tiff", "tga"]);
+
+export function isProxyableFrame(file) {
+  return SEQUENCE_FRAME_EXTS.has(extensionOf(file));
+}
+
+// Builds the same 1280px / 24fps / h.264 review proxy as generateReviewProxy,
+// but from an image sequence. Frames are downscaled to JPEG one at a time
+// (and the full-res source deleted from ffmpeg's in-memory FS right away)
+// before the encode — writing a whole EXR/DPX sequence into wasm memory up
+// front would blow past its ~2GB heap on any real-length shot. Renumbering
+// to 1..N on the way also makes gaps/odd start frames a non-issue.
+export async function generateSequenceReviewProxy(frames, { onProgress, fps = 24 } = {}) {
+  onProgress?.("Loading ffmpeg…");
+  const { fetchFile } = await import("@ffmpeg/util");
+  const ffmpeg = await getFFmpeg();
+
+  const sorted = [...frames].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  const jpgNames = [];
+  const outputName = "proxy.mp4";
+
+  try {
+    for (let i = 0; i < sorted.length; i++) {
+      onProgress?.(`Building review proxy… frame ${i + 1}/${sorted.length}`, i / sorted.length);
+      const ext = extensionOf(sorted[i]);
+      const inputName = `frame_in.${ext}`;
+      const jpgName = `frame_${String(i + 1).padStart(5, "0")}.jpg`;
+      await ffmpeg.writeFile(inputName, await fetchFile(sorted[i]));
+      // EXR is scene-linear; without a transfer curve it plays back far too dark.
+      const decodeOpts = ext === "exr" ? ["-apply_trc", "iec61966_2_1"] : [];
+      const code = await ffmpeg.exec([...decodeOpts, "-i", inputName, "-vf", "scale=1280:-2", "-q:v", "3", jpgName]);
+      await ffmpeg.deleteFile(inputName).catch(() => {});
+      if (code !== 0) throw new Error(`ffmpeg couldn't decode ${sorted[i].name}`);
+      jpgNames.push(jpgName);
+    }
+
+    onProgress?.("Encoding review proxy…", 0);
+    const code = await execWithProgress(ffmpeg, [
+      "-framerate", String(fps),
+      "-i", "frame_%05d.jpg",
+      "-c:v", "libx264",
+      "-crf", "23",
+      "-preset", "veryfast",
+      "-pix_fmt", "yuv420p",
+      "-movflags", "+faststart",
+      outputName,
+    ], (f) => onProgress?.("Encoding review proxy…", f));
+    if (code !== 0) throw new Error("ffmpeg couldn't encode the review proxy");
+
+    const data = await ffmpeg.readFile(outputName);
+    return new Blob([data.buffer], { type: "video/mp4" });
+  } finally {
+    for (const name of jpgNames) await ffmpeg.deleteFile(name).catch(() => {});
+    await ffmpeg.deleteFile(outputName).catch(() => {});
+  }
 }

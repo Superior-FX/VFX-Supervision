@@ -37,9 +37,10 @@ export function buildFolderPath({ show, scene, shotCode }) {
 // the artist exactly where a file is headed before/after they pick it,
 // per task. Mirrors the real resolution in getTaskUploadFolder
 // (src/lib/fsAccess.js) but as a plain string, no disk access.
-export function buildTaskUploadPath({ show, scene, shotCode, taskType }) {
+export function buildTaskUploadPath({ show, scene, shotCode, taskType, version }) {
   const base = buildFolderPath({ show, scene, shotCode });
   const slug = taskFolderSlug(taskType);
   if (!base || !slug) return null;
-  return `${base}/02_tasks/${slug}/render`;
+  const render = `${base}/02_tasks/${slug}/render`;
+  return version ? `${render}/v${String(version).padStart(3, "0")}` : render;
 }

@@ -248,13 +248,55 @@ export async function readFileFrom(dirHandle, name) {
   return fileHandle.getFile();
 }
 
+// Version folders inside a task's render/ — "v001", "v002", … Anything else
+// in render/ (e.g. files submitted before versioning existed) is ignored.
+const VERSION_FOLDER_RE = /^v(\d{3,})$/;
+
+export function formatVersion(n) {
+  return `v${String(n).padStart(3, "0")}`;
+}
+
+// Highest version folder number in renderDir, or 0 if there are none yet.
+export async function latestVersionIn(renderDir) {
+  let latest = 0;
+  for await (const [name, handle] of renderDir.entries()) {
+    const match = handle.kind === "directory" && name.match(VERSION_FOLDER_RE);
+    if (match) latest = Math.max(latest, Number(match[1]));
+  }
+  return latest;
+}
+
+export async function getVersionFolder(renderDir, version) {
+  return subdir(renderDir, formatVersion(version));
+}
+
+// Empties a folder in place (the folder itself stays) — backs an
+// artist-approved overwrite of an existing version.
+export async function clearDirectory(dir) {
+  const names = [];
+  for await (const name of dir.keys()) names.push(name);
+  for (const name of names) await dir.removeEntry(name, { recursive: true });
+}
+
 // Copies one real File (e.g. from an <input>/showOpenFilePicker result)
-// into destDir under the given name.
-export async function copyFileInto(destDir, name, file) {
+// into destDir under the given name. Written in chunks so a multi-GB video
+// never has to sit in memory whole, and so onProgress (bytesWritten,
+// totalBytes) can drive a progress bar.
+const COPY_CHUNK_BYTES = 16 * 1024 * 1024;
+
+export async function copyFileInto(destDir, name, file, { onProgress } = {}) {
   const destFile = await destDir.getFileHandle(name, { create: true });
   const writable = await destFile.createWritable();
-  await writable.write(await file.arrayBuffer());
-  await writable.close();
+  try {
+    for (let offset = 0; offset < file.size; offset += COPY_CHUNK_BYTES) {
+      await writable.write(file.slice(offset, offset + COPY_CHUNK_BYTES));
+      onProgress?.(Math.min(offset + COPY_CHUNK_BYTES, file.size), file.size);
+    }
+    await writable.close();
+  } catch (err) {
+    await writable.abort().catch(() => {});
+    throw err;
+  }
 }
 
 // Opens a single-file picker for a video, no destination side effects —

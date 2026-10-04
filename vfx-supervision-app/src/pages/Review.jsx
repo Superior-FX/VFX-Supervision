@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { assigneesLabel } from "../lib/taskAssignees.js";
 import { padScene } from "../lib/folderPath.js";
-import { getTaskReviewFolder, loadRootHandle, readFileFrom } from "../lib/fsAccess.js";
+import { formatVersion, getTaskReviewFolder, loadRootHandle, readFileFrom } from "../lib/fsAccess.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { sortByDueComplexityName } from "../lib/sortShots.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
@@ -122,6 +122,7 @@ export default function Review() {
             {queue.map(({ shot, task }) => (
               <option value={task.id} key={task.id}>
                 {shot.shotCode} — {task.type}
+                {task.version ? ` ${formatVersion(task.version)}` : ""}
               </option>
             ))}
           </select>
@@ -129,6 +130,7 @@ export default function Review() {
           <div className="review-meta">
             <span className="pill pill-accent">{current.shot.shotCode}</span>
             <span className="pill">{current.task.type}</span>
+            {current.task.version && <span className="pill mono">{formatVersion(current.task.version)}</span>}
             <span className="review-meta-assignee">{assigneesLabel(current.task)}</span>
           </div>
 
