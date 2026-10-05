@@ -123,12 +123,15 @@ export default function ArtistAssignments() {
                                   <span className={`pill${taskStatus.tone ? ` pill-${taskStatus.tone}` : ""}`}>
                                     {taskStatus.label}
                                   </span>
+                                  <span
+                                    className="btn btn-secondary artist-assignments-view-btn"
+                                    onClick={() => navigate(`/shot/${shot.shotCode}`)}
+                                  >
+                                    VIEW
+                                  </span>
                                 </div>
                               );
                             })}
-                            <span className="artist-assignments-view-shot" onClick={() => navigate(`/shot/${shot.shotCode}`)}>
-                              View shot →
-                            </span>
                           </div>
                         </td>
                       </tr>

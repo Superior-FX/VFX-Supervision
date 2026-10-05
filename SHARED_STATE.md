@@ -29,3 +29,4 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-10-04T01:17:25-05:00 — **Will Cox** (Atom-Smasher) — `bb6f212` Upload Shot: version proxies only, vid/seq suffix, ffmpeg crash recovery
 - 2026-10-04T01:24:41-05:00 — **Will Cox** (Atom-Smasher) — `182a236` Shared project-folder warning on Post Reports, Review, and Upload
 - 2026-10-04T21:18:16-05:00 — **Will Cox** (Atom-Smasher) — `ae6338e` Review & Dailies: per-frame annotation tool with frame notes
+- 2026-10-04T22:07:39-05:00 — **Will Cox** (Atom-Smasher) — `be93780` Review & Dailies: full screen, loop/speed, sort & filter queue

@@ -147,8 +147,11 @@ export default function ShotBoard() {
                               </div>
                             );
                           })}
-                          <span className="board-card-view-shot" onClick={() => navigate(`/shot/${shot.shotCode}`)}>
-                            View shot →
+                          <span
+                            className="btn btn-secondary board-card-view-btn"
+                            onClick={() => navigate(`/shot/${shot.shotCode}`)}
+                          >
+                            VIEW
                           </span>
                         </div>
                       )}

@@ -89,14 +89,9 @@
   flex-shrink: 0;
 }
 
-.artist-report-view-shot {
-  align-self: flex-start;
-  cursor: pointer;
-  font: 700 11px var(--font-body);
-  color: var(--accent);
-  padding-top: 2px;
-}
-
-.artist-report-view-shot:hover {
-  text-decoration: underline;
+/* Invisible copy of the VIEW button: holds a button-sized space between
+   VIEW and Start/Resume so they aren't mis-clicked for each other. */
+.artist-report-gap {
+  visibility: hidden;
+  pointer-events: none;
 }

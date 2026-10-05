@@ -90,14 +90,7 @@
   flex-shrink: 0;
 }
 
-.artist-assignments-view-shot {
-  align-self: flex-start;
-  cursor: pointer;
-  font: 700 11px var(--font-body);
-  color: var(--accent);
-  padding-top: 2px;
-}
-
-.artist-assignments-view-shot:hover {
-  text-decoration: underline;
+.artist-assignments-view-btn {
+  padding: 6px 12px;
+  font-size: 10px;
 }

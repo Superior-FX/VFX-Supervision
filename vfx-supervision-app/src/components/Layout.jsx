@@ -1,7 +1,8 @@
-import { Navigate, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Navigate, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import logo from "../../logo/SuperiorFX_logo_003.jpg";
 import { useActiveProject } from "../lib/projects.js";
 import { CURRENT_ROLE } from "../lib/role.js";
+import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./Layout.css";
 
 const NAV_GROUPS = [
@@ -11,6 +12,8 @@ const NAV_GROUPS = [
   },
   {
     label: "Pre-Production",
+    // Locked: parked while the post / artist sections are being built.
+    locked: true,
     items: [
       { to: "/breakdown", label: "Script Breakdown" },
       { to: "/script-reports", label: "Script Reports" },
@@ -18,6 +21,7 @@ const NAV_GROUPS = [
   },
   {
     label: "Production",
+    locked: true,
     items: [
       { to: "/capture", label: "On-Set Capture" },
       { to: "/capture-reports", label: "Capture Reports" },
@@ -47,7 +51,15 @@ const NAV_GROUPS = [
 
 export default function Layout() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const activeProject = useActiveProject();
+  // Which sidebar groups are expanded, by label. Remembered across visits;
+  // the very first time, only the group holding the current page is open.
+  const firstVisitGroup = NAV_GROUPS.find((g) => g.label && g.items.some((item) => pathname.startsWith(item.to)));
+  const [openGroups, setOpenGroups] = useLocalStorageState(
+    "vfx-supe-nav-open",
+    firstVisitGroup ? { [firstVisitGroup.label]: true } : {}
+  );
   const role = CURRENT_ROLE;
   const isArtist = role === "Artist";
 
@@ -79,10 +91,28 @@ export default function Layout() {
           <NavLink to="/" end className={({ isActive }) => `shell-nav-link${isActive ? " active" : ""}`}>
             Home
           </NavLink>
-          {visibleGroups.map((group, i) => (
-            <div className="shell-nav-group" key={group.label ?? `ungrouped-${i}`}>
-              {group.label && <span className="shell-nav-group-label">{group.label}</span>}
-              {group.items.map((item) => (
+          {visibleGroups.map((group, i) => {
+            const collapsible = Boolean(group.label);
+            const isOpen = !collapsible || (!group.locked && Boolean(openGroups[group.label]));
+            const holdsCurrentPage = group.items.some((item) => pathname.startsWith(item.to));
+            return (
+            <div className={`shell-nav-group${isOpen ? " is-open" : ""}`} key={group.label ?? `ungrouped-${i}`}>
+              {collapsible && (
+                <button
+                  type="button"
+                  className={`shell-nav-group-label${!isOpen && holdsCurrentPage ? " holds-current" : ""}${
+                    group.locked ? " is-locked" : ""
+                  }`}
+                  aria-expanded={isOpen}
+                  disabled={group.locked}
+                  title={group.locked ? "Locked for now" : undefined}
+                  onClick={() => setOpenGroups((prev) => ({ ...prev, [group.label]: !prev[group.label] }))}
+                >
+                  <span>{group.label}</span>
+                  <span className="shell-nav-chevron">{group.locked ? "🔒" : isOpen ? "▾" : "▸"}</span>
+                </button>
+              )}
+              {isOpen && group.items.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
@@ -92,7 +122,8 @@ export default function Layout() {
                 </NavLink>
               ))}
             </div>
-          ))}
+            );
+          })}
         </nav>
 
         <div className="shell-footer">

@@ -113,6 +113,18 @@ export default function ArtistReport() {
                                     <span className={`pill${taskStatus.tone ? ` pill-${taskStatus.tone}` : ""}`}>
                                       {taskStatus.label}
                                     </span>
+                                    <span
+                                      className="btn btn-secondary artist-report-action-btn"
+                                      onClick={() => navigate(`/shot/${shot.shotCode}`)}
+                                    >
+                                      VIEW
+                                    </span>
+                                    {/* A VIEW-sized blank so Start/Resume sits apart from VIEW. */}
+                                    {(task.status === "assigned" || task.status === "needs_revision" || task.status === "wip") && (
+                                      <span className="btn artist-report-action-btn artist-report-gap" aria-hidden="true">
+                                        VIEW
+                                      </span>
+                                    )}
                                     {task.status === "assigned" && (
                                       <span
                                         className="btn btn-primary artist-report-action-btn"
@@ -135,12 +147,6 @@ export default function ArtistReport() {
                                   </div>
                                 );
                               })}
-                              <span
-                                className="artist-report-view-shot"
-                                onClick={() => navigate(`/shot/${shot.shotCode}`)}
-                              >
-                                View shot →
-                              </span>
                             </div>
                           </td>
                         </tr>

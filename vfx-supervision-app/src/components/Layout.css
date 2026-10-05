@@ -71,7 +71,7 @@
 .shell-nav {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 4px;
 }
 
 .shell-nav-group {
@@ -80,14 +80,51 @@
   gap: 3px;
 }
 
+/* An open group gets a little air below it so its pages read as a set. */
+.shell-nav-group.is-open:not(:last-child) {
+  margin-bottom: 8px;
+}
+
 .shell-nav-group-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
   font: 600 10px/1 var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--text-tertiary);
-  padding: 0 10px;
-  margin-bottom: 3px;
-  display: block;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.shell-nav-group-label:hover {
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+/* Collapsed, but the page you're on lives inside it. */
+.shell-nav-group-label.holds-current {
+  color: var(--accent);
+}
+
+.shell-nav-group-label.is-locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.shell-nav-group-label.is-locked:hover {
+  background: none;
+  color: var(--text-tertiary);
+}
+
+.shell-nav-chevron {
+  font-size: 10px;
 }
 
 .shell-nav-link {

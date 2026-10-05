@@ -165,15 +165,10 @@
   border-radius: 5px;
 }
 
-.board-card-view-shot {
+.board-card-view-btn {
   align-self: flex-start;
-  cursor: pointer;
-  font: 700 10px var(--font-body);
-  color: var(--accent);
-}
-
-.board-card-view-shot:hover {
-  text-decoration: underline;
+  padding: 6px 12px;
+  font-size: 10px;
 }
 
 .board-card-meta {
