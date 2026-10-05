@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import AnnotatedPlayer from "../components/AnnotatedPlayer.jsx";
 import FolderStatusBanner from "../components/FolderStatusBanner.jsx";
 import { assigneesLabel } from "../lib/taskAssignees.js";
 import { padScene } from "../lib/folderPath.js";
@@ -96,6 +97,15 @@ export default function Review() {
     );
   };
 
+  // Annotations live on the task, each tagged with the proxy version it was
+  // drawn on, so a new submission starts clean while older marks are kept.
+  const currentVersion = current?.task.version ?? null;
+  const versionAnnotations = (current?.task.annotations ?? []).filter((a) => a.version === currentVersion);
+  const saveAnnotations = (list) => {
+    const others = (current.task.annotations ?? []).filter((a) => a.version !== currentVersion);
+    updateCurrentTask({ annotations: [...others, ...list.map((a) => ({ ...a, version: currentVersion }))] });
+  };
+
   const saveNote = () => updateCurrentTask({ supNote: supNote.trim() || undefined });
 
   // Acting on a task drops it out of the pending queue — clear the
@@ -147,7 +157,7 @@ export default function Review() {
           </div>
 
           {videoUrl ? (
-            <video className="review-video" src={videoUrl} controls />
+            <AnnotatedPlayer src={videoUrl} annotations={versionAnnotations} onChange={saveAnnotations} />
           ) : (
             <div className="card review-frame">
               <span>{videoError || (current.task.reviewFile ? "Loading proxy…" : "No review proxy for this submission.")}</span>

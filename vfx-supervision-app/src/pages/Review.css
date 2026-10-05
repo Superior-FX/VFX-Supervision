@@ -1,5 +1,5 @@
 .review {
-  max-width: 720px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 32px 28px 48px;
   display: flex;
@@ -49,13 +49,6 @@
 .review-meta-assignee {
   font: 12px var(--font-body);
   color: var(--text-tertiary);
-}
-
-.review-video {
-  width: 100%;
-  max-height: 400px;
-  border-radius: 10px;
-  background: #000;
 }
 
 .review-frame {

@@ -463,6 +463,9 @@ export default function Upload() {
                       // a stray-files-only upload) — unless it was just
                       // deleted by the overwrite.
                       reviewFile: reviewFileName ?? (deletedProxies.includes(t.reviewFile) ? undefined : t.reviewFile),
+                      // An overwrite replaces this version's proxy, so marks
+                      // drawn on the old frames no longer line up.
+                      annotations: (t.annotations ?? []).filter((a) => a.version !== sessionVersion),
                     }
                   : t
               ),
