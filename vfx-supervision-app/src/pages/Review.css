@@ -96,3 +96,80 @@
 .review-actions .btn {
   flex: 1;
 }
+
+.review-sort {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.review-sort .review-select {
+  height: 34px;
+  font: 12px var(--font-body);
+}
+
+.review-sort-count {
+  margin-left: auto;
+  font: 11px var(--font-mono);
+  color: var(--text-tertiary);
+}
+
+.review-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.review-note {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Full-screen variants (the player adds .is-fullscreen to its root). */
+.aplayer.is-fullscreen .review-note {
+  gap: 4px;
+}
+
+.aplayer.is-fullscreen .review-actions {
+  flex-direction: column;
+  gap: 6px;
+}
+
+.aplayer.is-fullscreen .review-actions .btn {
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+.review-artist-toggle {
+  position: relative;
+}
+
+.review-artist-toggle .aplayer-btn {
+  height: 40px;
+  white-space: nowrap;
+}
+
+.review-artist-popup {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  width: 360px;
+  max-height: 40vh;
+  overflow-y: auto;
+  z-index: 5;
+  padding: 10px 12px;
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  box-shadow: 0 8px 24px #0008;
+  font: 12px var(--font-body);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+.review-artist-popup .label {
+  display: block;
+  margin-bottom: 6px;
+}

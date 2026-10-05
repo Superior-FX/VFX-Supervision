@@ -53,9 +53,17 @@ function drawStroke(ctx, stroke, w, h) {
  *   [{ id, frame, strokes: [{ color, points: [[x, y], …] }], note }]
  * with x/y in 0–1 frame space. Pass `onChange` to make it editable; leave it
  * out for a read-only view (the artist side).
+ *
+ * The page's own pieces follow the player into full screen:
+ * - `notes`: a node, or `(fullscreen) => node` so the page can render a
+ *   compact version. Under the player normally; the bottom row in full screen.
+ * - `actions`: buttons (save / approve…). Last under the player normally;
+ *   bottom of the right-hand rail in full screen.
  */
-export default function AnnotatedPlayer({ src, annotations = [], onChange }) {
+export default function AnnotatedPlayer({ src, annotations = [], onChange, notes, actions }) {
   const editable = typeof onChange === "function";
+  const rootRef = useRef(null);
+  const [fullscreen, setFullscreen] = useState(false);
   const videoRef = useRef(null);
   const stageRef = useRef(null);
   const canvasRef = useRef(null);
@@ -67,6 +75,12 @@ export default function AnnotatedPlayer({ src, annotations = [], onChange }) {
   const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
   const [color, setColor] = useState(ANNOTATION_COLORS[0].value);
   const [noteDraft, setNoteDraft] = useState("");
+  const [loop, setLoop] = useState(false);
+  const [rate, setRate] = useState(1);
+  // The box the picture has to fit in. Only used in full screen, where the
+  // picture is sized to fill as much of it as the aspect ratio allows.
+  const viewportRef = useRef(null);
+  const [viewport, setViewport] = useState({ w: 0, h: 0 });
 
   const sorted = [...annotations].sort((a, b) => a.frame - b.frame);
   const current = annotations.find((a) => a.frame === frame) ?? null;
@@ -86,6 +100,15 @@ export default function AnnotatedPlayer({ src, annotations = [], onChange }) {
     },
     [totalFrames]
   );
+
+  // Loop / speed carry over from one proxy to the next; a new src resets
+  // the element's own rate, so this re-applies after every load too.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.loop = loop;
+    video.playbackRate = rate;
+  }, [loop, rate, src, totalFrames]);
 
   // New proxy: back to the start.
   useEffect(() => {
@@ -123,6 +146,16 @@ export default function AnnotatedPlayer({ src, annotations = [], onChange }) {
     return () => ro.disconnect();
   }, []);
 
+  useLayoutEffect(() => {
+    const box = viewportRef.current;
+    if (!box) return;
+    const ro = new ResizeObserver(([entry]) => {
+      setViewport({ w: entry.contentRect.width, h: entry.contentRect.height });
+    });
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, []);
+
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -141,6 +174,17 @@ export default function AnnotatedPlayer({ src, annotations = [], onChange }) {
   useEffect(() => {
     setNoteDraft(current?.note ?? "");
   }, [current?.id]);
+
+  useEffect(() => {
+    const onFsChange = () => setFullscreen(document.fullscreenElement === rootRef.current);
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else rootRef.current?.requestFullscreen().catch((err) => console.error("Couldn't enter full screen:", err));
+  };
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -167,6 +211,9 @@ export default function AnnotatedPlayer({ src, annotations = [], onChange }) {
         jumpToAnnotation(-1);
       } else if (e.key === "]") {
         jumpToAnnotation(1);
+      } else if (e.key === "f" || e.key === "F") {
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        toggleFullscreen();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -240,13 +287,85 @@ export default function AnnotatedPlayer({ src, annotations = [], onChange }) {
 
   const last = Math.max(0, totalFrames - 1);
 
+  const stageWidth = fullscreen
+    ? `${Math.floor(Math.min(viewport.w, viewport.h * aspect))}px`
+    : `min(100%, calc(60vh * ${aspect}))`;
+
+  // Lives in the transport bar: pushed right normally, right after the frame
+  // counter in full screen.
+  const tools = editable && (
+    <div className="aplayer-tools">
+      {ANNOTATION_COLORS.map((c) => (
+        <button
+          key={c.value}
+          className={`aplayer-swatch${color === c.value ? " is-active" : ""}`}
+          style={{ background: c.value }}
+          title={c.name}
+          onClick={() => setColor(c.value)}
+        />
+      ))}
+      <button className="aplayer-btn" onClick={undoStroke} disabled={!current?.strokes.length} title="Undo last stroke on this frame">
+        Undo
+      </button>
+    </div>
+  );
+
+  const frameNote = current && (editable || current.note) && (
+    <div className="aplayer-note">
+      <span className="label">Note on frame {formatFrame(frame)}</span>
+      {editable ? (
+        <textarea
+          placeholder="What needs to change on this frame…"
+          value={noteDraft}
+          onChange={(e) => setNoteDraft(e.target.value)}
+          onBlur={commitNote}
+        />
+      ) : (
+        <div className="aplayer-note-readonly">{current.note}</div>
+      )}
+    </div>
+  );
+
+  const frameList = (
+    <div className="aplayer-list-rows">
+      {sorted.map((a) => (
+        <div
+          key={a.id}
+          className={`aplayer-list-row${a.frame === frame ? " is-current" : ""}`}
+          onClick={() => seekToFrame(a.frame)}
+          title={a.note || undefined}
+        >
+          <span className="mono aplayer-list-frame">F {formatFrame(a.frame)}</span>
+          <span className="aplayer-list-dots">
+            {[...new Set(a.strokes.map((s) => s.color))].map((c) => (
+              <span key={c} style={{ background: c }} />
+            ))}
+          </span>
+          <span className="aplayer-list-note">{a.note || <em>No note</em>}</span>
+          {editable && (
+            <button
+              className="aplayer-list-remove"
+              title="Remove this frame's annotation"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeAnnotation(a.id);
+              }}
+            >
+              ×
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+
+  const notesContent = typeof notes === "function" ? notes(fullscreen) : notes;
+
   return (
-    <div className="aplayer">
-      <div
-        className="aplayer-stage"
-        ref={stageRef}
-        style={{ aspectRatio: aspect, width: `min(100%, calc(60vh * ${aspect}))` }}
-      >
+    <div className={`aplayer${fullscreen ? " is-fullscreen" : ""}`} ref={rootRef}>
+      <div className="aplayer-main">
+      <div className="aplayer-viewport" ref={viewportRef}>
+      <div className="aplayer-stage" ref={stageRef} style={{ aspectRatio: aspect, width: stageWidth }}>
         <video
           ref={videoRef}
           src={src}
@@ -278,6 +397,7 @@ export default function AnnotatedPlayer({ src, annotations = [], onChange }) {
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         />
+      </div>
       </div>
 
       <div className="aplayer-scrub">
@@ -318,82 +438,87 @@ export default function AnnotatedPlayer({ src, annotations = [], onChange }) {
         <button className="aplayer-btn" onClick={() => jumpToAnnotation(1)} title="Next annotated frame ( ] )">
           ⇥
         </button>
+        <select
+          className="aplayer-select"
+          value={loop ? "loop" : "once"}
+          onChange={(e) => {
+            setLoop(e.target.value === "loop");
+            e.target.blur(); // hand space/arrows back to the player
+          }}
+          title="Loop or play once"
+        >
+          <option value="once">Play once</option>
+          <option value="loop">Loop</option>
+        </select>
+        <select
+          className="aplayer-select"
+          value={rate}
+          onChange={(e) => {
+            setRate(Number(e.target.value));
+            e.target.blur();
+          }}
+          title="Playback speed"
+        >
+          <option value={1}>1×</option>
+          <option value={0.5}>½×</option>
+          <option value={0.25}>¼×</option>
+        </select>
         <span className="aplayer-frame mono">
           {formatFrame(frame)} / {formatFrame(last)}
         </span>
 
-        {editable && (
-          <div className="aplayer-tools">
-            {ANNOTATION_COLORS.map((c) => (
-              <button
-                key={c.value}
-                className={`aplayer-swatch${color === c.value ? " is-active" : ""}`}
-                style={{ background: c.value }}
-                title={c.name}
-                onClick={() => setColor(c.value)}
-              />
-            ))}
-            <button className="aplayer-btn" onClick={undoStroke} disabled={!current?.strokes.length} title="Undo last stroke on this frame">
-              Undo
-            </button>
-          </div>
-        )}
+        {tools}
+        <button
+          className={`aplayer-btn${editable && !fullscreen ? "" : " aplayer-push-right"}`}
+          onClick={toggleFullscreen}
+          title={fullscreen ? "Exit full screen (F / Esc)" : "Full screen (F)"}
+        >
+          {fullscreen ? "Exit full screen" : "⛶ Full screen"}
+        </button>
       </div>
 
-      {editable && !playing && (
+      {editable && !playing && !fullscreen && (
         <div className="aplayer-hint">
           {current
             ? `Frame ${formatFrame(frame)} is marked — draw more, or add a note below.`
             : "Paused — draw on the frame to mark it."}
         </div>
       )}
+      </div>
 
-      {current && (editable || current.note) && (
-        <div className="aplayer-note">
-          <span className="label">Note on frame {formatFrame(frame)}</span>
-          {editable ? (
-            <textarea
-              placeholder="What needs to change on this frame…"
-              value={noteDraft}
-              onChange={(e) => setNoteDraft(e.target.value)}
-              onBlur={commitNote}
-            />
-          ) : (
-            <div className="aplayer-note-readonly">{current.note}</div>
+
+      {fullscreen && (
+        <div className="aplayer-rail">
+          {sorted.length > 0 && (
+            <>
+              <span className="label">Frames ({sorted.length})</span>
+              {frameList}
+            </>
           )}
+          {actions && <div className="aplayer-rail-actions">{actions}</div>}
         </div>
       )}
 
-      {sorted.length > 0 && (
-        <div className="aplayer-list">
-          <span className="label">Annotated frames ({sorted.length})</span>
-          {sorted.map((a) => (
-            <div
-              key={a.id}
-              className={`aplayer-list-row${a.frame === frame ? " is-current" : ""}`}
-              onClick={() => seekToFrame(a.frame)}
-            >
-              <span className="mono aplayer-list-frame">F {formatFrame(a.frame)}</span>
-              <span className="aplayer-list-dots">
-                {[...new Set(a.strokes.map((s) => s.color))].map((c) => (
-                  <span key={c} style={{ background: c }} />
-                ))}
-              </span>
-              <span className="aplayer-list-note">{a.note || <em>No note</em>}</span>
-              {editable && (
-                <button
-                  className="aplayer-list-remove"
-                  title="Remove this frame's annotation"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeAnnotation(a.id);
-                  }}
-                >
-                  ×
-                </button>
-              )}
+      {fullscreen ? (
+        <div className="aplayer-bottom">
+          {frameNote ?? (
+            <div className="aplayer-note aplayer-note-empty">
+              {editable ? "Draw on this frame to add a note to it." : "No note on this frame."}
             </div>
-          ))}
+          )}
+          {notesContent}
+        </div>
+      ) : (
+        <div className="aplayer-side">
+          {frameNote}
+          {sorted.length > 0 && (
+            <div className="aplayer-list">
+              <span className="label">Annotated frames ({sorted.length})</span>
+              {frameList}
+            </div>
+          )}
+          {notesContent}
+          {actions}
         </div>
       )}
     </div>

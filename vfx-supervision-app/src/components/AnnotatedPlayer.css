@@ -4,6 +4,155 @@
   gap: 10px;
 }
 
+.aplayer-main,
+.aplayer-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Full screen: the picture takes all the room it can; a thin transport bar
+   under it (with the drawing tools), a narrow rail on the right (frame
+   list, actions), and
+   one short row of notes under the timeline. */
+.aplayer.is-fullscreen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 170px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 8px 10px;
+  height: 100vh;
+  padding: 10px;
+  background: var(--bg);
+  box-sizing: border-box;
+}
+
+.aplayer.is-fullscreen .aplayer-main {
+  grid-column: 1;
+  grid-row: 1;
+  gap: 4px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.aplayer.is-fullscreen .aplayer-viewport {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.aplayer.is-fullscreen .aplayer-stage {
+  margin: 0;
+  border-radius: 4px;
+}
+
+/* Right-hand rail: the annotated frames stacked (scrolling if long), and the page's actions pinned to the bottom. */
+.aplayer-rail {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-left: 10px;
+  border-left: 1px solid var(--border);
+}
+
+/* Full screen keeps the swatches at full size right after the frame
+   counter, set off by a thin divider. */
+.aplayer.is-fullscreen .aplayer-controls .aplayer-tools {
+  margin-left: 6px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+  gap: 6px;
+}
+
+.aplayer-rail .aplayer-list-rows {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.aplayer-rail .aplayer-list-row {
+  gap: 6px;
+  padding: 3px 6px;
+  font-size: 11px;
+}
+
+.aplayer-rail-actions {
+  margin-top: auto;
+}
+
+/* Bottom row, under the timeline: this frame's note, then whatever the
+   page adds (Review: a small Supe notes box + the artist-note toggle). */
+.aplayer-bottom {
+  grid-column: 1;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.aplayer-bottom textarea {
+  height: 40px;
+  min-height: 40px;
+  resize: none;
+  padding: 6px 10px;
+}
+
+.aplayer-note-empty {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  font: 11px var(--font-body);
+  color: var(--text-tertiary);
+}
+
+/* Thinner transport bar in full screen (about a third slimmer). */
+.aplayer.is-fullscreen .aplayer-controls .aplayer-btn {
+  height: 20px;
+  min-width: 20px;
+  padding: 0 7px;
+  font-size: 11px;
+}
+
+.aplayer.is-fullscreen .aplayer-play {
+  min-width: 30px;
+}
+
+.aplayer.is-fullscreen .aplayer-frame {
+  font-size: 11px;
+}
+
+.aplayer.is-fullscreen .aplayer-scrub {
+  padding-bottom: 6px;
+}
+
+.aplayer.is-fullscreen .aplayer-scrub input[type="range"] {
+  height: 12px;
+  margin: 0;
+}
+
+.aplayer.is-fullscreen .aplayer-markers {
+  height: 6px;
+}
+
+.aplayer.is-fullscreen .aplayer-marker {
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+}
+
+.aplayer-push-right {
+  margin-left: auto;
+}
+
 .aplayer-stage {
   position: relative;
   margin: 0 auto;
@@ -224,4 +373,32 @@
 
 .aplayer-list-remove:hover {
   color: var(--danger);
+}
+
+.aplayer-list-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.aplayer-select {
+  height: 30px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font: 12px var(--font-body);
+  cursor: pointer;
+}
+
+.aplayer-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.aplayer.is-fullscreen .aplayer-select {
+  height: 20px;
+  padding: 0 4px;
+  font-size: 11px;
 }
