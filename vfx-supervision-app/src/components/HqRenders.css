@@ -1,0 +1,194 @@
+.hq-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.hq-buttons .aplayer-btn {
+  flex: 1;
+}
+
+/* Fixed, so it also shows over the player in full screen (it's rendered
+   inside the player's own element). */
+.hq-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: #000a;
+}
+
+.hq-dialog {
+  width: min(460px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card-bg);
+  box-shadow: 0 16px 48px #000a;
+}
+
+.hq-dialog-title {
+  font: 600 13px var(--font-body);
+  color: var(--text-primary);
+}
+
+.hq-dialog-shot {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.hq-dialog-text {
+  margin: 0;
+  font: 12px var(--font-body);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.hq-dialog-warning {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--warning);
+  background: var(--warning-soft);
+  font: 12px var(--font-body);
+  color: var(--text-primary);
+}
+
+.hq-dialog-error {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--danger);
+  background: var(--danger-soft);
+  font: 12px var(--font-body);
+  color: var(--text-primary);
+}
+
+.hq-dialog-hint {
+  font: 11px var(--font-body);
+  color: var(--text-tertiary);
+}
+
+.hq-modes {
+  display: flex;
+  gap: 6px;
+}
+
+.hq-mode {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: 12px var(--font-body);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.hq-mode input {
+  display: none;
+}
+
+.hq-mode.is-active {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.hq-range {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hq-range label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 12px var(--font-body);
+  color: var(--text-secondary);
+}
+
+.hq-range input {
+  width: 80px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-primary);
+  font: 12px var(--font-mono);
+}
+
+.hq-range input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.hq-range-of {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.hq-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hq-progress-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.hq-progress-bar > div {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.hq-progress-bar.is-indeterminate > div {
+  width: 30% !important;
+  animation: hq-indeterminate 1.2s ease-in-out infinite;
+}
+
+@keyframes hq-indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+
+.hq-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.hq-dialog-actions .btn {
+  padding: 8px 16px;
+}
+
+.hq-eta {
+  display: flex;
+  justify-content: space-between;
+  font: 11px var(--font-mono);
+  color: var(--text-primary);
+}
+
+.hq-eta-elapsed {
+  color: var(--text-tertiary);
+}

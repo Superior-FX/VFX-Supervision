@@ -406,3 +406,68 @@
   padding: 0 4px;
   font-size: 11px;
 }
+
+/* Full-screen zoom/pan: the stage is scaled/translated from its top-left;
+   the viewport clips whatever is pushed outside it. */
+.aplayer.is-fullscreen .aplayer-viewport {
+  overflow: hidden;
+}
+
+.aplayer.is-fullscreen .aplayer-stage {
+  transform-origin: 0 0;
+}
+
+.aplayer-viewport.is-panning,
+.aplayer-viewport.is-panning .aplayer-canvas {
+  cursor: grabbing;
+}
+
+.aplayer-zoom {
+  min-width: 38px;
+  text-align: right;
+  font: 11px var(--font-mono);
+  color: var(--text-secondary);
+}
+
+/* Full-res 6K/8K still, laid exactly over the video (same frame shape). */
+.aplayer-uhq {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Which file is on screen: Proxy / HQ 4K / 6K/8K. */
+.aplayer-source {
+  font: 600 10px var(--font-mono);
+  letter-spacing: 0.4px;
+}
+
+.aplayer-source.is-hq {
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.aplayer-source:disabled {
+  opacity: 1;
+}
+
+.aplayer-source-label {
+  font: 600 10px var(--font-mono);
+  color: var(--accent);
+}
+
+.aplayer-uhq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.aplayer-uhq-toggle {
+  height: 22px;
+  padding: 0 8px;
+  font-size: 10px;
+}

@@ -66,7 +66,7 @@ export default function ArtistReview() {
     if (entry && entry.task.id !== lastTaskId) setLastTaskId(entry.task.id);
   }, [entry?.task.id]);
 
-  const { videoUrl, videoError } = useReviewProxy(folder, entry);
+  const { videoUrl, hqUrl, videoError } = useReviewProxy(folder, entry);
 
   if (!currentArtist) {
     return (
@@ -147,6 +147,8 @@ export default function ArtistReview() {
         // No onChange: read-only — the artist sees the marks but can't edit.
         <AnnotatedPlayer
           src={videoUrl}
+          // Artists get the 4K HQ when there is one, never the 6K/8K stills.
+          hqSrc={hqUrl}
           annotations={annotations}
           notes={supeNotes}
           startFrame={lastFrames[task.id] ?? 0}

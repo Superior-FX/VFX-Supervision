@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import AnnotatedPlayer from "../components/AnnotatedPlayer.jsx";
 import FolderStatusBanner from "../components/FolderStatusBanner.jsx";
+import { useHqRenders } from "../components/HqRenders.jsx";
 import { assigneesLabel, getAssignees, hasAssignee } from "../lib/taskAssignees.js";
 import { padScene } from "../lib/folderPath.js";
 import { formatVersion } from "../lib/fsAccess.js";
@@ -42,6 +43,9 @@ export default function Review() {
   const folder = useProjectFolder(project);
   const [supNote, setSupNote] = useState("");
   const [artistNoteOpen, setArtistNoteOpen] = useState(false);
+  // Where the player is (for the 6K/8K dialog's default frame) and how long the proxy is.
+  const [playerFrame, setPlayerFrame] = useState(0);
+  const [frameCount, setFrameCount] = useState(0);
   const [sortMode, setSortMode] = useLocalStorageState(scopedKey("vfx-supe-review-sort", project?.id), "due");
   const [sortValue, setSortValue] = useLocalStorageState(scopedKey("vfx-supe-review-sort-value", project?.id), "");
 
@@ -110,7 +114,7 @@ export default function Review() {
     setArtistNoteOpen(false);
   }, [current?.task.id]);
 
-  const { videoUrl, videoError } = useReviewProxy(folder, current);
+  const { videoUrl, hqUrl, reviewDir, videoError } = useReviewProxy(folder, current);
 
   const chooseTask = (taskId) => {
     setSearchParams(taskId ? { task: taskId } : {});
@@ -135,6 +139,24 @@ export default function Review() {
     const others = (current.task.annotations ?? []).filter((a) => a.version !== currentVersion);
     updateCurrentTask({ annotations: [...others, ...list.map((a) => ({ ...a, version: currentVersion }))] });
   };
+
+  // Applies fn to one task by id — used by HQ renders, which can finish
+  // after the reviewer has moved on to a different task.
+  const patchTaskById = (shotId, taskId) => (fn) =>
+    setPostReports((prev) =>
+      prev.map((s) => (s.id === shotId ? { ...s, tasks: s.tasks.map((t) => (t.id === taskId ? fn(t) : t)) } : s))
+    );
+
+  const hq = useHqRenders({
+    shot: current?.shot,
+    task: current?.task,
+    rootHandle: folder.rootHandle,
+    reviewDir,
+    folderConnected: folder.status === "connected",
+    currentFrame: playerFrame,
+    frameCount,
+    patchTask: current ? patchTaskById(current.shot.id, current.task.id) : () => {},
+  });
 
   const saveNote = () => updateCurrentTask({ supNote: supNote.trim() || undefined });
 
@@ -190,6 +212,9 @@ export default function Review() {
     );
 
   const actions = current && (
+    <>
+    {hq.buttons}
+    {hq.dialog}
     <div className="review-actions">
       <div className="btn btn-secondary" onClick={saveNote}>
         Save note
@@ -201,6 +226,7 @@ export default function Review() {
         Final
       </div>
     </div>
+    </>
   );
 
   return (
@@ -280,6 +306,12 @@ export default function Review() {
             // full screen (as a side column) instead of being left behind.
             <AnnotatedPlayer
               src={videoUrl}
+              hqSrc={hqUrl}
+              uhqRenders={hq.uhqRenders}
+              loadUhqFrame={hq.loadUhqFrame}
+              onDeleteUhq={hq.requestDeleteUhq}
+              onFrameSettle={setPlayerFrame}
+              onFrameCount={setFrameCount}
               annotations={versionAnnotations}
               onChange={saveAnnotations}
               notes={renderNotes}

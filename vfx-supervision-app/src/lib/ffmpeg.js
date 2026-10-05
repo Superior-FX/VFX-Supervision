@@ -266,3 +266,318 @@ export async function generateSequenceReviewProxy(frames, { onProgress, fps = 24
     await resetFFmpeg();
   }
 }
+
+// ---------------------------------------------------------------------------
+// HQ (4K) and UHQ (6K/8K) review renders — made only when a supervisor asks
+// for one in Review & Dailies, never at upload. Same frame timing as the
+// normal proxy (24fps, frame i of the proxy == frame i here) so annotations
+// and frame numbers line up across all three.
+//
+// Every intermediate frame is a PNG, never a JPEG: this ffmpeg.wasm build's
+// mjpeg encoder is unreliable on big frames — at -q:v 2 it crashes ("memory
+// access out of bounds") even at 2048px, and at -q:v 3 it HANGS forever on
+// some frames (VFX_009A025.exr, a 4096×2160 PIZ EXR). PNG went through every
+// frame of that sequence. The 6K/8K stills are still saved as JPEG, but made
+// by the browser's own encoder from the PNG.
+//
+// Verified 2026-10-05 under Node with the same core, on that 25-frame
+// 4096×2160 sequence: 25/25 frames, exactly 24fps, 3840×2026, 4.7MB,
+// ~90s, peak heap ~430MB.
+// ---------------------------------------------------------------------------
+
+// The HQ proxy is capped at 4K UHD width; smaller sources stay native.
+export const HQ_MAX_WIDTH = 3840;
+const HQ_SCALE = `scale='min(iw,${HQ_MAX_WIDTH})':-2`;
+// Big frames fill ffmpeg.wasm's heap fast, so instances are recycled far
+// more often than for the 1280 proxy.
+const HQ_RECYCLE_EVERY_FRAMES = 4;
+const UHQ_RECYCLE_EVERY_FRAMES = 2;
+// The HQ sequence is encoded in short chunks (4K PNGs are ~7MB each) and the
+// chunks joined at the end, so a long shot never sits in the heap at once.
+const HQ_SEGMENT_FRAMES = 8;
+// Watchdog limits. A wedged ffmpeg call never returns on its own, so past
+// these the instance is killed and the render fails with a clear message
+// instead of sitting at "frame 25/25" forever.
+const FRAME_TIMEOUT_MS = 120_000;
+const SEGMENT_TIMEOUT_MS = 600_000;
+const JOIN_TIMEOUT_MS = 180_000;
+const VIDEO_HQ_TIMEOUT_MS = 60 * 60_000;
+
+class FFmpegTimeoutError extends Error {}
+
+// ffmpeg.exec with a hard time limit: on expiry the instance is terminated
+// (which also rejects the stuck exec) and a timeout error is thrown.
+async function execGuarded(ffmpeg, args, timeoutMs, what) {
+  let timer;
+  const watchdog = new Promise((_, reject) => {
+    timer = setTimeout(async () => {
+      await resetFFmpeg();
+      reject(new FFmpegTimeoutError(`ffmpeg stopped responding while ${what} — it was stopped after ${Math.round(timeoutMs / 1000)}s.`));
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([ffmpeg.exec(args), watchdog]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function decodeOptsFor(file) {
+  // EXR is scene-linear; without a transfer curve it plays back far too dark.
+  return extensionOf(file) === "exr" ? ["-apply_trc", "iec61966_2_1"] : [];
+}
+
+// One still frame → 8-bit RGB PNG bytes, optionally scaled.
+async function frameToPng(ffmpeg, frame, fetchFile, vf) {
+  const inputName = `frame_in.${extensionOf(frame)}`;
+  const outName = "frame_out.png";
+  try {
+    await ffmpeg.writeFile(inputName, await fetchFile(frame));
+    const args = [...decodeOptsFor(frame), "-i", inputName];
+    if (vf) args.push("-vf", vf);
+    args.push("-pix_fmt", "rgb24", "-update", "1", outName);
+    const code = await execGuarded(ffmpeg, args, FRAME_TIMEOUT_MS, `converting ${frame.name}`);
+    if (code !== 0) throw new Error(`ffmpeg couldn't decode ${frame.name}`);
+    return await ffmpeg.readFile(outName);
+  } finally {
+    await ffmpeg.deleteFile(inputName).catch(() => {});
+    await ffmpeg.deleteFile(outName).catch(() => {});
+  }
+}
+
+// Decodes sorted frames[i] for each i in `indices` to PNG, recycling the
+// instance every `recycleEvery` frames and retrying a crashed frame once on
+// a fresh one. Calls onPng(i, bytes) per frame; nothing is kept here.
+async function decodeFramesToPngs(frames, indices, { vf, recycleEvery, onPng, onProgress, label }) {
+  const { fetchFile } = await import("@ffmpeg/util");
+  await resetFFmpeg();
+  let ffmpeg = await getFFmpeg();
+  for (let n = 0; n < indices.length; n++) {
+    const i = indices[n];
+    onProgress?.(`${label} frame ${n + 1}/${indices.length}`, n / indices.length);
+    if (n > 0 && n % recycleEvery === 0) {
+      await resetFFmpeg();
+      ffmpeg = await getFFmpeg();
+    }
+    let bytes;
+    try {
+      bytes = await frameToPng(ffmpeg, frames[i], fetchFile, vf);
+    } catch (err) {
+      if (!isWasmCrash(err)) throw err;
+      await resetFFmpeg();
+      ffmpeg = await getFFmpeg();
+      try {
+        bytes = await frameToPng(ffmpeg, frames[i], fetchFile, vf);
+      } catch (retryErr) {
+        if (!isWasmCrash(retryErr)) throw retryErr;
+        throw new Error(`ffmpeg ran out of memory decoding ${frames[i].name} — that frame is too large for the in-browser decoder.`);
+      }
+    }
+    await onPng(i, bytes);
+    // onPng may have swapped instances (segment encodes do) — use the current one.
+    ffmpeg = await getFFmpeg();
+  }
+  await resetFFmpeg();
+}
+
+function sortFrames(frames) {
+  return [...frames].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+}
+
+// PNG bytes → JPEG Blob via the browser's own encoder (not ffmpeg's mjpeg).
+async function pngToJpeg(pngBytes, quality = 0.95) {
+  const bitmap = await createImageBitmap(new Blob([pngBytes.buffer], { type: "image/png" }));
+  try {
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    canvas.getContext("2d").drawImage(bitmap, 0, 0);
+    return await canvas.convertToBlob({ type: "image/jpeg", quality });
+  } finally {
+    bitmap.close();
+  }
+}
+
+// 4K-capped HQ proxy from a submitted video. CRF 18 (vs 23 for the proxy).
+export async function generateHQVideoProxy(file, { onProgress } = {}) {
+  onProgress?.("Loading ffmpeg…");
+  const { fetchFile } = await import("@ffmpeg/util");
+  await resetFFmpeg();
+  const ffmpeg = await getFFmpeg();
+  const handler = ({ progress }) => {
+    if (Number.isFinite(progress) && progress >= 0 && progress <= 1) onProgress?.("Encoding HQ proxy…", progress);
+  };
+  try {
+    const inputName = `input.${extensionOf(file)}`;
+    await ffmpeg.writeFile(inputName, await fetchFile(file));
+    onProgress?.("Encoding HQ proxy…", 0);
+    ffmpeg.on("progress", handler);
+    const code = await execGuarded(
+      ffmpeg,
+      [
+        "-i", inputName,
+        "-vf", HQ_SCALE,
+        "-r", "24",
+        "-c:v", "libx264",
+        "-crf", "18",
+        "-preset", "veryfast",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac",
+        "-movflags", "+faststart",
+        "hq.mp4",
+      ],
+      VIDEO_HQ_TIMEOUT_MS,
+      "encoding the HQ proxy"
+    );
+    if (code !== 0) throw new Error("ffmpeg couldn't encode the HQ proxy");
+    const data = await ffmpeg.readFile("hq.mp4");
+    return new Blob([data.buffer], { type: "video/mp4" });
+  } catch (err) {
+    if (isWasmCrash(err)) {
+      throw new Error(`ffmpeg ran out of memory making the HQ proxy — the source may be too large for the in-browser encoder (${err.message})`);
+    }
+    throw err;
+  } finally {
+    ffmpeg.off("progress", handler);
+    await resetFFmpeg();
+  }
+}
+
+// One chunk of PNGs → a raw H.264 stream. No B-frames: raw streams joined
+// end to end lose B-frames at the seams (25 frames came back as 23).
+async function encodePngSegment(pngs, fps) {
+  await resetFFmpeg();
+  const ffmpeg = await getFFmpeg();
+  try {
+    for (let i = 0; i < pngs.length; i++) {
+      await ffmpeg.writeFile(`seg_${String(i + 1).padStart(5, "0")}.png`, pngs[i]);
+    }
+    const code = await execGuarded(
+      ffmpeg,
+      [
+        "-framerate", String(fps),
+        "-i", "seg_%05d.png",
+        "-c:v", "libx264",
+        "-crf", "18",
+        "-preset", "veryfast",
+        "-bf", "0",
+        "-pix_fmt", "yuv420p",
+        "-f", "h264",
+        "segment.h264",
+      ],
+      SEGMENT_TIMEOUT_MS,
+      "encoding an HQ segment"
+    );
+    if (code !== 0) throw new Error("ffmpeg couldn't encode an HQ proxy segment");
+    return await ffmpeg.readFile("segment.h264");
+  } finally {
+    await resetFFmpeg();
+  }
+}
+
+// 4K-capped HQ proxy from a submitted image sequence: PNG frames, encoded in
+// short raw-H.264 chunks, joined byte for byte and wrapped as a 24fps mp4.
+// (Joining mp4 chunks with the concat demuxer instead left the timestamps
+// uneven — it reported ~22fps, which would throw frame numbers off.)
+export async function generateHQSequenceProxy(frames, { onProgress, fps = 24 } = {}) {
+  const sorted = sortFrames(frames);
+  const segments = [];
+  let pending = [];
+  try {
+    await decodeFramesToPngs(sorted, sorted.map((_, i) => i), {
+      vf: HQ_SCALE,
+      recycleEvery: HQ_RECYCLE_EVERY_FRAMES,
+      label: "Building HQ proxy…",
+      onProgress,
+      onPng: async (i, bytes) => {
+        pending.push(bytes);
+        if (pending.length === HQ_SEGMENT_FRAMES || i === sorted.length - 1) {
+          onProgress?.(`Encoding HQ frames ${i + 2 - pending.length}–${i + 1}…`, (i + 1) / sorted.length);
+          segments.push(await encodePngSegment(pending, fps));
+          pending = [];
+        }
+      },
+    });
+
+    onProgress?.("Finishing HQ proxy…", 1);
+    const joined = new Uint8Array(segments.reduce((n, s) => n + s.length, 0));
+    let offset = 0;
+    for (const seg of segments) {
+      joined.set(seg, offset);
+      offset += seg.length;
+    }
+    segments.length = 0;
+    await resetFFmpeg();
+    const ffmpeg = await getFFmpeg();
+    await ffmpeg.writeFile("all.h264", joined);
+    const code = await execGuarded(
+      ffmpeg,
+      ["-framerate", String(fps), "-i", "all.h264", "-c", "copy", "-movflags", "+faststart", "hq.mp4"],
+      JOIN_TIMEOUT_MS,
+      "joining the HQ proxy"
+    );
+    if (code !== 0) throw new Error("ffmpeg couldn't join the HQ proxy segments");
+    const data = await ffmpeg.readFile("hq.mp4");
+    return new Blob([data.buffer], { type: "video/mp4" });
+  } catch (err) {
+    if (isWasmCrash(err)) throw new Error(`ffmpeg ran out of memory building the HQ proxy (${err.message})`);
+    throw err;
+  } finally {
+    await resetFFmpeg();
+  }
+}
+
+// Full-resolution (6K/8K) JPEG stills for proxy frames start..end
+// (0-based, inclusive). Each is handed to onFrame(index, Blob) as soon as
+// it's made — the caller writes it to disk — so nothing piles up in memory.
+// source: { kind: "seq", frames: File[] } | { kind: "vid", file: File }
+export async function generateFullResFrames(source, { start, end, onFrame, onProgress }) {
+  const count = end - start + 1;
+  if (source.kind === "seq") {
+    const sorted = sortFrames(source.frames);
+    if (end >= sorted.length) throw new Error(`The source only has ${sorted.length} frames.`);
+    const indices = Array.from({ length: count }, (_, n) => start + n);
+    await decodeFramesToPngs(sorted, indices, {
+      vf: null,
+      recycleEvery: UHQ_RECYCLE_EVERY_FRAMES,
+      label: "Rendering full-res",
+      onProgress,
+      onPng: async (i, bytes) => onFrame(i, await pngToJpeg(bytes)),
+    });
+    return;
+  }
+
+  // Video: written into ffmpeg once, then pulled one frame at a time by
+  // timestamp (frame i sits at i/24s, matching the 24fps proxy). A wedged
+  // instance is replaced and the video written into the new one.
+  onProgress?.("Loading ffmpeg…");
+  const { fetchFile } = await import("@ffmpeg/util");
+  const inputName = `input.${extensionOf(source.file)}`;
+  const inputBytes = await fetchFile(source.file);
+  const freshInstance = async () => {
+    await resetFFmpeg();
+    const instance = await getFFmpeg();
+    await instance.writeFile(inputName, inputBytes);
+    return instance;
+  };
+  let ffmpeg = await freshInstance();
+  try {
+    for (let f = start; f <= end; f++) {
+      onProgress?.(`Rendering full-res frame ${f - start + 1}/${count}`, (f - start) / count);
+      const code = await execGuarded(
+        ffmpeg,
+        ["-ss", (f / 24).toFixed(5), "-i", inputName, "-vf", "fps=24", "-frames:v", "1", "-pix_fmt", "rgb24", "-update", "1", "uhq.png"],
+        FRAME_TIMEOUT_MS,
+        `extracting frame ${f + 1}`
+      );
+      if (code !== 0) throw new Error("ffmpeg couldn't extract full-res frames from the video");
+      const bytes = await ffmpeg.readFile("uhq.png");
+      await ffmpeg.deleteFile("uhq.png").catch(() => {});
+      await onFrame(f, await pngToJpeg(bytes));
+      if ((f - start + 1) % UHQ_RECYCLE_EVERY_FRAMES === 0 && f < end) ffmpeg = await freshInstance();
+    }
+  } catch (err) {
+    if (isWasmCrash(err)) throw new Error(`ffmpeg ran out of memory rendering full-res frames (${err.message})`);
+    throw err;
+  } finally {
+    await resetFFmpeg();
+  }
+}

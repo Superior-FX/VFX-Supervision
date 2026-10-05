@@ -18,6 +18,7 @@ import {
 } from "../lib/fsAccess.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { groupSequenceFiles } from "../lib/sequenceGrouping.js";
+import { hqProxyName } from "../lib/hqProxy.js";
 import { sortByDueComplexityName } from "../lib/sortShots.js";
 import { hasAssignee } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
@@ -440,7 +441,30 @@ export default function Upload() {
           if (err?.name !== "NotFoundError") console.error(`Couldn't delete old proxy ${name}:`, err);
         }
       }
+      // The supervisor's HQ / 6K/8K renders were made from the old render,
+      // so they go too — they'd show frames that no longer exist.
+      const oldRenders = [
+        hqProxyName(selectedShot.shotCode, sessionVersion, "vid"),
+        hqProxyName(selectedShot.shotCode, sessionVersion, "seq"),
+      ];
+      // Best-effort: a leftover file is untidy, but must never block the submit.
+      const logCleanupError = (what) => (err) => {
+        if (err?.name !== "NotFoundError") console.error(`Couldn't delete old ${what}:`, err);
+      };
+      for (const name of oldRenders) await sessionDirs.reviewDir.removeEntry(name).catch(logCleanupError(name));
+      for (const render of (selectedTask.uhqRenders ?? []).filter((r) => r.version === sessionVersion)) {
+        await sessionDirs.reviewDir
+          .removeEntry(render.folder, { recursive: true })
+          .catch(logCleanupError(render.folder));
+      }
     }
+    // Which submitted files the proxy was made from, so a supervisor's HQ
+    // render later uses exactly those (render/ is shared across versions).
+    const proxied = sessionProxies.at(-1);
+    const proxiedEntry = proxied && selectedFiles.find((f) => f.id === proxied.sourceId);
+    const sourceRecord = proxiedEntry
+      ? { kind: proxied.name.includes("_seq_") ? "seq" : "vid", names: proxiedEntry.names }
+      : null;
     setPostReports((prev) =>
       prev.map((s) =>
         s.id === selectedShot.id
@@ -466,6 +490,15 @@ export default function Upload() {
                       // An overwrite replaces this version's proxy, so marks
                       // drawn on the old frames no longer line up.
                       annotations: (t.annotations ?? []).filter((a) => a.version !== sessionVersion),
+                      sourceFiles: (() => {
+                        const { [sessionVersion]: _old, ...rest } = t.sourceFiles ?? {};
+                        return sourceRecord ? { ...rest, [sessionVersion]: sourceRecord } : rest;
+                      })(),
+                      hqProxies: (() => {
+                        const { [sessionVersion]: _old, ...rest } = t.hqProxies ?? {};
+                        return rest;
+                      })(),
+                      uhqRenders: (t.uhqRenders ?? []).filter((r) => r.version !== sessionVersion),
                     }
                   : t
               ),

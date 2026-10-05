@@ -19,6 +19,9 @@ const STROKE_WIDTH = 0.004;
 // Points closer than this (in 0–1 frame space) to the previous one are
 // dropped — keeps saved strokes small without visibly changing them.
 const MIN_POINT_GAP = 0.002;
+// Full-screen zoom ceiling (×). The proxy is 1280px wide, so past this it's
+// only magnifying proxy pixels.
+const MAX_ZOOM = 8;
 
 const round4 = (n) => Math.round(n * 10000) / 10000;
 
@@ -63,15 +66,29 @@ function drawStroke(ctx, stroke, w, h) {
  * `startFrame` opens the proxy on that frame instead of the first one, and
  * `onFrameSettle(frame)` reports the frame whenever playback is stopped on
  * it — together they let a page bring someone back to where they were.
+ *
+ * Higher-quality sources (all optional):
+ * - `hqSrc`: the 4K HQ proxy. Plays by default when there is one (a toggle
+ *   switches back to the normal proxy), and always when zoomed in.
+ * - `uhqRenders` + `loadUhqFrame(render, frame) => Promise<url>`: full-res
+ *   6K/8K stills (supervisor only), laid over the video on their frames.
+ *   A single-frame/range render shows while zoomed and is dropped by Reset
+ *   view; a full-range one stays on until hidden. `onDeleteUhq(render)`
+ *   adds a delete button to each.
  */
 export default function AnnotatedPlayer({
   src,
+  hqSrc = null,
+  uhqRenders = [],
+  loadUhqFrame,
+  onDeleteUhq,
   annotations = [],
   onChange,
   notes,
   actions,
   startFrame = 0,
   onFrameSettle,
+  onFrameCount,
 }) {
   const editable = typeof onChange === "function";
   const rootRef = useRef(null);
@@ -92,7 +109,22 @@ export default function AnnotatedPlayer({
   // The box the picture has to fit in. Only used in full screen, where the
   // picture is sized to fill as much of it as the aspect ratio allows.
   const viewportRef = useRef(null);
+  // Full-screen zoom/pan of the picture (video + annotation layer move
+  // together, so marks stay on the right pixels). scale 1 = fit.
+  const [view, setView] = useState({ scale: 1, x: 0, y: 0 });
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const panDrag = useRef(null);
+  const [panning, setPanning] = useState(false);
   const [viewport, setViewport] = useState({ w: 0, h: 0 });
+  // Normal proxy picked over the HQ at fit size (zoomed always uses the HQ).
+  const [preferProxy, setPreferProxy] = useState(false);
+  const [activeUhqId, setActiveUhqId] = useState(null);
+  const [uhqImage, setUhqImage] = useState(null); // { key, url } for the frame on screen
+  const uhqCache = useRef(new Map()); // `${renderId}:${frame}` -> object URL
+  // Set while the video element changes source mid-review (proxy <-> HQ):
+  // where to land once the new file is loaded, and whether to keep playing.
+  const swapRef = useRef(null);
 
   const sorted = [...annotations].sort((a, b) => a.frame - b.frame);
   const current = annotations.find((a) => a.frame === frame) ?? null;
@@ -120,7 +152,7 @@ export default function AnnotatedPlayer({
     if (!video) return;
     video.loop = loop;
     video.playbackRate = rate;
-  }, [loop, rate, src, totalFrames]);
+  }, [loop, rate, src, hqSrc, preferProxy, totalFrames]);
 
   // Report where playback came to rest (not every frame while it plays).
   useEffect(() => {
@@ -132,6 +164,9 @@ export default function AnnotatedPlayer({
     setFrame(0);
     setPlaying(false);
     setTotalFrames(0);
+    setView({ scale: 1, x: 0, y: 0 });
+    setPreferProxy(false);
+    setActiveUhqId(null);
   }, [src]);
 
   // While playing, follow the video every animation frame; timeupdate alone
@@ -193,7 +228,12 @@ export default function AnnotatedPlayer({
   }, [current?.id]);
 
   useEffect(() => {
-    const onFsChange = () => setFullscreen(document.fullscreenElement === rootRef.current);
+    const onFsChange = () => {
+      const isFs = document.fullscreenElement === rootRef.current;
+      setFullscreen(isFs);
+      // Zoom is a full-screen-only tool; leaving full screen puts it back.
+      if (!isFs) setView({ scale: 1, x: 0, y: 0 });
+    };
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
@@ -228,6 +268,8 @@ export default function AnnotatedPlayer({
         jumpToAnnotation(-1);
       } else if (e.key === "]") {
         jumpToAnnotation(1);
+      } else if (e.key === "0" && fullscreen) {
+        resetView();
       } else if (e.key === "f" || e.key === "F") {
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         toggleFullscreen();
@@ -304,6 +346,137 @@ export default function AnnotatedPlayer({
 
   const last = Math.max(0, totalFrames - 1);
 
+  // Mouse-wheel zoom, anchored on the cursor so the detail under it stays
+  // put. Native listener because React's wheel handler is passive and
+  // can't stop the browser's own scroll/zoom.
+  useEffect(() => {
+    const box = viewportRef.current;
+    if (!box || !fullscreen) return;
+    const onWheel = (e) => {
+      e.preventDefault();
+      const stage = stageRef.current;
+      if (!stage) return;
+      const { scale, x, y } = viewRef.current;
+      const next = Math.min(MAX_ZOOM, Math.max(1, scale * Math.exp(-e.deltaY * 0.0015)));
+      if (next === scale) return;
+      if (next === 1) {
+        setView({ scale: 1, x: 0, y: 0 });
+        return;
+      }
+      const rect = stage.getBoundingClientRect(); // already includes the current zoom/pan
+      const localX = (e.clientX - rect.left) / scale;
+      const localY = (e.clientY - rect.top) / scale;
+      setView({
+        scale: next,
+        x: x + (e.clientX - localX * next) - rect.left,
+        y: y + (e.clientY - localY * next) - rect.top,
+      });
+    };
+    box.addEventListener("wheel", onWheel, { passive: false });
+    return () => box.removeEventListener("wheel", onWheel);
+  }, [fullscreen]);
+
+  // Middle-button drag pans.
+  const onViewportPointerDown = (e) => {
+    if (!fullscreen || e.button !== 1) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    panDrag.current = { px: e.clientX, py: e.clientY, x: viewRef.current.x, y: viewRef.current.y };
+    setPanning(true);
+  };
+  const onViewportPointerMove = (e) => {
+    const drag = panDrag.current;
+    if (!drag) return;
+    setView((v) => ({ ...v, x: drag.x + (e.clientX - drag.px), y: drag.y + (e.clientY - drag.py) }));
+  };
+  const endPan = () => {
+    panDrag.current = null;
+    setPanning(false);
+  };
+  const isZoomed = view.scale !== 1 || view.x !== 0 || view.y !== 0;
+  const activeUhq = uhqRenders.find((r) => r.id === activeUhqId) ?? null;
+  // Back to fit — and off a single-frame/range 6K/8K render, back onto the
+  // 4K HQ. A full-range render stays on.
+  const resetView = () => {
+    setView({ scale: 1, x: 0, y: 0 });
+    if (activeUhq && !activeUhq.full) setActiveUhqId(null);
+  };
+
+  // Which file the <video> plays. Switching keeps the frame (and playback).
+  const useHq = Boolean(hqSrc) && (isZoomed || !preferProxy);
+  const effectiveSrc = useHq ? hqSrc : src;
+  const sourceLabel = activeUhq && (isZoomed || activeUhq.full) ? "6K/8K" : useHq ? "HQ 4K" : "Proxy";
+  const lastSources = useRef({ src, effectiveSrc });
+  if (lastSources.current.effectiveSrc !== effectiveSrc) {
+    // Same submission, different file (proxy <-> HQ): remember where we are
+    // for the reload. A different submission starts fresh instead.
+    if (lastSources.current.src === src && videoRef.current && totalFrames) {
+      swapRef.current = { frame, playing };
+    } else {
+      swapRef.current = null;
+    }
+    lastSources.current = { src, effectiveSrc };
+  }
+
+  // A render just made (new id) switches on and jumps to its first frame.
+  const knownUhqIds = useRef(new Set(uhqRenders.map((r) => r.id)));
+  useEffect(() => {
+    const fresh = uhqRenders.find((r) => !knownUhqIds.current.has(r.id));
+    knownUhqIds.current = new Set(uhqRenders.map((r) => r.id));
+    if (fresh) {
+      setActiveUhqId(fresh.id);
+      seekToFrame(fresh.start);
+    } else if (activeUhqId && !uhqRenders.some((r) => r.id === activeUhqId)) {
+      setActiveUhqId(null); // deleted
+    }
+  }, [uhqRenders.map((r) => r.id).join(",")]);
+
+  const uhqInRange = activeUhq && frame >= activeUhq.start && frame <= activeUhq.end;
+  const showUhq = Boolean(uhqInRange && (isZoomed || activeUhq.full) && loadUhqFrame);
+
+  // Load the full-res still for the frame on screen (and a few ahead while
+  // playing). Cached object URLs; the oldest are dropped past ~24.
+  useEffect(() => {
+    if (!showUhq) return;
+    let cancelled = false;
+    const render = activeUhq;
+    const fetchFrame = async (f) => {
+      const key = `${render.id}:${f}`;
+      if (uhqCache.current.has(key)) return uhqCache.current.get(key);
+      const url = await loadUhqFrame(render, f);
+      uhqCache.current.set(key, url);
+      if (uhqCache.current.size > 24) {
+        const [oldKey, oldUrl] = uhqCache.current.entries().next().value;
+        uhqCache.current.delete(oldKey);
+        URL.revokeObjectURL(oldUrl);
+      }
+      return url;
+    };
+    (async () => {
+      try {
+        const url = await fetchFrame(frame);
+        if (!cancelled) setUhqImage({ key: `${render.id}:${frame}`, url });
+        if (playing) {
+          for (let f = frame + 1; f <= Math.min(render.end, frame + 3); f++) await fetchFrame(f);
+        }
+      } catch (err) {
+        console.error("Couldn't load 6K/8K frame:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [showUhq, activeUhq?.id, frame]);
+
+  // Drop cached stills when the submission changes or on unmount.
+  useEffect(() => {
+    const cache = uhqCache.current;
+    return () => {
+      cache.forEach((url) => URL.revokeObjectURL(url));
+      cache.clear();
+    };
+  }, [src]);
+
   const stageWidth = fullscreen
     ? `${Math.floor(Math.min(viewport.w, viewport.h * aspect))}px`
     : `min(100%, calc(60vh * ${aspect}))`;
@@ -379,18 +552,63 @@ export default function AnnotatedPlayer({
   // Full-screen right rail only when it has something in it (read-only with
   // no marks has neither a frame list nor actions) — otherwise the picture
   // gets that width back.
-  const showRail = sorted.length > 0 || Boolean(actions);
+  const showRail = sorted.length > 0 || Boolean(actions) || uhqRenders.length > 0;
+
+  const uhqList = uhqRenders.length > 0 && (
+    <div className="aplayer-uhq-list">
+      <span className="label">6K/8K renders</span>
+      {uhqRenders.map((r) => (
+        <div key={r.id} className={`aplayer-list-row${r.id === activeUhqId ? " is-current" : ""}`}>
+          <span className="mono aplayer-list-frame aplayer-list-note">{r.label}</span>
+          <button
+            className="aplayer-btn aplayer-uhq-toggle"
+            onClick={() => {
+              if (r.id === activeUhqId) setActiveUhqId(null);
+              else {
+                setActiveUhqId(r.id);
+                if (frame < r.start || frame > r.end) seekToFrame(r.start);
+              }
+            }}
+          >
+            {r.id === activeUhqId ? "Hide" : "View"}
+          </button>
+          {onDeleteUhq && (
+            <button className="aplayer-list-remove" title="Delete this 6K/8K render from disk" onClick={() => onDeleteUhq(r)}>
+              ×
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 
   const notesContent = typeof notes === "function" ? notes(fullscreen) : notes;
 
   return (
     <div className={`aplayer${fullscreen ? " is-fullscreen" : ""}${showRail ? "" : " no-rail"}`} ref={rootRef}>
       <div className="aplayer-main">
-      <div className="aplayer-viewport" ref={viewportRef}>
-      <div className="aplayer-stage" ref={stageRef} style={{ aspectRatio: aspect, width: stageWidth }}>
+      <div
+        className={`aplayer-viewport${panning ? " is-panning" : ""}`}
+        ref={viewportRef}
+        onPointerDown={onViewportPointerDown}
+        onPointerMove={onViewportPointerMove}
+        onPointerUp={endPan}
+        onPointerCancel={endPan}
+        // Stops Windows' middle-click autoscroll from kicking in.
+        onMouseDown={(e) => e.button === 1 && e.preventDefault()}
+      >
+      <div
+        className="aplayer-stage"
+        ref={stageRef}
+        style={{
+          aspectRatio: aspect,
+          width: stageWidth,
+          transform: fullscreen && isZoomed ? `translate(${view.x}px, ${view.y}px) scale(${view.scale})` : undefined,
+        }}
+      >
         <video
           ref={videoRef}
-          src={src}
+          src={effectiveSrc}
           className="aplayer-video"
           preload="auto"
           playsInline
@@ -399,22 +617,32 @@ export default function AnnotatedPlayer({
             if (v.videoWidth && v.videoHeight) setAspect(v.videoWidth / v.videoHeight);
             const total = Math.max(1, Math.round(v.duration * PROXY_FPS));
             setTotalFrames(total);
-            const resumeAt = Math.min(Math.max(0, startFrame), total - 1);
+            onFrameCount?.(total);
+            const swap = swapRef.current;
+            swapRef.current = null;
+            const resumeAt = Math.min(Math.max(0, swap ? swap.frame : startFrame), total - 1);
             if (resumeAt > 0) {
               v.currentTime = (resumeAt + 0.5) / PROXY_FPS;
               setFrame(resumeAt);
             }
+            if (swap?.playing) v.play().catch(() => {});
           }}
           onPlay={() => setPlaying(true)}
           onPause={(e) => {
+            // A source swap pauses the element on its way out — that's not
+            // the reviewer stopping, and its time has already reset to 0.
+            if (swapRef.current) return;
             setPlaying(false);
             setFrame(frameFromTime(e.currentTarget.currentTime));
           }}
           onSeeked={(e) => {
-            if (!playing) setFrame(frameFromTime(e.currentTarget.currentTime));
+            if (!playing && !swapRef.current) setFrame(frameFromTime(e.currentTarget.currentTime));
           }}
           onEnded={() => setPlaying(false)}
         />
+        {showUhq && uhqImage?.key === `${activeUhq.id}:${frame}` && (
+          <img className="aplayer-uhq" src={uhqImage.url} alt="" draggable={false} />
+        )}
         <canvas
           ref={canvasRef}
           width={canvasSize.w}
@@ -495,9 +723,36 @@ export default function AnnotatedPlayer({
           {formatFrame(frame)} / {formatFrame(last)}
         </span>
 
+        {hqSrc && (
+          <button
+            className={`aplayer-btn aplayer-source${useHq ? " is-hq" : ""}`}
+            onClick={() => setPreferProxy((p) => !p)}
+            disabled={isZoomed}
+            title={
+              isZoomed
+                ? "Zoomed in — always uses the HQ"
+                : useHq
+                  ? "Playing the 4K HQ — click for the normal proxy"
+                  : "Playing the normal proxy — click for the 4K HQ"
+            }
+          >
+            {sourceLabel}
+          </button>
+        )}
+        {!hqSrc && activeUhq && <span className="aplayer-source-label mono">{sourceLabel}</span>}
         {tools}
+        {fullscreen && (
+          <>
+            <span className="aplayer-zoom mono aplayer-push-right" title="Scroll to zoom, middle-drag to pan">
+              {Math.round(view.scale * 100)}%
+            </span>
+            <button className="aplayer-btn" onClick={resetView} disabled={!isZoomed} title="Reset zoom and pan (0)">
+              Reset view
+            </button>
+          </>
+        )}
         <button
-          className={`aplayer-btn${editable && !fullscreen ? "" : " aplayer-push-right"}`}
+          className={`aplayer-btn${editable || fullscreen ? "" : " aplayer-push-right"}`}
           onClick={toggleFullscreen}
           title={fullscreen ? "Exit full screen (F / Esc)" : "Full screen (F)"}
         >
@@ -523,6 +778,7 @@ export default function AnnotatedPlayer({
               {frameList}
             </>
           )}
+          {uhqList}
           {actions && <div className="aplayer-rail-actions">{actions}</div>}
         </div>
       )}
@@ -545,6 +801,7 @@ export default function AnnotatedPlayer({
               {frameList}
             </div>
           )}
+          {uhqList}
           {notesContent}
           {actions}
         </div>
