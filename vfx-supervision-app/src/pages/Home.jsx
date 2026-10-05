@@ -155,6 +155,7 @@ function NewProjectForm({ onCreate, onCancel }) {
   const [name, setName] = useState("");
   const [showCode, setShowCode] = useState("");
   const [codeTouched, setCodeTouched] = useState(false);
+  const [deliveryDate, setDeliveryDate] = useState("");
   const [destinationHandle, setDestinationHandle] = useState(null);
   const [folderError, setFolderError] = useState("");
   const [creating, setCreating] = useState(false);
@@ -197,7 +198,13 @@ function NewProjectForm({ onCreate, onCancel }) {
       }
       setCreating(false);
     }
-    onCreate({ id: draftId, name: name.trim(), showCode: trimmedShowCode });
+    onCreate({
+      id: draftId,
+      name: name.trim(),
+      showCode: trimmedShowCode,
+      deliveryDate: deliveryDate || undefined,
+      createdAt: new Date().toISOString(),
+    });
   };
   useEnterKey(create);
 
@@ -223,6 +230,15 @@ function NewProjectForm({ onCreate, onCancel }) {
           }}
         />
       </div>
+      <label className="home-new-project-delivery">
+        <span className="label">Delivery date (optional)</span>
+        <input
+          type="date"
+          className="report-edit-input"
+          value={deliveryDate}
+          onChange={(e) => setDeliveryDate(e.target.value)}
+        />
+      </label>
       {showCode && showCode.trim().length < SHOW_CODE_MIN && (
         <span className="home-new-project-error">Show code needs at least {SHOW_CODE_MIN} letters.</span>
       )}
@@ -256,6 +272,7 @@ export default function Home() {
   const [activeId, setActiveId] = useActiveProjectId();
   const [creating, setCreating] = useState(false);
   const [removingId, setRemovingId] = useState(null);
+  const [editingDeliveryId, setEditingDeliveryId] = useState(null);
   const [importPending, setImportPending] = useState(null); // { fileName, data } | null
   const [importError, setImportError] = useState("");
   const [backupFolder, setBackupFolder] = useState(null);
@@ -288,7 +305,7 @@ export default function Home() {
     // after navigate) can't read a stale active-project-id if the effect
     // hasn't flushed yet.
     localStorage.setItem("vfx-supe-active-project-id", JSON.stringify(id));
-    navigate("/dashboard");
+    navigate(`/dashboard?project=${id}`);
   };
 
   const createProject = (project) => {
@@ -297,6 +314,10 @@ export default function Home() {
     localStorage.setItem("vfx-supe-projects", JSON.stringify(next));
     setCreating(false);
     openProject(project.id);
+  };
+
+  const setDeliveryDate = (id, deliveryDate) => {
+    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, deliveryDate: deliveryDate || undefined } : p)));
   };
 
   const removeProject = (id) => {
@@ -434,6 +455,31 @@ export default function Home() {
                 <div className="home-project-card-main">
                   <span className="home-project-name">{p.name}</span>
                   <span className="home-project-code mono">{p.showCode}</span>
+                  {editingDeliveryId === p.id ? (
+                    <input
+                      type="date"
+                      className="report-edit-input home-project-delivery-input"
+                      defaultValue={p.deliveryDate ?? ""}
+                      autoFocus
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => setDeliveryDate(p.id, e.target.value)}
+                      onBlur={() => setEditingDeliveryId(null)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === "Escape") setEditingDeliveryId(null);
+                      }}
+                    />
+                  ) : (
+                    <span
+                      className="home-project-delivery"
+                      title="Set delivery date"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingDeliveryId(p.id);
+                      }}
+                    >
+                      {p.deliveryDate ? `Delivery ${p.deliveryDate}` : "+ Delivery date"}
+                    </span>
+                  )}
                 </div>
                 <span
                   className="home-project-remove"

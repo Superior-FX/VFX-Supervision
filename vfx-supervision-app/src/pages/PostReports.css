@@ -415,6 +415,28 @@
   font-size: 10px;
 }
 
+.post-shot-plate-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.post-shot-plate-none {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.post-shot-plate-progress {
+  font: 11px var(--font-mono);
+  color: var(--warning);
+}
+
+.post-shot-plate-warning {
+  font-size: 11px;
+  color: var(--warning);
+}
+
 .post-shot-folder-hint {
   color: var(--text-tertiary);
   font-weight: 400;

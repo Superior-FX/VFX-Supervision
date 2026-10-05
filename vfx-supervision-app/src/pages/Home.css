@@ -161,6 +161,28 @@
   color: var(--text-tertiary);
 }
 
+.home-project-delivery {
+  align-self: flex-start;
+  font-size: 10px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.home-project-delivery:hover {
+  color: var(--accent);
+}
+
+.home-project-delivery-input {
+  font-size: 11px;
+  padding: 2px 4px;
+}
+
+.home-new-project-delivery {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .home-project-remove {
   cursor: pointer;
   color: var(--text-tertiary);

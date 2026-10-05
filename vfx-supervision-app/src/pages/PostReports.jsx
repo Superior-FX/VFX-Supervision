@@ -5,7 +5,7 @@ import FolderStatusBanner from "../components/FolderStatusBanner.jsx";
 import { CheckIcon, ComplexityDots, PencilIcon } from "../components/SceneVfxFields.jsx";
 import { STORY_IMPORTANCE_LEVELS } from "../data/importance.js";
 import { POST_TASK_TYPES } from "../data/postTasks.js";
-import { taskStatusInfo } from "../data/taskStatus.js";
+import { applyTaskPatch, taskStatusInfo, withStatus } from "../data/taskStatus.js";
 import { COMPLEXITY_LEVELS } from "../data/vfxEffects.js";
 import { buildFolderPath, buildSceneFolderPath, padScene } from "../lib/folderPath.js";
 import {
@@ -27,6 +27,7 @@ import { assigneeRows, assigneesLabel, getAssignees, renameAssigneeOnTask } from
 import { useEnterKey } from "../lib/useEnterKey.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import { useProjectFolder } from "../lib/useProjectFolder.js";
+import { importPlate } from "../lib/plateImport.js";
 import { BRAND } from "../lib/brandColors.js";
 import ArtistDirectory, { artistDepartments } from "./postReports/ArtistDirectory.jsx";
 import "./PostReports.css";
@@ -282,6 +283,7 @@ function ShotCard({
   isExpanded,
   onToggleExpand,
   onChange,
+  onPatch,
   onDelete,
   project,
   sceneNumber,
@@ -290,6 +292,10 @@ function ShotCard({
   isAdmin,
 }) {
   const [addTaskType, setAddTaskType] = useState("");
+  // { stage, fraction } while importing, then null; plateMessage is the
+  // last error/warning.
+  const [plateProgress, setPlateProgress] = useState(null);
+  const [plateMessage, setPlateMessage] = useState(null); // { tone, text } | null
   const [folderStatus, setFolderStatus] = useState(null); // "creating" | "error" | null
   const [pushStatus, setPushStatus] = useState(null); // "error" | null
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -302,14 +308,14 @@ function ShotCard({
 
   const addTask = (type) => {
     if (!type) return;
-    update({ tasks: [...shot.tasks, { id: crypto.randomUUID(), type, source: "inhouse", assignees: [""], status: "assigned" }] });
+    update({ tasks: [...shot.tasks, withStatus({ id: crypto.randomUUID(), type, source: "inhouse", assignees: [""] }, "assigned")] });
     // No on-disk folder yet — a task only gets its 02_tasks/ subfolder once
     // the shot is actually pushed (see pushAssignment below), not the
     // moment it's added.
   };
 
   const updateTask = (taskId, patch) => {
-    update({ tasks: shot.tasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)) });
+    update({ tasks: shot.tasks.map((t) => (t.id === taskId ? applyTaskPatch(t, patch) : t)) });
   };
 
   const removeTask = (taskId) => {
@@ -375,6 +381,38 @@ function ShotCard({
         console.error("Couldn't create task folders on push:", err);
         setPushStatus("error");
       }
+    }
+  };
+
+  // Plate import can take minutes (copy + proxy), so it writes back through
+  // onPatch — a patch applied to the latest shot record — rather than
+  // update(), whose `shot` would be stale by then and undo any edits made
+  // in the meantime.
+  const runPlateImport = async (kind) => {
+    if (!rootHandle || plateProgress) return;
+    setPlateMessage(null);
+    try {
+      const ok = await ensurePermission(rootHandle);
+      if (!ok) {
+        setPlateMessage({ tone: "danger", text: "Couldn't get access to the project folder." });
+        return;
+      }
+      setPlateProgress({ stage: "Choose the plate…", fraction: null });
+      const result = await importPlate(rootHandle, {
+        scene: padScene(sceneNumber),
+        shotCode: shot.shotCode,
+        kind,
+        onProgress: (stage, fraction) => setPlateProgress({ stage, fraction }),
+      });
+      onPatch({ plate: result.plate, ...(result.thumbnail ? { thumbnail: result.thumbnail } : {}) });
+      if (result.warning) setPlateMessage({ tone: "warning", text: result.warning });
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        console.error("Plate import failed:", err);
+        setPlateMessage({ tone: "danger", text: `Plate import failed: ${err?.message || err}` });
+      }
+    } finally {
+      setPlateProgress(null);
     }
   };
 
@@ -576,6 +614,41 @@ function ShotCard({
             </div>
           )}
 
+          {shot.foldersCreatedAt && !codeChangedSinceCreate && (
+            <div className="post-shot-plate-row">
+              <span className="label">Plate</span>
+              {shot.plate ? (
+                <span className="pill mono" title={`Imported ${shot.plate.importedAt?.slice(0, 10) ?? ""}`}>
+                  {shot.plate.name}
+                  {shot.plate.kind === "seq" && shot.plate.frames ? ` · ${shot.plate.frames} fr` : ""}
+                  {shot.plate.proxy ? "" : " · no proxy"}
+                </span>
+              ) : (
+                <span className="post-shot-plate-none">None yet</span>
+              )}
+              {plateProgress ? (
+                <span className="post-shot-plate-progress">
+                  {plateProgress.stage}
+                  {plateProgress.fraction != null ? ` ${Math.round(plateProgress.fraction * 100)}%` : ""}
+                </span>
+              ) : rootHandle ? (
+                <>
+                  <span className="btn btn-secondary post-create-folders-btn" onClick={() => runPlateImport("video")}>
+                    {shot.plate ? "Replace with video…" : "Import plate video…"}
+                  </span>
+                  <span className="btn btn-secondary post-create-folders-btn" onClick={() => runPlateImport("sequence")}>
+                    {shot.plate ? "Replace with sequence…" : "Import plate sequence…"}
+                  </span>
+                </>
+              ) : null}
+              {plateMessage && (
+                <span className={plateMessage.tone === "danger" ? "project-create-error" : "post-shot-plate-warning"}>
+                  {plateMessage.text}
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="post-shot-tasks">
             {shot.tasks.length === 0 && <span className="post-tasks-empty">No tasks added yet.</span>}
             {shot.tasks.map((task) => (
@@ -705,6 +778,7 @@ function SceneGroup({
   expandedShotIds,
   toggleShotExpanded,
   updateShot,
+  patchShot,
   removeShot,
   project,
   rootHandle,
@@ -892,6 +966,7 @@ function SceneGroup({
                   isExpanded={expandedShotIds.includes(shot.id)}
                   onToggleExpand={() => toggleShotExpanded(shot.id)}
                   onChange={updateShot}
+                  onPatch={(patch) => patchShot(shot.id, patch)}
                   onDelete={() => removeShot(shot.id)}
                   project={project}
                   sceneNumber={scene.scene}
@@ -975,6 +1050,12 @@ export default function PostReports() {
 
   const updateShot = (updated) => {
     setShots((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+  };
+
+  // For async work that finishes later (plate import): merges into whatever
+  // the shot looks like by then.
+  const patchShot = (id, patch) => {
+    setShots((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   };
 
   const removeShot = async (id) => {
@@ -1358,6 +1439,7 @@ export default function PostReports() {
                   expandedShotIds={expandedShotIds}
                   toggleShotExpanded={toggleShotExpanded}
                   updateShot={updateShot}
+                    patchShot={patchShot}
                   removeShot={removeShot}
                   project={project}
                   rootHandle={rootHandle}
@@ -1386,6 +1468,7 @@ export default function PostReports() {
                           isExpanded={expandedShotIds.includes(shot.id)}
                           onToggleExpand={() => toggleShotExpanded(shot.id)}
                           onChange={updateShot}
+                  onPatch={(patch) => patchShot(shot.id, patch)}
                           onDelete={() => removeShot(shot.id)}
                           project={project}
                           sceneNumber={shot.scene}

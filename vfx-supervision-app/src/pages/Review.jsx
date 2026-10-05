@@ -3,6 +3,9 @@ import { useSearchParams } from "react-router-dom";
 import AnnotatedPlayer from "../components/AnnotatedPlayer.jsx";
 import FolderStatusBanner from "../components/FolderStatusBanner.jsx";
 import { useHqRenders } from "../components/HqRenders.jsx";
+import ViewSelect from "../components/ViewSelect.jsx";
+import { applyTaskPatch } from "../data/taskStatus.js";
+import { versionNotes, withCurrentSupNote } from "../lib/versionNotes.js";
 import { assigneesLabel, getAssignees, hasAssignee } from "../lib/taskAssignees.js";
 import { padScene } from "../lib/folderPath.js";
 import { formatVersion } from "../lib/fsAccess.js";
@@ -10,7 +13,7 @@ import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { sortByDueComplexityName } from "../lib/sortShots.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import { useProjectFolder } from "../lib/useProjectFolder.js";
-import { useReviewProxy } from "../lib/useReviewProxy.js";
+import { usePlateProxy, useReviewProxy, versionChoices } from "../lib/useReviewProxy.js";
 import "./Review.css";
 
 // How the queue is ordered/narrowed. "due" and "submitted" show every
@@ -112,9 +115,21 @@ export default function Review() {
   useEffect(() => {
     setSupNote(current?.task.supNote ?? "");
     setArtistNoteOpen(false);
+    setView(null);
   }, [current?.task.id]);
 
-  const { videoUrl, hqUrl, reviewDir, videoError } = useReviewProxy(folder, current);
+  // What's on screen: null = the latest submission (the default, and the
+  // only one that can be marked up or approved), an older version number,
+  // or "plate". Older versions and the plate are look-only.
+  const [view, setView] = useState(null);
+  const viewingPlate = view === "plate";
+  const viewingOld = typeof view === "number";
+  const isLatest = !viewingPlate && !viewingOld;
+
+  const { videoUrl, hqUrl, reviewDir, versions, videoError } = useReviewProxy(folder, current, {
+    version: viewingOld ? view : null,
+  });
+  const { plateUrl, plateError } = usePlateProxy(folder, current?.shot, viewingPlate);
 
   const chooseTask = (taskId) => {
     setSearchParams(taskId ? { task: taskId } : {});
@@ -125,7 +140,7 @@ export default function Review() {
     setPostReports((prev) =>
       prev.map((s) =>
         s.id === current.shot.id
-          ? { ...s, tasks: s.tasks.map((t) => (t.id === current.task.id ? { ...t, ...patch } : t)) }
+          ? { ...s, tasks: s.tasks.map((t) => (t.id === current.task.id ? applyTaskPatch(t, patch) : t)) }
           : s
       )
     );
@@ -134,7 +149,8 @@ export default function Review() {
   // Annotations live on the task, each tagged with the proxy version it was
   // drawn on, so a new submission starts clean while older marks are kept.
   const currentVersion = current?.task.version ?? null;
-  const versionAnnotations = (current?.task.annotations ?? []).filter((a) => a.version === currentVersion);
+  const shownVersion = viewingOld ? view : currentVersion;
+  const versionAnnotations = (current?.task.annotations ?? []).filter((a) => a.version === shownVersion);
   const saveAnnotations = (list) => {
     const others = (current.task.annotations ?? []).filter((a) => a.version !== currentVersion);
     updateCurrentTask({ annotations: [...others, ...list.map((a) => ({ ...a, version: currentVersion }))] });
@@ -158,7 +174,18 @@ export default function Review() {
     patchTask: current ? patchTaskById(current.shot.id, current.task.id) : () => {},
   });
 
-  const saveNote = () => updateCurrentTask({ supNote: supNote.trim() || undefined });
+  // Saved onto the current version's history entry too, so it stays with
+  // that version once the artist resubmits.
+  const saveNote = () => {
+    if (!current) return;
+    setPostReports((prev) =>
+      prev.map((s) =>
+        s.id === current.shot.id
+          ? { ...s, tasks: s.tasks.map((t) => (t.id === current.task.id ? withCurrentSupNote(t, supNote) : t)) }
+          : s
+      )
+    );
+  };
 
   // Acting on a task drops it out of the pending queue — clear the
   // selection so the picker falls back to whatever's next instead of
@@ -168,10 +195,21 @@ export default function Review() {
     setSearchParams({});
   };
 
-  const supeNotesBox = (
+  const shownNotes = current ? versionNotes(current.task, shownVersion) : {};
+
+  // The latest version's supe note is editable; an older one's is shown as
+  // it was left.
+  const supeNotesBox = isLatest ? (
     <div className="review-note">
       <span className="label">Supe notes</span>
       <textarea placeholder="Notes for the artist…" value={supNote} onChange={(e) => setSupNote(e.target.value)} />
+    </div>
+  ) : (
+    <div className="review-note">
+      <span className="label">Supe notes — {formatVersion(shownVersion)}</span>
+      <div className={`review-note-readonly${shownNotes.supNote ? "" : " is-empty"}`}>
+        {shownNotes.supNote || "No supe notes were saved on this version."}
+      </div>
     </div>
   );
 
@@ -179,55 +217,73 @@ export default function Review() {
   // plus an "Artist note" toggle that pops the note up over the picture,
   // so the bottom row stays short and the video gets the room.
   const renderNotes = (fullscreen) =>
-    !current ? null : fullscreen ? (
+    !current || viewingPlate ? null : fullscreen ? (
       <>
         {supeNotesBox}
         <div className="review-artist-toggle">
           <button
             className="aplayer-btn"
-            disabled={!current.task.versionNote}
+            disabled={!shownNotes.artistNote}
             onClick={() => setArtistNoteOpen((o) => !o)}
           >
-            {current.task.versionNote ? `Artist note ${artistNoteOpen ? "▾" : "▴"}` : "No artist note"}
+            {shownNotes.artistNote ? `Artist note ${artistNoteOpen ? "▾" : "▴"}` : "No artist note"}
           </button>
-          {artistNoteOpen && current.task.versionNote && (
+          {artistNoteOpen && shownNotes.artistNote && (
             <div className="review-artist-popup">
               <span className="label">Artist's version note</span>
-              <div>{current.task.versionNote}</div>
+              <div>{shownNotes.artistNote}</div>
             </div>
           )}
         </div>
       </>
     ) : (
       <div className="review-notes">
-        {current.task.versionNote && (
+        {shownNotes.artistNote && (
           <div className="card review-version-note">
             <span className="label">Artist's version note</span>
             <br />
-            {current.task.versionNote}
+            {shownNotes.artistNote}
           </div>
         )}
         {supeNotesBox}
       </div>
     );
 
-  const actions = current && (
-    <>
-    {hq.buttons}
-    {hq.dialog}
-    <div className="review-actions">
-      <div className="btn btn-secondary" onClick={saveNote}>
-        Save note
+  // Marking up and approving only ever apply to the latest submission —
+  // looking at an older version or the plate swaps them for a way back.
+  const actions =
+    current &&
+    (isLatest ? (
+      <>
+        {hq.buttons}
+        {hq.dialog}
+        <div className="review-actions">
+          <div className="btn btn-secondary" onClick={saveNote}>
+            Save note
+          </div>
+          <div className="btn btn-danger" onClick={() => act("needs_revision")}>
+            Revise
+          </div>
+          <div className="btn btn-primary" onClick={() => act("final")}>
+            Final
+          </div>
+        </div>
+      </>
+    ) : (
+      <div className="review-viewing-other">
+        <span>
+          Viewing {viewingPlate ? "the plate" : formatVersion(view)} — look only.
+        </span>
+        <div className="btn btn-secondary" onClick={() => setView(null)}>
+          Back to latest
+        </div>
       </div>
-      <div className="btn btn-danger" onClick={() => act("needs_revision")}>
-        Revise
-      </div>
-      <div className="btn btn-primary" onClick={() => act("final")}>
-        Final
-      </div>
-    </div>
-    </>
-  );
+    ));
+
+  const playerSrc = viewingPlate ? plateUrl : videoUrl;
+  const loadMessage = viewingPlate
+    ? plateError || "Loading plate…"
+    : videoError || (current?.task.reviewFile ? "Loading proxy…" : "No review proxy for this submission.");
 
   return (
     <div className="review">
@@ -274,53 +330,64 @@ export default function Review() {
 
       {current && (
         <>
-          <select
-            className="review-select mono"
-            value={current.task.id}
-            onChange={(e) => chooseTask(e.target.value)}
-          >
-            {options.map(({ shot, task }) => (
-              <option value={task.id} key={task.id}>
-                {shot.shotCode} — {task.type}
-                {task.version ? ` ${formatVersion(task.version)}` : ""} — {assigneesLabel(task)}
-                {sortMode === "submitted"
-                  ? submittedAt(task)
-                    ? ` — submitted ${formatSubmitted(submittedAt(task))}`
-                    : ""
-                  : shot.dueDate
-                    ? ` — due ${shot.dueDate}`
-                    : ""}
-              </option>
-            ))}
-          </select>
+          <div className="review-pickers">
+            <select
+              className="review-select mono"
+              value={current.task.id}
+              onChange={(e) => chooseTask(e.target.value)}
+            >
+              {options.map(({ shot, task }) => (
+                <option value={task.id} key={task.id}>
+                  {shot.shotCode} — {task.type}
+                  {task.version ? ` ${formatVersion(task.version)}` : ""} — {assigneesLabel(task)}
+                  {sortMode === "submitted"
+                    ? submittedAt(task)
+                      ? ` — submitted ${formatSubmitted(submittedAt(task))}`
+                      : ""
+                    : shot.dueDate
+                      ? ` — due ${shot.dueDate}`
+                      : ""}
+                </option>
+              ))}
+            </select>
+            <ViewSelect
+              task={current.task}
+              choices={versionChoices(current.task, versions)}
+              hasPlate={Boolean(current.shot.plate?.proxy)}
+              value={view}
+              onChange={setView}
+            />
+          </div>
 
           <div className="review-meta">
             <span className="pill pill-accent">{current.shot.shotCode}</span>
-            <span className="pill">{current.task.type}</span>
-            {current.task.version && <span className="pill mono">{formatVersion(current.task.version)}</span>}
+            <span className="pill">{viewingPlate ? "Plate" : current.task.type}</span>
+            {!viewingPlate && shownVersion && <span className="pill mono">{formatVersion(shownVersion)}</span>}
+            {!isLatest && <span className="pill pill-warning">Not the latest</span>}
             <span className="review-meta-assignee">{assigneesLabel(current.task)}</span>
           </div>
 
-          {videoUrl ? (
+          {playerSrc ? (
             // The notes panel goes inside the player so it follows it into
             // full screen (as a side column) instead of being left behind.
             <AnnotatedPlayer
-              src={videoUrl}
-              hqSrc={hqUrl}
-              uhqRenders={hq.uhqRenders}
+              key={`${current.task.id}:${view ?? "latest"}`}
+              src={playerSrc}
+              hqSrc={viewingPlate ? null : hqUrl}
+              uhqRenders={isLatest ? hq.uhqRenders : []}
               loadUhqFrame={hq.loadUhqFrame}
               onDeleteUhq={hq.requestDeleteUhq}
               onFrameSettle={setPlayerFrame}
               onFrameCount={setFrameCount}
-              annotations={versionAnnotations}
-              onChange={saveAnnotations}
+              annotations={viewingPlate ? [] : versionAnnotations}
+              onChange={isLatest ? saveAnnotations : undefined}
               notes={renderNotes}
               actions={actions}
             />
           ) : (
             <>
               <div className="card review-frame">
-                <span>{videoError || (current.task.reviewFile ? "Loading proxy…" : "No review proxy for this submission.")}</span>
+                <span>{loadMessage}</span>
               </div>
               {renderNotes(false)}
               {actions}

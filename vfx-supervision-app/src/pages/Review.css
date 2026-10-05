@@ -173,3 +173,41 @@
   display: block;
   margin-bottom: 6px;
 }
+
+/* Task picker + version/plate picker side by side. */
+.review-pickers {
+  display: flex;
+  gap: 10px;
+}
+
+.review-pickers > .review-select:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.review-view-select {
+  flex: none;
+  min-width: 140px;
+}
+
+.review-note-readonly {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  font: 12px var(--font-body);
+  padding: 10px 12px;
+  white-space: pre-wrap;
+}
+
+.review-note-readonly.is-empty {
+  color: var(--text-tertiary);
+}
+
+.review-viewing-other {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font: 12px var(--font-body);
+  color: var(--warning);
+}

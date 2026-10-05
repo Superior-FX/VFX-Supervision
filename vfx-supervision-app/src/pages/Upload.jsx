@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import FolderStatusBanner from "../components/FolderStatusBanner.jsx";
+import { withStatus } from "../data/taskStatus.js";
 import { resolveCurrentArtist } from "../lib/currentArtist.js";
 import { generateReviewProxy, generateSequenceReviewProxy, isProxyableFrame } from "../lib/ffmpeg.js";
 import { buildTaskReviewPath, buildTaskUploadPath, padScene } from "../lib/folderPath.js";
@@ -473,8 +474,7 @@ export default function Upload() {
               tasks: s.tasks.map((t) =>
                 t.id === selectedTask.id
                   ? {
-                      ...t,
-                      status: "pending",
+                      ...withStatus(t, "pending"),
                       version: sessionVersion,
                       // One entry per version; an overwrite replaces its
                       // version's entry rather than adding a second one.

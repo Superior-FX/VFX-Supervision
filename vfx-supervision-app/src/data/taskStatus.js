@@ -15,6 +15,38 @@ export function taskStatusInfo(status) {
   return TASK_STATUSES[status] ?? TASK_STATUSES.assigned;
 }
 
+// Every status change goes through here so it's timestamped in
+// task.statusHistory ([{ status, at }], oldest first) — the Dashboard reads
+// it for review/revision wait times and "finaled this week". Tasks from
+// before this existed simply have no history. Setting the same status
+// again (e.g. a resubmit while already pending) still logs, since it's a
+// real event.
+export function withStatus(task, status) {
+  return {
+    ...task,
+    status,
+    statusHistory: [...(task.statusHistory ?? []), { status, at: new Date().toISOString() }],
+  };
+}
+
+// Merges a generic field patch into a task, routing a status change in it
+// through withStatus — for editors (Post Reports, Review) whose patches
+// usually touch other fields (notes, assignees) and only sometimes status.
+export function applyTaskPatch(task, patch) {
+  const { status, ...rest } = patch;
+  const merged = { ...task, ...rest };
+  return status !== undefined && status !== task.status ? withStatus(merged, status) : merged;
+}
+
+// When a task last entered its current status, or null if unrecorded.
+export function statusSince(task) {
+  const history = task.statusHistory ?? [];
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i].status === task.status) return history[i].at;
+  }
+  return null;
+}
+
 // The single most "urgent"/active status across a list of tasks, in
 // priority order — used wherever a group of tasks (a shot's, or one
 // artist's on that shot) needs to collapse down to one status badge.

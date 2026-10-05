@@ -1,7 +1,8 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import AnnotatedPlayer from "../components/AnnotatedPlayer.jsx";
 import FolderStatusBanner from "../components/FolderStatusBanner.jsx";
+import ViewSelect from "../components/ViewSelect.jsx";
 import { taskStatusInfo } from "../data/taskStatus.js";
 import { resolveCurrentArtist } from "../lib/currentArtist.js";
 import { formatVersion } from "../lib/fsAccess.js";
@@ -10,7 +11,8 @@ import { sortByDueComplexityName } from "../lib/sortShots.js";
 import { hasAssignee } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import { useProjectFolder } from "../lib/useProjectFolder.js";
-import { useReviewProxy } from "../lib/useReviewProxy.js";
+import { usePlateProxy, useReviewProxy, versionChoices } from "../lib/useReviewProxy.js";
+import { versionNotes } from "../lib/versionNotes.js";
 import "./Review.css";
 import "./ArtistReview.css";
 
@@ -66,7 +68,16 @@ export default function ArtistReview() {
     if (entry && entry.task.id !== lastTaskId) setLastTaskId(entry.task.id);
   }, [entry?.task.id]);
 
-  const { videoUrl, hqUrl, videoError } = useReviewProxy(folder, entry);
+  // null = the latest submission (default), an older version number, or "plate".
+  const [view, setView] = useState(null);
+  useEffect(() => setView(null), [entry?.task.id]);
+  const viewingPlate = view === "plate";
+  const viewingOld = typeof view === "number";
+
+  const { videoUrl, hqUrl, versions, videoError } = useReviewProxy(folder, entry, {
+    version: viewingOld ? view : null,
+  });
+  const { plateUrl, plateError } = usePlateProxy(folder, entry?.shot, viewingPlate);
 
   if (!currentArtist) {
     return (
@@ -96,17 +107,21 @@ export default function ArtistReview() {
 
   const { shot, task } = entry;
   const status = taskStatusInfo(task.status);
+  const shownVersion = viewingOld ? view : task.version ?? null;
   // Only the marks drawn on the version that's actually being shown.
-  const annotations = (task.annotations ?? []).filter((a) => a.version === (task.version ?? null));
+  const annotations = viewingPlate ? [] : (task.annotations ?? []).filter((a) => a.version === shownVersion);
+  const notesFor = versionNotes(task, shownVersion);
 
-  const supeNotes = (
+  const supeNotes = viewingPlate ? null : (
     <div className="artist-review-supe">
-      <span className="label">Supe notes</span>
-      <div className={`artist-review-supe-text${task.supNote ? "" : " is-empty"}`}>
-        {task.supNote || "No supe notes on this submission yet."}
+      <span className="label">Supe notes{viewingOld ? ` — ${formatVersion(shownVersion)}` : ""}</span>
+      <div className={`artist-review-supe-text${notesFor.supNote ? "" : " is-empty"}`}>
+        {notesFor.supNote ||
+          (viewingOld ? "No supe notes were saved on this version." : "No supe notes on this submission yet.")}
       </div>
     </div>
   );
+  const playerSrc = viewingPlate ? plateUrl : videoUrl;
 
   return (
     <div className="review">
@@ -122,44 +137,58 @@ export default function ArtistReview() {
         impact="the review proxy can't be played"
       />
 
-      <select
-        className="review-select mono"
-        value={task.id}
-        onChange={(e) => setSearchParams({ task: e.target.value })}
-      >
-        {options.map(({ shot: s, task: t }) => (
-          <option value={t.id} key={t.id}>
-            {s.shotCode} — {t.type}
-            {t.version ? ` ${formatVersion(t.version)}` : ""} — {taskStatusInfo(t.status).label}
-            {s.dueDate ? ` — due ${s.dueDate}` : ""}
-          </option>
-        ))}
-      </select>
+      <div className="review-pickers">
+        <select
+          className="review-select mono"
+          value={task.id}
+          onChange={(e) => setSearchParams({ task: e.target.value })}
+        >
+          {options.map(({ shot: s, task: t }) => (
+            <option value={t.id} key={t.id}>
+              {s.shotCode} — {t.type}
+              {t.version ? ` ${formatVersion(t.version)}` : ""} — {taskStatusInfo(t.status).label}
+              {s.dueDate ? ` — due ${s.dueDate}` : ""}
+            </option>
+          ))}
+        </select>
+        <ViewSelect
+          task={task}
+          choices={versionChoices(task, versions)}
+          hasPlate={Boolean(shot.plate?.proxy)}
+          value={view}
+          onChange={setView}
+        />
+      </div>
 
       <div className="review-meta">
         <span className="pill pill-accent">{shot.shotCode}</span>
-        <span className="pill">{task.type}</span>
-        {task.version && <span className="pill mono">{formatVersion(task.version)}</span>}
+        <span className="pill">{viewingPlate ? "Plate" : task.type}</span>
+        {!viewingPlate && shownVersion && <span className="pill mono">{formatVersion(shownVersion)}</span>}
+        {view !== null && <span className="pill pill-warning">Not the latest</span>}
         {shot.dueDate && <span className="review-meta-assignee">Due {shot.dueDate}</span>}
       </div>
 
-      {videoUrl ? (
+      {playerSrc ? (
         // No onChange: read-only — the artist sees the marks but can't edit.
         <AnnotatedPlayer
-          src={videoUrl}
+          key={`${task.id}:${view ?? "latest"}`}
+          src={playerSrc}
           // Artists get the 4K HQ when there is one, never the 6K/8K stills.
-          hqSrc={hqUrl}
+          hqSrc={viewingPlate ? null : hqUrl}
           annotations={annotations}
           notes={supeNotes}
-          startFrame={lastFrames[task.id] ?? 0}
+          // The remembered frame belongs to the latest submission only.
+          startFrame={view === null ? lastFrames[task.id] ?? 0 : 0}
           onFrameSettle={(frame) => {
-            if (lastFrames[task.id] !== frame) setLastFrames((prev) => ({ ...prev, [task.id]: frame }));
+            if (view === null && lastFrames[task.id] !== frame) {
+              setLastFrames((prev) => ({ ...prev, [task.id]: frame }));
+            }
           }}
         />
       ) : (
         <>
           <div className="card review-frame">
-            <span>{videoError || "Loading proxy…"}</span>
+            <span>{viewingPlate ? plateError || "Loading plate…" : videoError || "Loading proxy…"}</span>
           </div>
           {supeNotes}
         </>

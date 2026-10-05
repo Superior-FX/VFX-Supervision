@@ -1,6 +1,6 @@
 import { Fragment, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { aggregateTaskStatus, taskStatusInfo } from "../data/taskStatus.js";
+import { aggregateTaskStatus, taskStatusInfo, withStatus } from "../data/taskStatus.js";
 import { resolveCurrentArtist } from "../lib/currentArtist.js";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
@@ -37,7 +37,7 @@ export default function ArtistReport() {
   const setTaskStatus = (shotId, taskId, status) => {
     setPostReports((prev) =>
       prev.map((s) =>
-        s.id === shotId ? { ...s, tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, status } : t)) } : s
+        s.id === shotId ? { ...s, tasks: s.tasks.map((t) => (t.id === taskId ? withStatus(t, status) : t)) } : s
       )
     );
   };

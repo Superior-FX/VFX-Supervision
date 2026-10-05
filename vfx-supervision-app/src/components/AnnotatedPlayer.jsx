@@ -784,7 +784,8 @@ export default function AnnotatedPlayer({
       )}
 
       {fullscreen ? (
-        <div className="aplayer-bottom">
+        // A plain render (read-only, unmarked, no notes) gets no bottom row.
+        (editable || sorted.length > 0 || notesContent) && <div className="aplayer-bottom">
           {frameNote ?? (
             <div className="aplayer-note aplayer-note-empty">
               {editable ? "Draw on this frame to add a note to it." : "No note on this frame."}

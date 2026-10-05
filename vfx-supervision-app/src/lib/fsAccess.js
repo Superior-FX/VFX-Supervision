@@ -293,6 +293,38 @@ export async function latestProxyVersionIn(reviewDir, shotCode) {
   return latest;
 }
 
+// Every version that has a proxy on disk for this shot in reviewDir, oldest
+// first, as [{ version, name }]. If a version has both a _vid and a _seq
+// proxy, the most recently written one wins (the one its submission used).
+export async function listProxyVersions(reviewDir, shotCode) {
+  const prefix = `${shotCode}_`;
+  const best = new Map(); // version -> { name, modified }
+  for await (const [name, handle] of reviewDir.entries()) {
+    if (handle.kind !== "file" || !name.startsWith(prefix)) continue;
+    const match = name.slice(prefix.length).match(PROXY_VERSION_RE);
+    if (!match) continue;
+    const version = Number(match[1]);
+    const modified = (await handle.getFile()).lastModified;
+    const prev = best.get(version);
+    if (!prev || modified > prev.modified) best.set(version, { name, modified });
+  }
+  return [...best.entries()].sort((a, b) => a[0] - b[0]).map(([version, { name }]) => ({ version, name }));
+}
+
+// A shot's plate lives in 00_plates/ (the source) with its review proxy in
+// 03_review/plate/ — next to the task review folders, but not one of them.
+export function plateProxyName(shotCode) {
+  return `${shotCode}_plate_proxy.mp4`;
+}
+
+export async function getPlateFolders(rootHandle, { scene, shotCode }) {
+  const sceneDir = await rootHandle.getDirectoryHandle(`SC${scene}`);
+  const shotDir = await sceneDir.getDirectoryHandle(shotCode);
+  const platesDir = await subdir(shotDir, "00_plates");
+  const reviewDir = await subdir(await subdir(shotDir, "03_review"), "plate");
+  return { platesDir, reviewDir };
+}
+
 export async function fileExists(dir, name) {
   try {
     await dir.getFileHandle(name);
