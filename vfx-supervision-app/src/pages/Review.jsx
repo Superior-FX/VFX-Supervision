@@ -4,11 +4,12 @@ import AnnotatedPlayer from "../components/AnnotatedPlayer.jsx";
 import FolderStatusBanner from "../components/FolderStatusBanner.jsx";
 import { assigneesLabel, getAssignees, hasAssignee } from "../lib/taskAssignees.js";
 import { padScene } from "../lib/folderPath.js";
-import { formatVersion, getTaskReviewFolder, readFileFrom } from "../lib/fsAccess.js";
+import { formatVersion } from "../lib/fsAccess.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { sortByDueComplexityName } from "../lib/sortShots.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import { useProjectFolder } from "../lib/useProjectFolder.js";
+import { useReviewProxy } from "../lib/useReviewProxy.js";
 import "./Review.css";
 
 // How the queue is ordered/narrowed. "due" and "submitted" show every
@@ -39,10 +40,7 @@ export default function Review() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [postReports, setPostReports] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
   const folder = useProjectFolder(project);
-  const rootHandle = folder.rootHandle;
   const [supNote, setSupNote] = useState("");
-  const [videoUrl, setVideoUrl] = useState(null);
-  const [videoError, setVideoError] = useState("");
   const [artistNoteOpen, setArtistNoteOpen] = useState(false);
   const [sortMode, setSortMode] = useLocalStorageState(scopedKey("vfx-supe-review-sort", project?.id), "due");
   const [sortValue, setSortValue] = useLocalStorageState(scopedKey("vfx-supe-review-sort-value", project?.id), "");
@@ -112,44 +110,7 @@ export default function Review() {
     setArtistNoteOpen(false);
   }, [current?.task.id]);
 
-  useEffect(() => {
-    setVideoUrl(null);
-    setVideoError("");
-    if (!current || !current.task.reviewFile) return;
-    if (folder.status !== "connected") {
-      // The banner above explains why and has the fix; once it's applied,
-      // status flips and this effect re-runs.
-      if (folder.status === "missing" || folder.status === "needs-permission") {
-        setVideoError("Can't play the proxy until the project folder is connected — see above.");
-      }
-      return;
-    }
-    let cancelled = false;
-    let objectUrl = null;
-    (async () => {
-      try {
-        const reviewDir = await getTaskReviewFolder(rootHandle, {
-          scene: padScene(current.shot.scene),
-          shotCode: current.shot.shotCode,
-          taskType: current.task.type,
-        });
-        if (!reviewDir) throw new Error("No review folder for this task type.");
-        const file = await readFileFrom(reviewDir, current.task.reviewFile);
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(file);
-        setVideoUrl(objectUrl);
-      } catch (err) {
-        if (!cancelled) {
-          console.error("Couldn't load review proxy:", err);
-          setVideoError("Couldn't load the review proxy — it may have been moved or deleted on disk.");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [current?.task.id, current?.task.reviewFile, rootHandle, folder.status]);
+  const { videoUrl, videoError } = useReviewProxy(folder, current);
 
   const chooseTask = (taskId) => {
     setSearchParams(taskId ? { task: taskId } : {});

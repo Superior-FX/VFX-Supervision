@@ -13,6 +13,7 @@ import PostReports from "./pages/PostReports.jsx";
 import Review from "./pages/Review.jsx";
 import Upload from "./pages/Upload.jsx";
 import ArtistReport from "./pages/ArtistReport.jsx";
+import ArtistReview from "./pages/ArtistReview.jsx";
 import ArtistAssignments from "./pages/ArtistAssignments.jsx";
 import Help from "./pages/Help.jsx";
 
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="/review" element={<Review />} />
         <Route path="/upload" element={<Upload />} />
         <Route path="/artist-report" element={<ArtistReport />} />
+        <Route path="/artist-review" element={<ArtistReview />} />
         <Route path="/artist-assignments" element={<ArtistAssignments />} />
         <Route path="/help" element={<Help />} />
       </Route>

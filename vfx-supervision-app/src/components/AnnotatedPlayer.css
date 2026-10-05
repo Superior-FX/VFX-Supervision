@@ -26,6 +26,10 @@
   box-sizing: border-box;
 }
 
+.aplayer.is-fullscreen.no-rail {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .aplayer.is-fullscreen .aplayer-main {
   grid-column: 1;
   grid-row: 1;

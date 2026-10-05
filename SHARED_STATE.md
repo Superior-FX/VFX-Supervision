@@ -30,3 +30,4 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-10-04T01:24:41-05:00 — **Will Cox** (Atom-Smasher) — `182a236` Shared project-folder warning on Post Reports, Review, and Upload
 - 2026-10-04T21:18:16-05:00 — **Will Cox** (Atom-Smasher) — `ae6338e` Review & Dailies: per-frame annotation tool with frame notes
 - 2026-10-04T22:07:39-05:00 — **Will Cox** (Atom-Smasher) — `be93780` Review & Dailies: full screen, loop/speed, sort & filter queue
+- 2026-10-04T22:32:22-05:00 — **Will Cox** (Atom-Smasher) — `a620e1e` Collapsible sidebar groups, lock pre-prod/production, VIEW buttons

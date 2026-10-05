@@ -38,7 +38,9 @@ const NAV_GROUPS = [
   {
     label: "Artist Portal",
     items: [
-      { to: "/artist-assignments", label: "Shot Tracking" },
+      // Shot Tracking (/artist-assignments) is off the menu for now — its
+      // page and route are kept, to be folded into the Dashboard later.
+      { to: "/artist-review", label: "Shot Viewer" },
       { to: "/upload", label: "Upload Shot" },
       { to: "/artist-report", label: "Artist Report" },
     ],

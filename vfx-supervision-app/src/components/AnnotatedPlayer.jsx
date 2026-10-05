@@ -59,8 +59,20 @@ function drawStroke(ctx, stroke, w, h) {
  *   compact version. Under the player normally; the bottom row in full screen.
  * - `actions`: buttons (save / approve…). Last under the player normally;
  *   bottom of the right-hand rail in full screen.
+ *
+ * `startFrame` opens the proxy on that frame instead of the first one, and
+ * `onFrameSettle(frame)` reports the frame whenever playback is stopped on
+ * it — together they let a page bring someone back to where they were.
  */
-export default function AnnotatedPlayer({ src, annotations = [], onChange, notes, actions }) {
+export default function AnnotatedPlayer({
+  src,
+  annotations = [],
+  onChange,
+  notes,
+  actions,
+  startFrame = 0,
+  onFrameSettle,
+}) {
   const editable = typeof onChange === "function";
   const rootRef = useRef(null);
   const [fullscreen, setFullscreen] = useState(false);
@@ -109,6 +121,11 @@ export default function AnnotatedPlayer({ src, annotations = [], onChange, notes
     video.loop = loop;
     video.playbackRate = rate;
   }, [loop, rate, src, totalFrames]);
+
+  // Report where playback came to rest (not every frame while it plays).
+  useEffect(() => {
+    if (!playing && totalFrames) onFrameSettle?.(frame);
+  }, [frame, playing, totalFrames]);
 
   // New proxy: back to the start.
   useEffect(() => {
@@ -359,10 +376,15 @@ export default function AnnotatedPlayer({ src, annotations = [], onChange, notes
     </div>
   );
 
+  // Full-screen right rail only when it has something in it (read-only with
+  // no marks has neither a frame list nor actions) — otherwise the picture
+  // gets that width back.
+  const showRail = sorted.length > 0 || Boolean(actions);
+
   const notesContent = typeof notes === "function" ? notes(fullscreen) : notes;
 
   return (
-    <div className={`aplayer${fullscreen ? " is-fullscreen" : ""}`} ref={rootRef}>
+    <div className={`aplayer${fullscreen ? " is-fullscreen" : ""}${showRail ? "" : " no-rail"}`} ref={rootRef}>
       <div className="aplayer-main">
       <div className="aplayer-viewport" ref={viewportRef}>
       <div className="aplayer-stage" ref={stageRef} style={{ aspectRatio: aspect, width: stageWidth }}>
@@ -375,7 +397,13 @@ export default function AnnotatedPlayer({ src, annotations = [], onChange, notes
           onLoadedMetadata={(e) => {
             const v = e.currentTarget;
             if (v.videoWidth && v.videoHeight) setAspect(v.videoWidth / v.videoHeight);
-            setTotalFrames(Math.max(1, Math.round(v.duration * PROXY_FPS)));
+            const total = Math.max(1, Math.round(v.duration * PROXY_FPS));
+            setTotalFrames(total);
+            const resumeAt = Math.min(Math.max(0, startFrame), total - 1);
+            if (resumeAt > 0) {
+              v.currentTime = (resumeAt + 0.5) / PROXY_FPS;
+              setFrame(resumeAt);
+            }
           }}
           onPlay={() => setPlaying(true)}
           onPause={(e) => {
@@ -487,7 +515,7 @@ export default function AnnotatedPlayer({ src, annotations = [], onChange, notes
       </div>
 
 
-      {fullscreen && (
+      {fullscreen && showRail && (
         <div className="aplayer-rail">
           {sorted.length > 0 && (
             <>

@@ -115,7 +115,7 @@ export default function ArtistReport() {
                                     </span>
                                     <span
                                       className="btn btn-secondary artist-report-action-btn"
-                                      onClick={() => navigate(`/shot/${shot.shotCode}`)}
+                                      onClick={() => navigate(`/artist-review?task=${task.id}`)}
                                     >
                                       VIEW
                                     </span>
