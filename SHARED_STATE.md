@@ -32,3 +32,5 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-10-04T22:07:39-05:00 — **Will Cox** (Atom-Smasher) — `be93780` Review & Dailies: full screen, loop/speed, sort & filter queue
 - 2026-10-04T22:32:22-05:00 — **Will Cox** (Atom-Smasher) — `a620e1e` Collapsible sidebar groups, lock pre-prod/production, VIEW buttons
 - 2026-10-04T22:55:20-05:00 — **Will Cox** (Atom-Smasher) — `e6e14f6` Artist Portal: Shot Viewer replaces Shot Tracking in the sidebar
+- 2026-10-05T01:05:51-05:00 — **Will Cox** (Atom-Smasher) — `8e736e3` Review: full-screen zoom/pan, supervisor HQ 4K proxy, 6K/8K stills
+- 2026-10-05T16:05:02-05:00 — **Will Cox** (Atom-Smasher) — `f5c4edf` Company-wide Dashboard, plate import, version/plate viewing
