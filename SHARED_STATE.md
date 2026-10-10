@@ -34,3 +34,4 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-10-04T22:55:20-05:00 — **Will Cox** (Atom-Smasher) — `e6e14f6` Artist Portal: Shot Viewer replaces Shot Tracking in the sidebar
 - 2026-10-05T01:05:51-05:00 — **Will Cox** (Atom-Smasher) — `8e736e3` Review: full-screen zoom/pan, supervisor HQ 4K proxy, 6K/8K stills
 - 2026-10-05T16:05:02-05:00 — **Will Cox** (Atom-Smasher) — `f5c4edf` Company-wide Dashboard, plate import, version/plate viewing
+- 2026-10-05T23:25:25-05:00 — **Will Cox** (Atom-Smasher) — `e92ec7a` SHARED_STATE: log 8e736e3 and f5c4edf
