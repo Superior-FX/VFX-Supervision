@@ -72,7 +72,7 @@ function extensionOf(file) {
 }
 
 // Returns a data: URL (persists in localStorage, unlike blob: URLs which die on reload).
-export async function generateThumbnail(file, { onProgress } = {}) {
+async function generateThumbnailNow(file, { onProgress } = {}) {
   if (file.type.startsWith("image/")) {
     const bytes = new Uint8Array(await file.arrayBuffer());
     return bytesToDataUrl(bytes, file.type || "image/jpeg");
@@ -120,7 +120,7 @@ async function execWithProgress(ffmpeg, args, onFraction) {
 // libx264 4:2:0), 24fps, CRF 23. Returns a Blob (never a data: URL — a
 // review proxy easily runs tens of MB, far past what localStorage can
 // hold, so it's written straight to disk by the caller instead).
-export async function generateReviewProxy(file, opts = {}) {
+async function generateReviewProxyNow(file, opts = {}) {
   try {
     return await transcodeReviewProxy(file, opts);
   } catch (err) {
@@ -200,7 +200,7 @@ async function frameToJpeg(ffmpeg, frame, fetchFile) {
   }
 }
 
-export async function generateSequenceReviewProxy(frames, { onProgress, fps = 24 } = {}) {
+async function generateSequenceReviewProxyNow(frames, { onProgress, fps = 24 } = {}) {
   onProgress?.("Loading ffmpeg…");
   const { fetchFile } = await import("@ffmpeg/util");
   // Start clean — an earlier run may have left this instance's heap full.
@@ -397,7 +397,7 @@ async function pngToJpeg(pngBytes, quality = 0.95) {
 }
 
 // 4K-capped HQ proxy from a submitted video. CRF 18 (vs 23 for the proxy).
-export async function generateHQVideoProxy(file, { onProgress } = {}) {
+async function generateHQVideoProxyNow(file, { onProgress } = {}) {
   onProgress?.("Loading ffmpeg…");
   const { fetchFile } = await import("@ffmpeg/util");
   await resetFFmpeg();
@@ -477,7 +477,7 @@ async function encodePngSegment(pngs, fps) {
 // short raw-H.264 chunks, joined byte for byte and wrapped as a 24fps mp4.
 // (Joining mp4 chunks with the concat demuxer instead left the timestamps
 // uneven — it reported ~22fps, which would throw frame numbers off.)
-export async function generateHQSequenceProxy(frames, { onProgress, fps = 24 } = {}) {
+async function generateHQSequenceProxyNow(frames, { onProgress, fps = 24 } = {}) {
   const sorted = sortFrames(frames);
   const segments = [];
   let pending = [];
@@ -529,7 +529,7 @@ export async function generateHQSequenceProxy(frames, { onProgress, fps = 24 } =
 // (0-based, inclusive). Each is handed to onFrame(index, Blob) as soon as
 // it's made — the caller writes it to disk — so nothing piles up in memory.
 // source: { kind: "seq", frames: File[] } | { kind: "vid", file: File }
-export async function generateFullResFrames(source, { start, end, onFrame, onProgress }) {
+async function generateFullResFramesNow(source, { start, end, onFrame, onProgress }) {
   const count = end - start + 1;
   if (source.kind === "seq") {
     const sorted = sortFrames(source.frames);
@@ -581,3 +581,31 @@ export async function generateFullResFrames(source, { start, end, onFrame, onPro
     await resetFFmpeg();
   }
 }
+
+// ---------------------------------------------------------------------------
+// One job at a time. Every job shares the one ffmpeg instance and its fixed
+// in-memory file names (input.mov, proxy.mp4, …), and some jobs recycle the
+// instance mid-run — so two at once overwrite/delete each other's files
+// ("File could not be read! Code=-1") and mix up each other's progress.
+// Callers queue here instead; a queued job reports that it's waiting.
+// ---------------------------------------------------------------------------
+let jobQueue = Promise.resolve();
+let jobsPending = 0;
+
+function oneAtATime(job) {
+  return (input, opts = {}) => {
+    if (jobsPending > 0) opts.onProgress?.("Waiting for another encode to finish…", null);
+    jobsPending++;
+    const run = jobQueue.then(() => job(input, opts));
+    const settled = run.finally(() => jobsPending--);
+    jobQueue = settled.catch(() => {});
+    return settled;
+  };
+}
+
+export const generateThumbnail = oneAtATime(generateThumbnailNow);
+export const generateReviewProxy = oneAtATime(generateReviewProxyNow);
+export const generateSequenceReviewProxy = oneAtATime(generateSequenceReviewProxyNow);
+export const generateHQVideoProxy = oneAtATime(generateHQVideoProxyNow);
+export const generateHQSequenceProxy = oneAtATime(generateHQSequenceProxyNow);
+export const generateFullResFrames = oneAtATime(generateFullResFramesNow);
