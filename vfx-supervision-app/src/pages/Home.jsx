@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import logo from "../../logo/SuperiorFX_logo_003.jpg";
 import { downloadExport, exportToFolder, importAllData, isValidExport } from "../lib/backup.js";
 import {
+  createOrLinkProjectRootFolder,
   createProjectRootFolder,
   deleteRootHandle,
   ensurePermission,
@@ -60,6 +61,42 @@ function TrashIcon() {
         strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+function FolderIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path d="M12 10.5v5M9.5 13h5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// Shown when the project is already linked to a folder, so picking a new
+// location is a deliberate choice rather than a silent re-point.
+function ProjectFolderRelink({ project, linkedName, onChoose, onCancel }) {
+  useEnterKey(onChoose);
+  return (
+    <div className="card home-project-confirm home-project-folder-confirm" onClick={(e) => e.stopPropagation()}>
+      <span className="home-project-confirm-label">
+        {project.name} is linked to the "{linkedName}" folder. Choose a new location to create (or link) a{" "}
+        {project.showCode} folder there instead? Nothing in the current folder is moved or deleted.
+      </span>
+      <div className="home-project-confirm-actions">
+        <span className="btn btn-primary" onClick={onChoose}>
+          Choose Location…
+        </span>
+        <span className="btn btn-secondary" onClick={onCancel}>
+          Cancel
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -280,6 +317,50 @@ export default function Home() {
   const [exportStatus, setExportStatus] = useState("");
   const [backupFileList, setBackupFileList] = useState(null); // string[] | null
   const fileInputRef = useRef(null);
+  const [linkedFolders, setLinkedFolders] = useState({}); // projectId -> folder name
+  const [relinkingId, setRelinkingId] = useState(null);
+  const [folderStatus, setFolderStatus] = useState(null); // { id, text, error } | null
+
+  useEffect(() => {
+    if (!isFsAccessSupported()) return;
+    let cancelled = false;
+    Promise.all(projects.map((p) => loadRootHandle(p.id).then((h) => [p.id, h?.name], () => [p.id, undefined]))).then(
+      (entries) => {
+        if (!cancelled) setLinkedFolders(Object.fromEntries(entries.filter(([, name]) => name)));
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [projects]);
+
+  const chooseProjectFolder = async (project) => {
+    setRelinkingId(null);
+    setFolderStatus(null);
+    let destination;
+    try {
+      destination = await pickDestinationFolder();
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        setFolderStatus({ id: project.id, text: "Couldn't get folder access — try again.", error: true });
+      }
+      return;
+    }
+    try {
+      const root = await createOrLinkProjectRootFolder(project.id, destination, project.showCode);
+      setLinkedFolders((prev) => ({ ...prev, [project.id]: root.name }));
+      const where = root === destination ? destination.name : `${destination.name}/${root.name}`;
+      setFolderStatus({ id: project.id, text: `Project folder ready: ${where}` });
+    } catch (err) {
+      console.error("Couldn't create the project folder:", err);
+      setFolderStatus({ id: project.id, text: "Couldn't create the project folder there.", error: true });
+    }
+  };
+
+  const onFolderButton = (project) => {
+    if (linkedFolders[project.id]) setRelinkingId(project.id);
+    else chooseProjectFolder(project);
+  };
 
   // If the app just migrated from the old single-project model, the
   // folder handle it had is still sitting under the legacy IndexedDB key —
@@ -450,6 +531,14 @@ export default function Home() {
                 onConfirm={() => removeProject(p.id)}
                 onCancel={() => setRemovingId(null)}
               />
+            ) : relinkingId === p.id ? (
+              <ProjectFolderRelink
+                key={p.id}
+                project={p}
+                linkedName={linkedFolders[p.id]}
+                onChoose={() => chooseProjectFolder(p)}
+                onCancel={() => setRelinkingId(null)}
+              />
             ) : (
               <div className="card home-project-card" key={p.id} onClick={() => openProject(p.id)}>
                 <div className="home-project-card-main">
@@ -480,7 +569,28 @@ export default function Home() {
                       {p.deliveryDate ? `Delivery ${p.deliveryDate}` : "+ Delivery date"}
                     </span>
                   )}
+                  {folderStatus?.id === p.id && (
+                    <span className={folderStatus.error ? "home-new-project-error" : "home-project-folder-status"}>
+                      {folderStatus.text}
+                    </span>
+                  )}
                 </div>
+                {isFsAccessSupported() && (
+                  <span
+                    className={`home-project-folder${linkedFolders[p.id] ? " home-project-folder-linked" : ""}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onFolderButton(p);
+                    }}
+                    title={
+                      linkedFolders[p.id]
+                        ? `Project folder: ${linkedFolders[p.id]} — click to create it somewhere else`
+                        : "Create project folder…"
+                    }
+                  >
+                    <FolderIcon />
+                  </span>
+                )}
                 <span
                   className="home-project-remove"
                   onClick={(e) => {

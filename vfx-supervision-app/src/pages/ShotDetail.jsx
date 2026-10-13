@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import AnnotatedPlayer from "../components/AnnotatedPlayer.jsx";
 import FolderStatusBanner from "../components/FolderStatusBanner.jsx";
+import FootageNotes from "../components/FootageNotes.jsx";
 import { aggregateTaskStatus, taskStatusInfo } from "../data/taskStatus.js";
 import { buildFolderPath, padScene } from "../lib/folderPath.js";
 import { formatVersion, getTaskReviewFolder, listProxyVersions } from "../lib/fsAccess.js";
@@ -59,11 +60,13 @@ export default function ShotDetail() {
   const { shotId } = useParams();
   const navigate = useNavigate();
   const project = useActiveProject();
-  const [shots] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
+  const [searchParams] = useSearchParams();
+  const [shots, setShots] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
   const folder = useProjectFolder(project);
   const [copied, setCopied] = useState(false);
   // "plate" or "<taskId>:<version>"; null until picked = the default.
-  const [pick, setPick] = useState(null);
+  // ?view=plate (from Post Reports → Ingest) opens on the plate.
+  const [pick, setPick] = useState(() => (searchParams.get("view") === "plate" ? "plate" : null));
 
   const shot = shots.find((s) => s.shotCode === shotId) ?? null;
   const versionsByTask = useAllTaskVersions(folder, shot);
@@ -98,7 +101,7 @@ export default function ShotDetail() {
     return latest?.value ?? (hasPlate ? "plate" : null);
   }, [choices, hasPlate]);
 
-  const selected = pick ?? defaultPick;
+  const selected = pick === "plate" && !hasPlate ? defaultPick : pick ?? defaultPick;
   const viewingPlate = selected === "plate";
   const choice = choices.find((c) => c.value === selected) ?? null;
   const entry = choice ? { shot, task: choice.task } : null;
@@ -183,6 +186,18 @@ export default function ShotDetail() {
       ) : (
         <div className="card review-empty">
           Nothing to watch yet — no submissions, and no plate imported (Post Reports → Import plate).
+        </div>
+      )}
+
+      {shot.plate && (
+        <div className="card detail-tasks">
+          <span className="label">Footage notes</span>
+          <FootageNotes
+            notes={shot.footageNotes ?? []}
+            onChange={(footageNotes) =>
+              setShots((prev) => prev.map((s) => (s.id === shot.id ? { ...s, footageNotes } : s)))
+            }
+          />
         </div>
       )}
 

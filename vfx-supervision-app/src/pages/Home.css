@@ -194,6 +194,30 @@
   color: var(--danger);
 }
 
+.home-project-folder {
+  cursor: pointer;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  display: flex;
+}
+
+.home-project-folder-linked {
+  color: var(--text-secondary);
+}
+
+.home-project-folder:hover {
+  color: var(--accent);
+}
+
+.home-project-folder-status {
+  font-size: 10px;
+  color: var(--accent);
+}
+
+.home-project-folder-confirm {
+  border-left-color: var(--accent);
+}
+
 .home-project-confirm {
   padding: 10px 12px;
   display: flex;

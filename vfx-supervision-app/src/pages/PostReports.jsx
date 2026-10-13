@@ -30,9 +30,10 @@ import { useProjectFolder } from "../lib/useProjectFolder.js";
 import { importPlate } from "../lib/plateImport.js";
 import { BRAND } from "../lib/brandColors.js";
 import ArtistDirectory, { artistDepartments } from "./postReports/ArtistDirectory.jsx";
+import FootageIngest from "./postReports/FootageIngest.jsx";
 import "./PostReports.css";
 
-const TABS = ["Shots", "Artists"];
+const TABS = ["Shots", "Ingest", "Artists"];
 
 // Shots with no matching scene (e.g. pushed from Capture Reports before
 // scenes existed) are grouped under this synthetic bucket.
@@ -291,6 +292,7 @@ function ShotCard({
   artists,
   isAdmin,
 }) {
+  const navigate = useNavigate();
   const [addTaskType, setAddTaskType] = useState("");
   // { stage, fraction } while importing, then null; plateMessage is the
   // last error/warning.
@@ -470,7 +472,13 @@ function ShotCard({
           {showExpanded ? "▼" : "▶"}
         </span>
         {shot.thumbnail ? (
-          <img className="post-shot-thumb" src={shot.thumbnail} alt={`${shot.shotCode} thumbnail`} />
+          <img
+            className="post-shot-thumb post-shot-thumb-link"
+            src={shot.thumbnail}
+            alt={`${shot.shotCode} thumbnail`}
+            title="Open in shot viewer"
+            onClick={() => navigate(`/shot/${encodeURIComponent(shot.shotCode)}`)}
+          />
         ) : (
           <div className="post-shot-thumb-placeholder">
             <ImageIcon />
@@ -1058,6 +1066,20 @@ export default function PostReports() {
     setShots((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   };
 
+  // Footage Ingest needs a shot's folders on disk before it can copy a
+  // plate in — creates them the same way the shot card's "Create folders"
+  // button does, and is a no-op when they already match the shot code.
+  const ensureShotFolders = async (shot) => {
+    if (shot.foldersCreatedAt && shot.foldersCreatedForCode === shot.shotCode) return;
+    const sceneNumber = padScene(shot.scene);
+    await createShotFolders(rootHandle, {
+      scene: sceneNumber,
+      shotCode: shot.shotCode,
+      meta: buildShotMeta(project, sceneNumber, shot),
+    });
+    patchShot(shot.id, { foldersCreatedAt: new Date().toISOString(), foldersCreatedForCode: shot.shotCode });
+  };
+
   const removeShot = async (id) => {
     const shot = shots.find((s) => s.id === id);
     setShots((prev) => prev.filter((s) => s.id !== id));
@@ -1396,7 +1418,15 @@ export default function PostReports() {
         impact="scene and shot folders won't be created, renamed, or moved into zzz_DELETED"
       />
 
-      {tab === "Artists" ? (
+      <FootageIngest
+        hidden={tab !== "Ingest"}
+        shots={shots}
+        folder={folder}
+        patchShot={patchShot}
+        ensureShotFolders={ensureShotFolders}
+      />
+
+      {tab === "Ingest" ? null : tab === "Artists" ? (
         <ArtistDirectory isAdmin={isAdmin} onRenameArtist={renameArtistEverywhere} />
       ) : (
         <>

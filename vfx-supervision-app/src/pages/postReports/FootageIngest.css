@@ -1,0 +1,261 @@
+.ingest {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ingest[hidden] {
+  display: none;
+}
+
+.ingest-intake {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ingest-intake-top {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.ingest-intake-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 640px;
+}
+
+.ingest-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.ingest-intake-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ingest-pick-error {
+  font-size: 12px;
+  color: var(--warning);
+}
+
+.ingest-queue {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+
+.ingest-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ingest-row-thumb {
+  width: 64px;
+  height: 36px;
+  flex: none;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.ingest-row-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+}
+
+.ingest-row-source {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ingest-row-name {
+  font-size: 12px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ingest-row-detail {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.ingest-row-arrow {
+  color: var(--text-tertiary);
+  flex: none;
+}
+
+.ingest-row-target {
+  flex: 1 1 260px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ingest-shot-select {
+  width: 130px;
+}
+
+.ingest-row-flags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ingest-row-status {
+  flex: 0 1 220px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.ingest-progress {
+  font: 11px var(--font-mono);
+  color: var(--accent);
+}
+
+.ingest-row-message {
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.ingest-row-error .ingest-row-message {
+  color: var(--danger);
+}
+
+.ingest-row-remove {
+  cursor: pointer;
+  color: var(--text-tertiary);
+  flex: none;
+  padding: 0 4px;
+}
+
+.ingest-row-remove:hover {
+  color: var(--danger);
+}
+
+.ingest-queue-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
+.ingest-library {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ingest-library-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ingest-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.ingest-card {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ingest-card-thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.ingest-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ingest-card-play {
+  position: absolute;
+  inset: auto auto 8px 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.ingest-card-thumb:hover .ingest-card-play {
+  opacity: 1;
+}
+
+.ingest-card-body {
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ingest-card-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ingest-card-date {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.ingest-card-plate {
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

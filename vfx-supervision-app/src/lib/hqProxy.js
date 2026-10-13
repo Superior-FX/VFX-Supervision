@@ -1,10 +1,13 @@
 // Naming + source lookup for the supervisor-made review renders:
-//   HQ  — 4K-capped mp4:  03_review/<task>/<shot>_v003_vid_proxyHQ.mp4
+//   HQ  — 4K-capped mp4:  03_review/<task>/<shot>_v003_vid_HQ_proxy.mp4
 //   UHQ — full-res (6K/8K) JPEG stills, one folder per render:
-//         03_review/<task>/<shot>_v003_vid_proxyUHQ_f0042/            (single frame)
-//         03_review/<task>/<shot>_v003_vid_proxyUHQ_f0040-0050/       (range)
-//         03_review/<task>/<shot>_v003_vid_proxyUHQ_full/             (whole shot)
-//         each holding <shot>_v003_UHQ.0042.jpg …
+//         03_review/<task>/<shot>_v003_vid_UHQ_f0042_proxy/            (single frame)
+//         03_review/<task>/<shot>_v003_vid_UHQ_f0040-0050_proxy/       (range)
+//         03_review/<task>/<shot>_v003_vid_UHQ_full_proxy/             (whole shot)
+//         each holding <shot>_v003_UHQ_proxy.0042.jpg …
+// Every name ends in _proxy (proxyName in fsAccess.js). Older renders
+// (…_proxyHQ.mp4, …_proxyUHQ_*/ with …_UHQ.0042.jpg) still load: their names
+// are stored on the task, and uhqFrameName falls back for their frames.
 //
 // Task fields (all keyed by version, so a new submission starts clean):
 //   task.sourceFiles[version] = { kind: "vid" | "seq", names: [...] }  — recorded at upload
@@ -13,7 +16,7 @@
 //
 // Frame numbers are 0-based internally (frame i of the 24fps proxy) and
 // shown 1-based, same as the player.
-import { formatVersion } from "./fsAccess.js";
+import { formatVersion, proxyName } from "./fsAccess.js";
 import { isProxyableFrame } from "./ffmpeg.js";
 import { groupSequenceFiles } from "./sequenceGrouping.js";
 
@@ -26,17 +29,26 @@ export function proxyKind(reviewFile) {
 }
 
 export function hqProxyName(shotCode, version, kind) {
+  return proxyName(`${shotCode}_${formatVersion(version)}_${kind ?? "vid"}_HQ`);
+}
+
+// Pre-suffix-rule HQ name — only used to clean up old files.
+export function legacyHqProxyName(shotCode, version, kind) {
   return `${shotCode}_${formatVersion(version)}_${kind ?? "vid"}_proxyHQ.mp4`;
 }
 
 export function uhqFolderName(shotCode, version, kind, { start, end, full }) {
-  const base = `${shotCode}_${formatVersion(version)}_${kind ?? "vid"}_proxyUHQ`;
-  if (full) return `${base}_full`;
-  return start === end ? `${base}_f${pad4(start)}` : `${base}_f${pad4(start)}-${pad4(end)}`;
+  const base = `${shotCode}_${formatVersion(version)}_${kind ?? "vid"}_UHQ`;
+  const range = full ? "_full" : start === end ? `_f${pad4(start)}` : `_f${pad4(start)}-${pad4(end)}`;
+  return proxyName(base + range, "");
 }
 
-export function uhqFrameName(shotCode, version, frame) {
-  return `${shotCode}_${formatVersion(version)}_UHQ.${pad4(frame)}.jpg`;
+// render: the task.uhqRenders entry, when reading one back — renders from
+// before the suffix rule live in a …_proxyUHQ… folder with the old frame names.
+export function uhqFrameName(shotCode, version, frame, render = null) {
+  const base = `${shotCode}_${formatVersion(version)}_UHQ`;
+  if (render?.folder?.includes("_proxyUHQ")) return `${base}.${pad4(frame)}.jpg`;
+  return `${proxyName(base, "")}.${pad4(frame)}.jpg`;
 }
 
 export function uhqLabel(render) {

@@ -76,6 +76,18 @@ export async function createProjectRootFolder(projectId, destinationHandle, fold
   return rootHandle;
 }
 
+// Like createProjectRootFolder, but if the picked folder already IS the show
+// folder (same name), it's used as-is instead of nesting GOTP/GOTP. Either
+// way nothing existing is overwritten — getDirectoryHandle with create just
+// opens a folder that's already there.
+export async function createOrLinkProjectRootFolder(projectId, destinationHandle, folderName) {
+  if (destinationHandle.name.toLowerCase() === folderName.toLowerCase()) {
+    await saveRootHandle(projectId, destinationHandle);
+    return destinationHandle;
+  }
+  return createProjectRootFolder(projectId, destinationHandle, folderName);
+}
+
 // Combined pick+create+save for call sites with no separate "create" step
 // to defer to (e.g. granting a folder to an already-existing project).
 export async function pickProjectRootFolder(projectId, folderName) {
@@ -277,6 +289,16 @@ export async function readFileFrom(dirHandle, name) {
 // Anything else there (e.g. proxies from before versioning) is ignored.
 const PROXY_VERSION_RE = /^v(\d{3,})(?:_vid|_seq)?_proxy\.mp4$/i;
 
+// THE naming rule for anything the app generates as a proxy (review mp4s,
+// plate proxies, HQ/UHQ renders and their folders): the name always ends in
+// "_proxy", right before the extension or frame number. Build every proxy
+// name through here so nothing new can skip the suffix.
+export const PROXY_SUFFIX = "_proxy";
+
+export function proxyName(base, ext = ".mp4") {
+  return `${base}${PROXY_SUFFIX}${ext}`;
+}
+
 export function formatVersion(n) {
   return `v${String(n).padStart(3, "0")}`;
 }
@@ -314,7 +336,7 @@ export async function listProxyVersions(reviewDir, shotCode) {
 // A shot's plate lives in 00_plates/ (the source) with its review proxy in
 // 03_review/plate/ — next to the task review folders, but not one of them.
 export function plateProxyName(shotCode) {
-  return `${shotCode}_plate_proxy.mp4`;
+  return proxyName(`${shotCode}_plate`);
 }
 
 export async function getPlateFolders(rootHandle, { scene, shotCode }) {
@@ -360,12 +382,16 @@ export async function copyFileInto(destDir, name, file, { onProgress } = {}) {
 // the caller copies its returned File wherever it needs to. startInDir, if
 // given, opens the dialog at that folder (the resolved task destination)
 // so it's visibly obvious which task/shot an upload is headed for.
-export async function pickVideoFile(startInDir) {
+//
+// Pass a pickerId instead (and no startInDir) to have the browser reopen
+// wherever that picker was last used — a startIn handle would override it.
+export async function pickVideoFile(startInDir, { pickerId } = {}) {
   const [handle] = await window.showOpenFilePicker({
     excludeAcceptAllOption: false,
     multiple: false,
     types: [{ description: "Video", accept: { "video/*": [".mov", ".mp4", ".mxf", ".avi"] } }],
     ...(startInDir ? { startIn: startInDir } : {}),
+    ...(pickerId ? { id: pickerId } : {}),
   });
   // The handle comes back too so the caller can tell whether the video
   // already lives inside the destination folder.
@@ -373,10 +399,20 @@ export async function pickVideoFile(startInDir) {
 }
 
 // Opens a folder picker for an image sequence's source folder — read-only,
-// since nothing is written back into it. Same startInDir hint as above.
-export async function pickSequenceFolder(startInDir) {
-  return window.showDirectoryPicker({ mode: "read", ...(startInDir ? { startIn: startInDir } : {}) });
+// since nothing is written back into it. Same startInDir / pickerId hints as above.
+export async function pickSequenceFolder(startInDir, { pickerId } = {}) {
+  return window.showDirectoryPicker({
+    mode: "read",
+    ...(startInDir ? { startIn: startInDir } : {}),
+    ...(pickerId ? { id: pickerId } : {}),
+  });
 }
+
+// Picker ids for source footage, so plate import and Footage Ingest both
+// reopen wherever footage was last picked from (the browser remembers the
+// folder per id, across reloads).
+export const FOOTAGE_PICKER_ID = "plate-footage";
+export const FOOTAGE_FOLDER_PICKER_ID = "plate-footage-folder";
 
 // Every file directly inside a picked folder, as real File objects — no
 // recursion into subfolders, a sequence is a flat folder of frames.

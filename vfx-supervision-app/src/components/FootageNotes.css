@@ -1,0 +1,68 @@
+.footage-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.footage-notes-empty {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.footage-note {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 8px;
+  border-left: 2px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 4px;
+}
+
+.footage-note-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.footage-note-meta {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.footage-note-remove {
+  cursor: pointer;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.footage-note-remove:hover {
+  color: var(--danger);
+}
+
+.footage-note-add {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.footage-note-input {
+  flex: 1;
+  min-width: 0;
+  resize: vertical;
+  min-height: 32px;
+  font: 12px var(--font-body);
+}
+
+.footage-note-btn {
+  padding: 6px 12px;
+  align-self: center;
+}
+
+.footage-notes-compact .footage-note {
+  padding: 4px 6px;
+}

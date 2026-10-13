@@ -11,3 +11,11 @@
 //    picking this back up.
 // Login.jsx and its role/artist picker are otherwise untouched and ready.
 export const CURRENT_ROLE = "Admin";
+
+// Who can add/remove footage notes on ingested plates (Post Reports →
+// Ingest). Admin always passes; the rest match the planned Supabase roles.
+const FOOTAGE_NOTE_ROLES = ["Admin", "VFX Supervisor", "Comp Supervisor", "Producer"];
+
+export function canEditFootageNotes(role = CURRENT_ROLE) {
+  return FOOTAGE_NOTE_ROLES.includes(role);
+}

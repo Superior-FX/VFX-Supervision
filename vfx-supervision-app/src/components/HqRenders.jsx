@@ -142,7 +142,7 @@ export function useHqRenders({ shot, task, rootHandle, reviewDir, folderConnecte
 
   const loadUhqFrame = async (render, frame) => {
     const dir = await reviewDir.getDirectoryHandle(render.folder);
-    const file = await (await dir.getFileHandle(uhqFrameName(shot.shotCode, render.version, frame))).getFile();
+    const file = await (await dir.getFileHandle(uhqFrameName(shot.shotCode, render.version, frame, render))).getFile();
     return URL.createObjectURL(file);
   };
 

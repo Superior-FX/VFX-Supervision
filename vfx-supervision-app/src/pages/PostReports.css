@@ -111,6 +111,15 @@
   flex: none;
 }
 
+.post-shot-thumb-link {
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.post-shot-thumb-link:hover {
+  border-color: var(--accent);
+}
+
 .post-shot-thumb-placeholder {
   width: 56px;
   height: 40px;

@@ -9,6 +9,7 @@ import {
   ensurePermission,
   fileExists,
   formatVersion,
+  proxyName,
   getTaskReviewFolder,
   getTaskUploadFolder,
   isFsAccessSupported,
@@ -19,7 +20,7 @@ import {
 } from "../lib/fsAccess.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { groupSequenceFiles } from "../lib/sequenceGrouping.js";
-import { hqProxyName } from "../lib/hqProxy.js";
+import { hqProxyName, legacyHqProxyName } from "../lib/hqProxy.js";
 import { sortByDueComplexityName } from "../lib/sortShots.js";
 import { hasAssignee } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
@@ -148,7 +149,7 @@ export default function Upload() {
 
   // kind: "vid" (made from an uploaded video) or "seq" (from an image
   // sequence).
-  const proxyNameFor = (version, kind) => `${selectedShot.shotCode}_${formatVersion(version)}_${kind}_proxy.mp4`;
+  const proxyNameFor = (version, kind) => proxyName(`${selectedShot.shotCode}_${formatVersion(version)}_${kind}`);
 
   const resetVersioning = () => {
     setVersionMode("up");
@@ -444,10 +445,10 @@ export default function Upload() {
       }
       // The supervisor's HQ / 6K/8K renders were made from the old render,
       // so they go too — they'd show frames that no longer exist.
-      const oldRenders = [
-        hqProxyName(selectedShot.shotCode, sessionVersion, "vid"),
-        hqProxyName(selectedShot.shotCode, sessionVersion, "seq"),
-      ];
+      const oldRenders = ["vid", "seq"].flatMap((kind) => [
+        hqProxyName(selectedShot.shotCode, sessionVersion, kind),
+        legacyHqProxyName(selectedShot.shotCode, sessionVersion, kind),
+      ]);
       // Best-effort: a leftover file is untidy, but must never block the submit.
       const logCleanupError = (what) => (err) => {
         if (err?.name !== "NotFoundError") console.error(`Couldn't delete old ${what}:`, err);

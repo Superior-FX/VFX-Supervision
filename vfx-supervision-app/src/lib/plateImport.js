@@ -1,6 +1,8 @@
 import { generateReviewProxy, generateSequenceReviewProxy, isProxyableFrame } from "./ffmpeg.js";
 import {
   copyFileInto,
+  FOOTAGE_FOLDER_PICKER_ID,
+  FOOTAGE_PICKER_ID,
   getPlateFolders,
   pickSequenceFolder,
   pickVideoFile,
@@ -43,8 +45,8 @@ export function thumbnailFromVideo(blob, width = 320) {
 }
 
 // Imports a shot's plate: pick a movie file or an image-sequence folder
-// (the picker opens in 00_plates/, so a plate already dropped there is used
-// in place rather than copied), copy it into 00_plates/ if it isn't there
+// (the picker reopens wherever footage was last picked from; a plate picked
+// from inside 00_plates/ is used in place rather than copied), copy it into 00_plates/ if it isn't there
 // already, build a review proxy in 03_review/plate/, and take the shot
 // thumbnail from that proxy. A sequence is copied into its own subfolder so
 // the plate's frames stay together.
@@ -53,6 +55,31 @@ export function thumbnailFromVideo(blob, width = 320) {
 // record. The copy is the plate itself, so a proxy/thumbnail failure only
 // becomes a warning rather than undoing it.
 export async function importPlate(rootHandle, { scene, shotCode, kind, onProgress }) {
+  const { platesDir } = await getPlateFolders(rootHandle, { scene, shotCode });
+  if (kind === "video") {
+    const { file, handle } = await pickVideoFile(null, { pickerId: FOOTAGE_PICKER_ID });
+    const inPlace = (await platesDir.resolve(handle)) !== null;
+    return ingestPlate(rootHandle, { scene, shotCode, source: { kind: "video", file }, inPlace, onProgress });
+  }
+  const folderHandle = await pickSequenceFolder(null, { pickerId: FOOTAGE_FOLDER_PICKER_ID });
+  const files = await readFolderFiles(folderHandle);
+  if (files.length === 0) throw new Error("That folder is empty.");
+  const inPlace = (await platesDir.resolve(folderHandle)) !== null;
+  return ingestPlate(rootHandle, {
+    scene,
+    shotCode,
+    source: { kind: "sequence", name: folderHandle.name, files },
+    inPlace,
+    onProgress,
+  });
+}
+
+// The copy -> proxy -> thumbnail step for a source that's already been
+// chosen — by importPlate's pickers above, or by Footage Ingest matching
+// files to shots by name. source is { kind: "video", file } or
+// { kind: "sequence", name, files }; inPlace skips the copy when the source
+// already lives in 00_plates/.
+export async function ingestPlate(rootHandle, { scene, shotCode, source: picked, inPlace = false, onProgress }) {
   const { platesDir, reviewDir } = await getPlateFolders(rootHandle, { scene, shotCode });
   const report = (stage, fraction = null) => onProgress?.(stage, fraction);
 
@@ -60,9 +87,8 @@ export async function importPlate(rootHandle, { scene, shotCode, kind, onProgres
   let source;
   let warning = "";
 
-  if (kind === "video") {
-    const { file, handle } = await pickVideoFile(platesDir);
-    const inPlace = (await platesDir.resolve(handle)) !== null;
+  if (picked.kind === "video") {
+    const { file } = picked;
     if (!inPlace) {
       report("Copying plate…", 0);
       await copyFileInto(platesDir, file.name, file, {
@@ -77,12 +103,9 @@ export async function importPlate(rootHandle, { scene, shotCode, kind, onProgres
       warning = `The plate was imported, but no proxy could be made: ${err?.message || err}`;
     }
   } else {
-    const folderHandle = await pickSequenceFolder(platesDir);
-    const files = await readFolderFiles(folderHandle);
-    if (files.length === 0) throw new Error("That folder is empty.");
-    const inPlace = (await platesDir.resolve(folderHandle)) !== null;
+    const { files, name } = picked;
     if (!inPlace) {
-      const dest = await platesDir.getDirectoryHandle(folderHandle.name, { create: true });
+      const dest = await platesDir.getDirectoryHandle(name, { create: true });
       for (let i = 0; i < files.length; i++) {
         report(`Copying frames… ${i}/${files.length}`, i / files.length);
         await copyFileInto(dest, files[i].name, files[i]);
@@ -91,7 +114,7 @@ export async function importPlate(rootHandle, { scene, shotCode, kind, onProgres
     const longest = groupSequenceFiles(files)
       .filter((g) => g.kind === "sequence" && isProxyableFrame(g.files[0]))
       .sort((a, b) => b.files.length - a.files.length)[0];
-    source = { kind: "seq", name: folderHandle.name, frames: longest?.files.length ?? files.length };
+    source = { kind: "seq", name, frames: longest?.files.length ?? files.length };
     if (!longest) {
       warning = "The plate was imported, but that folder has no numbered image sequence to make a proxy from.";
     } else {
