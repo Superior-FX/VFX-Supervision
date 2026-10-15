@@ -133,35 +133,75 @@ async function generateReviewProxyNow(file, opts = {}) {
   }
 }
 
+// Mounts a real File into the ffmpeg instance read-only (WORKERFS), so
+// ffmpeg reads it straight from disk in pieces instead of the whole thing
+// being copied into memory first. Copying failed outright for anything over
+// 2 GB (a 4K ProRes 4444 plate easily is), surfacing later as "File could
+// not be read! Code=-1". Returns the in-ffmpeg path and an unmount fn.
+let mountSeq = 0;
+async function mountInputFile(ffmpeg, file) {
+  const dir = `/in${++mountSeq}`;
+  await ffmpeg.createDir(dir);
+  await ffmpeg.mount("WORKERFS", { files: [file] }, dir);
+  return {
+    path: `${dir}/${file.name}`,
+    unmount: async () => {
+      await ffmpeg.unmount(dir).catch(() => {});
+      await ffmpeg.deleteDir(dir).catch(() => {});
+    },
+  };
+}
+
+// Collects ffmpeg's log while fn runs, so a failed encode can say why
+// instead of only failing later when its output file is missing.
+async function withLogTail(ffmpeg, fn) {
+  const lines = [];
+  const handler = ({ message }) => {
+    lines.push(message);
+    if (lines.length > 40) lines.shift();
+  };
+  ffmpeg.on("log", handler);
+  try {
+    return await fn(lines);
+  } finally {
+    ffmpeg.off("log", handler);
+  }
+}
+
+function ffmpegErrorFrom(lines) {
+  const useful = lines.filter((l) => /error|invalid|unsupported|not found|could not|cannot|failed/i.test(l));
+  return (useful.length ? useful : lines).slice(-3).join(" · ").trim();
+}
+
 async function transcodeReviewProxy(file, { onProgress } = {}) {
   onProgress?.("Loading ffmpeg…");
-  const { fetchFile } = await import("@ffmpeg/util");
   const ffmpeg = await getFFmpeg();
 
-  const inputName = `input.${extensionOf(file)}`;
+  const input = await mountInputFile(ffmpeg, file);
   const outputName = "proxy.mp4";
-
-  await ffmpeg.writeFile(inputName, await fetchFile(file));
-
-  onProgress?.("Encoding review proxy…", 0);
-  await execWithProgress(ffmpeg, [
-    "-i", inputName,
-    "-vf", "scale=1280:-2",
-    "-r", "24",
-    "-c:v", "libx264",
-    "-crf", "23",
-    "-preset", "veryfast",
-    "-pix_fmt", "yuv420p",
-    "-c:a", "aac",
-    "-movflags", "+faststart",
-    outputName,
-  ], (f) => onProgress?.("Encoding review proxy…", f));
-
-  const data = await ffmpeg.readFile(outputName);
-  await ffmpeg.deleteFile(inputName).catch(() => {});
-  await ffmpeg.deleteFile(outputName).catch(() => {});
-
-  return new Blob([data.buffer], { type: "video/mp4" });
+  try {
+    onProgress?.("Encoding review proxy…", 0);
+    await withLogTail(ffmpeg, async (log) => {
+      const exit = await execWithProgress(ffmpeg, [
+        "-i", input.path,
+        "-vf", "scale=1280:-2",
+        "-r", "24",
+        "-c:v", "libx264",
+        "-crf", "23",
+        "-preset", "veryfast",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac",
+        "-movflags", "+faststart",
+        outputName,
+      ], (f) => onProgress?.("Encoding review proxy…", f));
+      if (exit !== 0) throw new Error(`ffmpeg couldn't transcode ${file.name}: ${ffmpegErrorFrom(log) || `exit code ${exit}`}`);
+    });
+    const data = await ffmpeg.readFile(outputName);
+    return new Blob([data.buffer], { type: "video/mp4" });
+  } finally {
+    await ffmpeg.deleteFile(outputName).catch(() => {});
+    await input.unmount();
+  }
 }
 
 // Still-image formats a frame sequence can be proxied from.
@@ -399,15 +439,14 @@ async function pngToJpeg(pngBytes, quality = 0.95) {
 // 4K-capped HQ proxy from a submitted video. CRF 18 (vs 23 for the proxy).
 async function generateHQVideoProxyNow(file, { onProgress } = {}) {
   onProgress?.("Loading ffmpeg…");
-  const { fetchFile } = await import("@ffmpeg/util");
   await resetFFmpeg();
   const ffmpeg = await getFFmpeg();
   const handler = ({ progress }) => {
     if (Number.isFinite(progress) && progress >= 0 && progress <= 1) onProgress?.("Encoding HQ proxy…", progress);
   };
   try {
-    const inputName = `input.${extensionOf(file)}`;
-    await ffmpeg.writeFile(inputName, await fetchFile(file));
+    // Read from disk rather than copied in — see mountInputFile.
+    const { path: inputName } = await mountInputFile(ffmpeg, file);
     onProgress?.("Encoding HQ proxy…", 0);
     ffmpeg.on("progress", handler);
     const code = await execGuarded(
@@ -545,17 +584,16 @@ async function generateFullResFramesNow(source, { start, end, onFrame, onProgres
     return;
   }
 
-  // Video: written into ffmpeg once, then pulled one frame at a time by
-  // timestamp (frame i sits at i/24s, matching the 24fps proxy). A wedged
-  // instance is replaced and the video written into the new one.
+  // Video: mounted into ffmpeg (read from disk, see mountInputFile), then
+  // pulled one frame at a time by timestamp (frame i sits at i/24s, matching
+  // the 24fps proxy). A wedged instance is replaced and the video mounted
+  // into the new one.
   onProgress?.("Loading ffmpeg…");
-  const { fetchFile } = await import("@ffmpeg/util");
-  const inputName = `input.${extensionOf(source.file)}`;
-  const inputBytes = await fetchFile(source.file);
+  let inputName;
   const freshInstance = async () => {
     await resetFFmpeg();
     const instance = await getFFmpeg();
-    await instance.writeFile(inputName, inputBytes);
+    ({ path: inputName } = await mountInputFile(instance, source.file));
     return instance;
   };
   let ffmpeg = await freshInstance();
