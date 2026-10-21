@@ -28,6 +28,7 @@ import { useEnterKey } from "../lib/useEnterKey.js";
 import { DeleteRequestsProvider, useDeleteRequests, useDeleteRequestsContext } from "../lib/deleteRequests.jsx";
 import DeleteRequestsBanner from "../components/DeleteRequestsBanner.jsx";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
+import * as sharedStore from "../lib/sharedStore.js";
 import { useProjectFolder } from "../lib/useProjectFolder.js";
 import { importPlate } from "../lib/plateImport.js";
 import { BRAND } from "../lib/brandColors.js";
@@ -1093,9 +1094,8 @@ export default function PostReports() {
   // Artists are a single roster shared across every project, but each
   // project keeps its own shots — so a rename has to reach every project's
   // task assignments, not just the one currently open. The active project
-  // goes through React state (it's already loaded here); every other
-  // project is patched straight in localStorage since nothing has it loaded
-  // right now to race with.
+  // goes through its hook; every other project is patched straight in the
+  // shared store.
   const renameArtistEverywhere = (oldName, newName) => {
     if (!oldName.trim() || oldName.trim() === newName.trim()) return;
 
@@ -1104,15 +1104,8 @@ export default function PostReports() {
     for (const p of projects) {
       if (p.id === project?.id) continue;
       const key = scopedKey("vfx-supe-post-reports", p.id);
-      try {
-        const raw = localStorage.getItem(key);
-        if (!raw) continue;
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) continue;
-        localStorage.setItem(key, JSON.stringify(renameAssigneeInShots(parsed, oldName, newName)));
-      } catch (err) {
-        console.error(`Couldn't cascade artist rename into project ${p.id}:`, err);
-      }
+      const projectShots = sharedStore.read(key);
+      if (projectShots.length) sharedStore.write(key, renameAssigneeInShots(projectShots, oldName, newName));
     }
   };
 

@@ -1,4 +1,5 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { getVersion, subscribeAny } from "../lib/sharedStore.js";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { aggregateTaskStatus, isInReview, statusSince, taskStatusInfo } from "../data/taskStatus.js";
 import { padScene } from "../lib/folderPath.js";
@@ -100,6 +101,8 @@ function Kpi({ label, value, sub, tone, onClick }) {
 // ---------------------------------------------------------------- overview
 
 function Overview({ projects, activeId, onOpen }) {
+  // Re-derive when any project's shots change, not just the project list.
+  const dataVersion = useSyncExternalStore(subscribeAny, getVersion);
   const rows = useMemo(
     () =>
       projects
@@ -113,7 +116,8 @@ function Overview({ projects, activeId, onOpen }) {
           if (db) return 1;
           return a.project.name.localeCompare(b.project.name);
         }),
-    [projects]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [projects, dataVersion]
   );
 
   const totals = rows.reduce(

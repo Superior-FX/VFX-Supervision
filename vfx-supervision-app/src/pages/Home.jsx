@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../../logo/SuperiorFX_logo_003.jpg";
-import { downloadExport, exportToFolder, importAllData, isValidExport } from "../lib/backup.js";
+import { downloadExport, exportBrowserData, exportToFolder, importAllData, isValidExport } from "../lib/backup.js";
 import {
   createOrLinkProjectRootFolder,
   createProjectRootFolder,
@@ -16,7 +16,8 @@ import {
   pickDestinationFolder,
   readJsonFile,
 } from "../lib/fsAccess.js";
-import { SCOPED_DATA_BASES, useActiveProjectId, useProjects } from "../lib/projects.js";
+import { useActiveProjectId, useProjects } from "../lib/projects.js";
+import { deleteProjectData } from "../lib/sharedStore.js";
 import { useEnterKey } from "../lib/useEnterKey.js";
 import { useRole } from "../lib/role.js";
 import UserBadge from "../components/UserBadge.jsx";
@@ -136,9 +137,9 @@ function ProjectDeleteConfirm({ project, requestOnly, onConfirm, onCancel }) {
   );
 }
 
-function ImportConfirm({ fileName, data, onConfirm, onCancel }) {
+function ImportConfirm({ fileName, data, fromBrowser, busy, error, onConfirm, onCancel }) {
   const [text, setText] = useState("");
-  const matches = text.trim().toUpperCase() === "IMPORT";
+  const matches = text.trim().toUpperCase() === "IMPORT" && !busy;
   useEnterKey(() => {
     if (matches) onConfirm();
   });
@@ -148,11 +149,12 @@ function ImportConfirm({ fileName, data, onConfirm, onCancel }) {
 
   return (
     <div className="card home-new-project">
-      <span className="label">Import backup</span>
+      <span className="label">{fromBrowser ? "Upload this browser's data" : "Import backup"}</span>
       <span className="home-project-confirm-label">
-        This replaces everything currently in the app — every project, shot, scene, and the artist roster — with the{" "}
-        {projectCount} project{projectCount === 1 ? "" : "s"} from "{fileName}" (exported {exportedAt}). This can't
-        be undone. Type IMPORT to continue.
+        This replaces the team's shared data — every project, shot, scene, and the artist roster, for everyone —
+        with the {projectCount} project{projectCount === 1 ? "" : "s"}{" "}
+        {fromBrowser ? "saved in this browser" : `from "${fileName}" (exported ${exportedAt})`}. This can't be
+        undone. Type IMPORT to continue.
       </span>
       <input
         className="report-edit-input mono home-project-confirm-input"
@@ -163,12 +165,13 @@ function ImportConfirm({ fileName, data, onConfirm, onCancel }) {
       />
       <div className="home-project-confirm-actions">
         <span className={`btn btn-danger${matches ? "" : " btn-disabled"}`} onClick={matches ? onConfirm : undefined}>
-          Replace with backup
+          {busy ? "Uploading…" : fromBrowser ? "Upload" : "Replace with backup"}
         </span>
         <span className="btn btn-secondary" onClick={onCancel}>
           Cancel
         </span>
       </div>
+      {error && <span className="home-new-project-error">{error}</span>}
     </div>
   );
 }
@@ -309,7 +312,10 @@ function NewProjectForm({ onCreate, onCancel }) {
 }
 
 export default function Home() {
-  const canManage = useRole().can("manage_projects");
+  const { can, isAdmin } = useRole();
+  const canManage = can("manage_projects");
+  const [importBusy, setImportBusy] = useState(false);
+  const [importPendingError, setImportPendingError] = useState("");
   const deleteRequests = useDeleteRequests(null);
   const navigate = useNavigate();
   const [projects, setProjects] = useProjects();
@@ -438,7 +444,6 @@ export default function Home() {
   const createProject = (project) => {
     const next = [...projects, project];
     setProjects(next);
-    localStorage.setItem("vfx-supe-projects", JSON.stringify(next));
     setCreating(false);
     openProject(project.id);
   };
@@ -451,9 +456,7 @@ export default function Home() {
     setProjects((prev) => prev.filter((p) => p.id !== id));
     if (activeId === id) setActiveId("");
 
-    for (const base of SCOPED_DATA_BASES) {
-      localStorage.removeItem(`${base}:${id}`);
-    }
+    deleteProjectData(id);
     deleteRootHandle(id).catch(() => {});
     setRemovingId(null);
   };
@@ -542,15 +545,25 @@ export default function Home() {
     }
   };
 
-  const confirmImport = () => {
-    if (!importPending) return;
-    importAllData(importPending.data);
-    // Every page's own useLocalStorageState only reads localStorage once,
-    // at mount — a full reload is the simplest way to guarantee everything
-    // (Home included) picks up the freshly-imported data instead of some
-    // components still holding whatever was in memory before the import.
-    window.location.reload();
+  const confirmImport = async () => {
+    if (!importPending || importBusy) return;
+    setImportBusy(true);
+    setImportPendingError("");
+    try {
+      await importAllData(importPending.data);
+      setImportPending(null);
+    } catch (err) {
+      console.error("Import failed:", err);
+      setImportPendingError(`Couldn't import: ${err.message}`);
+    } finally {
+      setImportBusy(false);
+    }
   };
+
+  // Before Step 2 every browser kept its own copy. Offer an Admin the one-time
+  // move of this browser's copy up to the (still empty) cloud.
+  const browserData = useMemo(() => exportBrowserData(), []);
+  const offerBrowserUpload = isAdmin && projects.length === 0 && browserData.projects.length > 0;
 
   return (
     <div className="home">
@@ -694,14 +707,17 @@ export default function Home() {
           </span>
           {exportStatus && <span className="label home-backup-status">{exportStatus}</span>}
 
-          {backupFolder && (
+          {/* Restoring replaces the whole team's data — Admins only. */}
+          {isAdmin && backupFolder && (
             <span className="btn btn-secondary home-backup-btn" onClick={openBackupFileList}>
               Import from Backup Folder…
             </span>
           )}
-          <span className="btn btn-secondary home-backup-btn" onClick={() => fileInputRef.current?.click()}>
-            Import from File…
-          </span>
+          {isAdmin && (
+            <span className="btn btn-secondary home-backup-btn" onClick={() => fileInputRef.current?.click()}>
+              Import from File…
+            </span>
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -723,6 +739,9 @@ export default function Home() {
           <ImportConfirm
             fileName={importPending.fileName}
             data={importPending.data}
+            fromBrowser={importPending.fromBrowser}
+            busy={importBusy}
+            error={importPendingError}
             onConfirm={confirmImport}
             onCancel={() => setImportPending(null)}
           />
@@ -737,6 +756,28 @@ export default function Home() {
           <NewProjectForm onCreate={createProject} onCancel={() => setCreating(false)} />
         ) : (
           <div className="home-placeholder">
+            {offerBrowserUpload && (
+              <div className="card home-cloud-upload">
+                <span className="label">Move to the cloud</span>
+                <span className="home-project-confirm-label">
+                  The shared database is empty, but this browser still has {browserData.projects.length} project
+                  {browserData.projects.length === 1 ? "" : "s"} saved from before (
+                  {browserData.projects.map((p) => p.showCode || p.name).join(", ")}). Upload them so the whole team
+                  works from them.
+                </span>
+                <span className="btn btn-secondary" onClick={() => downloadExport(browserData)}>
+                  1. Download a backup of it
+                </span>
+                <span
+                  className="btn btn-primary"
+                  onClick={() =>
+                    setImportPending({ fileName: "this browser", data: browserData, fromBrowser: true })
+                  }
+                >
+                  2. Upload this browser's data…
+                </span>
+              </div>
+            )}
             <span className="home-placeholder-title">Select a project</span>
             {canManage && <span className="home-placeholder-hint">Or click + in the sidebar to start a new one.</span>}
           </div>

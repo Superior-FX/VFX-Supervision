@@ -1,5 +1,6 @@
 import { statusSince } from "../data/taskStatus.js";
 import { scopedKey } from "./projects.js";
+import * as sharedStore from "./sharedStore.js";
 import { getAssignees } from "./taskAssignees.js";
 
 // Read-only rollups for the Dashboard. Everything is derived live from the
@@ -41,14 +42,10 @@ export function isShotOverdue(shot) {
   return Boolean(shot.dueDate) && shot.dueDate < localToday() && !isShotFinal(shot);
 }
 
-// Every project's shots, read straight from storage — the overview needs all
-// of them at once, not just the active project's.
+// Every project's shots, read straight from the shared store — the overview
+// needs all of them at once, not just the active project's.
 export function loadProjectShots(projectId) {
-  try {
-    return JSON.parse(localStorage.getItem(scopedKey("vfx-supe-post-reports", projectId))) ?? [];
-  } catch {
-    return [];
-  }
+  return sharedStore.read(scopedKey("vfx-supe-post-reports", projectId));
 }
 
 export function computeProjectStats(shots) {

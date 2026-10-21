@@ -1,0 +1,29 @@
+/* A failed cloud save — pinned bottom-right until dismissed. */
+.sync-error {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1000;
+  max-width: 420px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--danger);
+  background: var(--card-bg);
+  color: var(--danger);
+  font: 12px/1.4 var(--font-body);
+  box-shadow: 0 6px 24px #0008;
+}
+
+.sync-error-close {
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-secondary);
+}
+
+.sync-error-close:hover {
+  color: var(--text-primary);
+}

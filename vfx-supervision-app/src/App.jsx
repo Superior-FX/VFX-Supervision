@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import AuthGate from "./components/AuthGate.jsx";
+import DataGate from "./components/DataGate.jsx";
 import Layout from "./components/Layout.jsx";
 import { AuthProvider } from "./lib/auth.jsx";
 import Home from "./pages/Home.jsx";
@@ -23,7 +24,9 @@ export default function App() {
   return (
     <AuthProvider>
       <AuthGate>
-        <AppRoutes />
+        <DataGate>
+          <AppRoutes />
+        </DataGate>
       </AuthGate>
     </AuthProvider>
   );
