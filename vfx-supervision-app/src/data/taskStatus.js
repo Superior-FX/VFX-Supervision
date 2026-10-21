@@ -2,14 +2,22 @@
 // assigned -> wip (artist clicks Start, or Resume after a revision request)
 //   -> pending (artist clicks Submit in Upload Shot)
 //   -> needs_revision (supervisor clicks Revise) -> back to wip via Resume
-//   -> final (supervisor clicks Final)
+//   -> comp_approved (Comp Supervisor clicks Final) -> final (VFX Supervisor)
+//   -> final (VFX Supervisor / Admin clicks Final, from pending or comp_approved)
 export const TASK_STATUSES = {
   assigned: { label: "Assigned", tone: null },
   wip: { label: "WIP", tone: "warning" },
   pending: { label: "Pending", tone: "accent" },
+  comp_approved: { label: "Comp Approved", tone: "info" },
   needs_revision: { label: "Needs Revision", tone: "danger" },
   final: { label: "Final", tone: "success" },
 };
+
+// Submitted and waiting on a supervisor: either nobody has looked yet, or
+// the Comp Supervisor approved it and it's waiting on the VFX Supervisor.
+export function isInReview(status) {
+  return status === "pending" || status === "comp_approved";
+}
 
 export function taskStatusInfo(status) {
   return TASK_STATUSES[status] ?? TASK_STATUSES.assigned;
@@ -55,6 +63,7 @@ export function aggregateTaskStatus(tasks) {
   if (statuses.includes("needs_revision")) return taskStatusInfo("needs_revision");
   if (statuses.includes("wip")) return taskStatusInfo("wip");
   if (statuses.includes("pending")) return taskStatusInfo("pending");
+  if (statuses.includes("comp_approved")) return taskStatusInfo("comp_approved");
   if (statuses.length > 0 && statuses.every((s) => s === "final")) return taskStatusInfo("final");
   return taskStatusInfo("assigned");
 }
@@ -66,7 +75,7 @@ export function aggregateTaskStatus(tasks) {
 // its box gets an extra highlight in Shot Board rather than its own column.
 export function boardColumnForStatus(status) {
   if (status === "wip" || status === "needs_revision") return "progress";
-  if (status === "pending") return "review";
+  if (isInReview(status)) return "review";
   if (status === "final") return "final";
   return "bidding";
 }
@@ -79,7 +88,7 @@ export function shotBoardColumn(tasks) {
   const statuses = tasks.map((t) => t.status || "assigned");
   if (statuses.length === 0) return "bidding";
   if (statuses.includes("needs_revision") || statuses.includes("wip")) return "progress";
-  if (statuses.includes("pending")) return "review";
+  if (statuses.some(isInReview)) return "review";
   if (statuses.every((s) => s === "final")) return "final";
   return "bidding";
 }

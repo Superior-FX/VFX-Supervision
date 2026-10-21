@@ -20,6 +20,8 @@
   --warning-soft: #fbbf2420;
   --danger: #fb7185;
   --danger-soft: #fb718520;
+  --info: #c084fc;
+  --info-soft: #c084fc20;
 
   --font-display: "Archivo Black", sans-serif;
   --font-body: "Space Grotesk", sans-serif;
@@ -83,6 +85,11 @@ body {
 .pill-danger {
   border-color: var(--danger);
   color: var(--danger);
+}
+
+.pill-info {
+  border-color: var(--info);
+  color: var(--info);
 }
 
 .btn {

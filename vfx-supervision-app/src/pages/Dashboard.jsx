@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { aggregateTaskStatus, statusSince, taskStatusInfo } from "../data/taskStatus.js";
+import { aggregateTaskStatus, isInReview, statusSince, taskStatusInfo } from "../data/taskStatus.js";
 import { padScene } from "../lib/folderPath.js";
 import { formatVersion } from "../lib/fsAccess.js";
 import { computeImportance } from "../lib/importance.js";
@@ -28,6 +28,7 @@ import "./Dashboard.css";
 const STATUS_LABELS = {
   final: "Final",
   pending: "In review",
+  comp_approved: "Comp approved",
   wip: "WIP",
   needs_revision: "Revise",
   assigned: "Not started",
@@ -118,7 +119,7 @@ function Overview({ projects, activeId, onOpen }) {
   const totals = rows.reduce(
     (acc, { stats }) => ({
       shots: acc.shots + stats.shotCount,
-      review: acc.review + stats.byStatus.pending,
+      review: acc.review + stats.inReview,
       revise: acc.revise + stats.byStatus.needs_revision,
       overdue: acc.overdue + stats.overdueShots,
       finaled: acc.finaled + stats.finaledThisWeek,
@@ -168,7 +169,7 @@ function Overview({ projects, activeId, onOpen }) {
                 <StatusBar byStatus={stats.byStatus} total={stats.taskCount} />
                 <span className="dash-pct">{stats.taskCount ? `${stats.finalPct}%` : "—"}</span>
               </span>
-              <span className={`dash-num${stats.byStatus.pending ? " tone-accent" : ""}`}>{stats.byStatus.pending}</span>
+              <span className={`dash-num${stats.inReview ? " tone-accent" : ""}`}>{stats.inReview}</span>
               <span className={`dash-num${stats.byStatus.needs_revision ? " tone-danger" : ""}`}>
                 {stats.byStatus.needs_revision}
               </span>
@@ -258,7 +259,7 @@ function ProjectView({ project, onBack }) {
   // Waiting longest first. Submission time comes from versionHistory (older
   // tasks have it); falls back to when it entered pending.
   const reviewQueue = taskRows
-    .filter(({ task }) => task.status === "pending")
+    .filter(({ task }) => isInReview(task.status))
     .map((row) => ({
       ...row,
       since:
@@ -277,7 +278,7 @@ function ProjectView({ project, onBack }) {
     for (const { task } of taskRows) {
       if (task.status === "final") continue;
       for (const name of getAssignees(task)) {
-        if (!map.has(name)) map.set(name, { assigned: 0, wip: 0, pending: 0, needs_revision: 0, final: 0, total: 0 });
+        if (!map.has(name)) map.set(name, { assigned: 0, wip: 0, pending: 0, comp_approved: 0, needs_revision: 0, final: 0, total: 0 });
         const entry = map.get(name);
         entry[task.status in entry ? task.status : "assigned"]++;
         entry.total++;
@@ -334,8 +335,9 @@ function ProjectView({ project, onBack }) {
         <Kpi label="Shots final" value={stats.shotsFinal} sub={`of ${stats.shotCount}`} />
         <Kpi
           label="Awaiting review"
-          value={stats.byStatus.pending}
-          tone={stats.byStatus.pending ? "accent" : null}
+          value={stats.inReview}
+          sub={stats.byStatus.comp_approved ? `${stats.byStatus.comp_approved} comp approved` : undefined}
+          tone={stats.inReview ? "accent" : null}
           onClick={() => navigate("/review")}
         />
         <Kpi label="Needs revision" value={stats.byStatus.needs_revision} tone={stats.byStatus.needs_revision ? "danger" : null} />
@@ -393,7 +395,7 @@ function ProjectView({ project, onBack }) {
           {reviewQueue.length === 0 && revisions.length === 0 && <span className="dash-empty">Nothing waiting on review.</span>}
           {reviewQueue.map(({ shot, task, since }) => (
             <div className="dash-list-row" key={task.id} onClick={() => navigate(`/review?task=${task.id}`)}>
-              <span className="dash-dot" style={{ background: STATUS_COLORS.pending }} />
+              <span className="dash-dot" style={{ background: STATUS_COLORS[task.status] }} />
               <span className="mono dash-list-code">{shot.shotCode}</span>
               <span className="dash-list-main">
                 {task.type}

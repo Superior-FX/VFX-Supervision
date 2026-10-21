@@ -53,7 +53,7 @@ export function loadProjectShots(projectId) {
 
 export function computeProjectStats(shots) {
   const tasks = shots.flatMap((shot) => shot.tasks.map((task) => ({ shot, task })));
-  const byStatus = { assigned: 0, wip: 0, pending: 0, needs_revision: 0, final: 0 };
+  const byStatus = { assigned: 0, wip: 0, pending: 0, comp_approved: 0, needs_revision: 0, final: 0 };
   for (const { task } of tasks) byStatus[task.status in byStatus ? task.status : "assigned"]++;
 
   const weekAgo = Date.now() - 7 * DAY_MS;
@@ -72,6 +72,7 @@ export function computeProjectStats(shots) {
     shotCount: shots.length,
     taskCount: tasks.length,
     byStatus,
+    inReview: byStatus.pending + byStatus.comp_approved,
     finalPct: tasks.length ? Math.round((byStatus.final / tasks.length) * 100) : 0,
     shotsFinal: shots.filter(isShotFinal).length,
     overdueShots: shots.filter(isShotOverdue).length,
@@ -86,8 +87,9 @@ export const STATUS_COLORS = {
   assigned: "var(--text-tertiary)",
   wip: "var(--warning)",
   pending: "var(--accent)",
+  comp_approved: "var(--info)",
   needs_revision: "var(--danger)",
   final: "var(--success)",
 };
 
-export const STATUS_ORDER = ["final", "pending", "wip", "needs_revision", "assigned"];
+export const STATUS_ORDER = ["final", "comp_approved", "pending", "wip", "needs_revision", "assigned"];

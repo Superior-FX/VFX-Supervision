@@ -5,7 +5,7 @@ import FolderStatusBanner from "../components/FolderStatusBanner.jsx";
 import { CheckIcon, ComplexityDots, PencilIcon } from "../components/SceneVfxFields.jsx";
 import { STORY_IMPORTANCE_LEVELS } from "../data/importance.js";
 import { POST_TASK_TYPES } from "../data/postTasks.js";
-import { applyTaskPatch, taskStatusInfo, withStatus } from "../data/taskStatus.js";
+import { applyTaskPatch, isInReview, taskStatusInfo, withStatus } from "../data/taskStatus.js";
 import { COMPLEXITY_LEVELS } from "../data/vfxEffects.js";
 import { buildFolderPath, buildSceneFolderPath, padScene } from "../lib/folderPath.js";
 import {
@@ -122,6 +122,7 @@ function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
   const [confirming, setConfirming] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const status = taskStatusInfo(task.status);
+  const { can, canFinal, finalStatus } = useRole();
   const deleteMatches = confirmText.trim().toUpperCase() === "DELETE";
   useEnterKey(() => {
     if (confirming && deleteMatches) onRemove();
@@ -151,17 +152,21 @@ function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
         </span>
         <span className={`pill${status.tone ? ` pill-${status.tone}` : ""}`}>{status.label}</span>
         <span className="post-task-assignee mono">{assigneesLabel(task)}</span>
-        {task.status === "pending" && (
+        {isInReview(task.status) && (
           <div className="post-task-review-actions">
             <span className="post-task-review-link" onClick={() => navigate(`/review?task=${task.id}`)}>
               Review →
             </span>
-            <span className="btn btn-danger post-task-review-btn" onClick={() => onChange({ status: "needs_revision" })}>
-              Revise
-            </span>
-            <span className="btn btn-primary post-task-review-btn" onClick={() => onChange({ status: "final" })}>
-              Final
-            </span>
+            {can("review_decide") && (
+              <span className="btn btn-danger post-task-review-btn" onClick={() => onChange({ status: "needs_revision" })}>
+                Revise
+              </span>
+            )}
+            {canFinal(task.status) && (
+              <span className="btn btn-primary post-task-review-btn" onClick={() => onChange({ status: finalStatus })}>
+                {finalStatus === "comp_approved" ? "Comp Approve" : "Final"}
+              </span>
+            )}
           </div>
         )}
       </div>

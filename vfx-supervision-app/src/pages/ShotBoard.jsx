@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { boardColumnForStatus } from "../data/taskStatus.js";
+import { boardColumnForStatus, isInReview } from "../data/taskStatus.js";
 import { buildTaskUploadPath } from "../lib/folderPath.js";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
@@ -136,7 +136,7 @@ export default function ShotBoard() {
                                 </span>
                                 <span className="board-card-meta">{assigneeSummary(task)}</span>
                                 {uploadPath && <span className="board-card-folder-path mono">{uploadPath}</span>}
-                                {task.status === "pending" && (
+                                {isInReview(task.status) && (
                                   <span
                                     className="board-card-review-link"
                                     onClick={() => navigate(`/review?task=${task.id}`)}

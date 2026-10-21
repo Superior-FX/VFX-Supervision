@@ -4,7 +4,7 @@ import AnnotatedPlayer from "../components/AnnotatedPlayer.jsx";
 import FolderStatusBanner from "../components/FolderStatusBanner.jsx";
 import { useHqRenders } from "../components/HqRenders.jsx";
 import ViewSelect from "../components/ViewSelect.jsx";
-import { applyTaskPatch } from "../data/taskStatus.js";
+import { applyTaskPatch, isInReview } from "../data/taskStatus.js";
 import { versionNotes, withCurrentSupNote } from "../lib/versionNotes.js";
 import { assigneesLabel, getAssignees, hasAssignee } from "../lib/taskAssignees.js";
 import { padScene } from "../lib/folderPath.js";
@@ -42,7 +42,8 @@ function formatSubmitted(iso) {
 
 export default function Review() {
   const project = useActiveProject();
-  const canDecide = useRole().can("review_decide");
+  const { can, canFinal, finalStatus } = useRole();
+  const canDecide = can("review_decide");
   const [searchParams, setSearchParams] = useSearchParams();
   const [postReports, setPostReports] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
   const folder = useProjectFolder(project);
@@ -60,7 +61,7 @@ export default function Review() {
   const queue = useMemo(
     () =>
       sortByDueComplexityName(postReports).flatMap((shot) =>
-        shot.tasks.filter((t) => t.status === "pending").map((task) => ({ shot, task }))
+        shot.tasks.filter((t) => isInReview(t.status)).map((task) => ({ shot, task }))
       ),
     [postReports]
   );
@@ -268,9 +269,11 @@ export default function Review() {
               <div className="btn btn-danger" onClick={() => act("needs_revision")}>
                 Revise
               </div>
-              <div className="btn btn-primary" onClick={() => act("final")}>
-                Final
-              </div>
+              {canFinal(current.task.status) && (
+                <div className="btn btn-primary" onClick={() => act(finalStatus)}>
+                  {finalStatus === "comp_approved" ? "Comp Approve" : "Final"}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -346,6 +349,7 @@ export default function Review() {
                 <option value={task.id} key={task.id}>
                   {shot.shotCode} — {task.type}
                   {task.version ? ` ${formatVersion(task.version)}` : ""} — {assigneesLabel(task)}
+                  {task.status === "comp_approved" ? " — comp approved" : ""}
                   {sortMode === "submitted"
                     ? submittedAt(task)
                       ? ` — submitted ${formatSubmitted(submittedAt(task))}`
@@ -370,6 +374,9 @@ export default function Review() {
             <span className="pill">{viewingPlate ? "Plate" : current.task.type}</span>
             {!viewingPlate && shownVersion && <span className="pill mono">{formatVersion(shownVersion)}</span>}
             {!isLatest && <span className="pill pill-warning">Not the latest</span>}
+            {current.task.status === "comp_approved" && (
+              <span className="pill pill-info">Comp approved — awaiting VFX Sup</span>
+            )}
             <span className="review-meta-assignee">{assigneesLabel(current.task)}</span>
           </div>
 

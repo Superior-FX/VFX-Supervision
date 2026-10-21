@@ -23,11 +23,21 @@ export function rolesCan(roles, permission) {
   return (PERMISSIONS[permission] ?? []).some((r) => roles.includes(r));
 }
 
+// What this person's Final does: a VFX Supervisor (or Admin) finals the
+// task; a Comp Supervisor's Final only marks it comp_approved, flagging it
+// for VFX Supervisor sign-off. null = no Final at all.
+export function finalStatusFor(roles) {
+  if (roles.includes("Admin") || roles.includes("VFX Supervisor")) return "final";
+  if (roles.includes("Comp Supervisor")) return "comp_approved";
+  return null;
+}
+
 export function primaryRole(roles) {
   return ROLE_ORDER.find((r) => roles.includes(r)) ?? "";
 }
 
-// { profile, roles, can(permission), isAdmin, isArtistOnly, primaryRole }
+// { profile, roles, can(permission), isAdmin, isArtistOnly, primaryRole,
+//   finalStatus, canFinal(status) }
 export function useRole() {
   const { profile } = useAuth();
   const roles = profile?.roles ?? [];
@@ -38,5 +48,12 @@ export function useRole() {
     isAdmin: roles.includes("Admin"),
     isArtistOnly: roles.length > 0 && !rolesCan(roles, "studio"),
     primaryRole: primaryRole(roles),
+    finalStatus: finalStatusFor(roles),
+    // Whether this person's Final would move a task in this status forward
+    // (a Comp Supervisor can't re-approve something already comp_approved).
+    canFinal: (status) => {
+      const next = finalStatusFor(roles);
+      return Boolean(next) && next !== status;
+    },
   };
 }
