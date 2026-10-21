@@ -39,7 +39,7 @@ function useAllTaskVersions(folder, shot) {
             scene: padScene(shot.scene),
             shotCode: shot.shotCode,
             taskType: task.type,
-          });
+          }, { create: false });
           if (dir) for (const v of await listProxyVersions(dir, shot.shotCode)) found.add(v.version);
         } catch {
           // No folder for this task yet — just whatever the record says.

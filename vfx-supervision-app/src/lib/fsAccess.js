@@ -126,8 +126,8 @@ export async function ensurePermission(handle) {
   return (await handle.requestPermission(opts)) === "granted";
 }
 
-async function subdir(parent, name) {
-  return parent.getDirectoryHandle(name, { create: true });
+async function subdir(parent, name, create = true) {
+  return parent.getDirectoryHandle(name, { create });
 }
 
 // One shared backup folder for the whole app (not per-project) — same
@@ -266,14 +266,18 @@ export async function getTaskUploadFolder(rootHandle, { scene, shotCode, taskTyp
 // so dailies review never mixes proxies in with submitted source output.
 // Same null-for-unknown-type and throw-if-shot-missing behavior as
 // getTaskUploadFolder.
-export async function getTaskReviewFolder(rootHandle, { scene, shotCode, taskType }) {
+// create: false for anything that only reads (playback, version lists) — a
+// folder that isn't there may just not have synced from Google Drive yet,
+// and creating an empty one locally can leave Drive with two copies. Those
+// lookups throw NotFoundError instead.
+export async function getTaskReviewFolder(rootHandle, { scene, shotCode, taskType }, { create = true } = {}) {
   const sceneName = `SC${scene}`;
   const sceneDir = await rootHandle.getDirectoryHandle(sceneName);
   const shotDir = await sceneDir.getDirectoryHandle(shotCode);
   const slug = taskFolderSlug(taskType);
   if (!slug) return null;
-  const reviewDir = await subdir(shotDir, "03_review");
-  return subdir(reviewDir, slug);
+  const reviewDir = await subdir(shotDir, "03_review", create);
+  return subdir(reviewDir, slug, create);
 }
 
 // Reads back a single file from a directory handle as a real File — used to
@@ -339,11 +343,12 @@ export function plateProxyName(shotCode) {
   return proxyName(`${shotCode}_plate`);
 }
 
-export async function getPlateFolders(rootHandle, { scene, shotCode }) {
+// create: false for read-only lookups — see getTaskReviewFolder.
+export async function getPlateFolders(rootHandle, { scene, shotCode }, { create = true } = {}) {
   const sceneDir = await rootHandle.getDirectoryHandle(`SC${scene}`);
   const shotDir = await sceneDir.getDirectoryHandle(shotCode);
-  const platesDir = await subdir(shotDir, "00_plates");
-  const reviewDir = await subdir(await subdir(shotDir, "03_review"), "plate");
+  const platesDir = await subdir(shotDir, "00_plates", create);
+  const reviewDir = await subdir(await subdir(shotDir, "03_review", create), "plate", create);
   return { platesDir, reviewDir };
 }
 

@@ -124,7 +124,7 @@ export default function Upload() {
     let cancelled = false;
     (async () => {
       if ((await rootHandle.queryPermission({ mode: "readwrite" })) !== "granted") return;
-      const reviewDir = await getTaskReviewFolder(rootHandle, taskFolderArgs());
+      const reviewDir = await getTaskReviewFolder(rootHandle, taskFolderArgs(), { create: false });
       if (reviewDir && !cancelled) setDiskLatestVersion(await latestProxyVersionIn(reviewDir, selectedShot.shotCode));
     })().catch(() => {});
     return () => {
