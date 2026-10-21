@@ -36,3 +36,14 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-10-05T16:05:02-05:00 — **Will Cox** (Atom-Smasher) — `f5c4edf` Company-wide Dashboard, plate import, version/plate viewing
 - 2026-10-05T23:25:25-05:00 — **Will Cox** (Atom-Smasher) — `e92ec7a` SHARED_STATE: log 8e736e3 and f5c4edf
 - 2026-10-09T23:31:47-05:00 — **Will Cox** (Atom-Smasher) — `aa2fca9` SHARED_STATE: log e92ec7a
+- 2026-10-09T23:54:45-05:00 — **Will Cox** (Atom-Smasher) — `e970d02` Add ComfyUI LTX setup notes for remote use
+- 2026-10-12T22:18:17-05:00 — **Will Cox** (Atom-Smasher) — `0475dbe` Footage Ingest tab, Home folder button, _proxy naming, remembered pickers
+- 2026-10-12T22:29:51-05:00 — **Will Cox** (Atom-Smasher) — `2a5102a` Run ffmpeg jobs one at a time
+- 2026-10-15T01:12:50-05:00 — **Will Cox** (Atom-Smasher) — `f65f7f5` Read videos from disk in ffmpeg so >2 GB plates work
+- 2026-10-20T23:41:35-05:00 — **Will Cox** (Atom-Smasher) — `8d19b37` Supabase sign-in, roles and Team & Access page
+- 2026-10-21T00:17:37-05:00 — **Will Cox** (Atom-Smasher) — `d3a8835` Comp Approved status: Comp Supervisor's Final flags for VFX Sup sign-off
+- 2026-10-21T00:24:10-05:00 — **Will Cox** (Atom-Smasher) — `b20f1ac` Delete requests: non-Admin deletes wait for Admin approval
+- 2026-10-21T01:15:55-05:00 — **Will Cox** (Atom-Smasher) — `fb10b39` Shared project data in Supabase with live updates
+- 2026-10-21T01:42:38-05:00 — **Will Cox** (Atom-Smasher) — `17e2bbc` Prepare for hosting on Vercel at app.superior-fx.com
+- 2026-10-21T02:16:56-05:00 — **Will Cox** (Atom-Smasher) — `37f61b7` Tab title "Sup-FX App"; go-live guide reflects who does what
+- 2026-10-21T02:27:02-05:00 — **Will Cox** (Atom-Smasher) — `a101453` Say "still syncing from Google Drive" instead of "moved or deleted"
