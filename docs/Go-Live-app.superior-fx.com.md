@@ -4,11 +4,11 @@ The VFX Supervision app is ready to host. It's a static site (the `vfx-supervisi
 
 | # | Who | Where | What |
 |---|-----|-------|------|
-| 1 | Will | vercel.com | Create the Vercel project |
-| 2 | Will | Supabase | Allow the new web address for sign-in emails |
+| 1 | Will | vercel.com | Create the Vercel project ✅ live at https://vfx-supervision.vercel.app |
+| 2 | Will | Supabase | Allow the new web address for sign-in emails ✅ for the vercel.app address |
 | 3 | Will | Vercel | Add the `app.superior-fx.com` domain, then copy the DNS value it shows |
-| 4 | **Jon** | GoDaddy (DNS for superior-fx.com) | Add one CNAME record |
-| 5 | **Jon** | Base44 (Superior-FX Portal) | Add a link/button to the app |
+| 4 | Will | GoDaddy (DNS for superior-fx.com) | Add one CNAME record |
+| 5 | **Jon** | Base44 (superior-fx.com site) | Add a hidden, admin-only **"Sup-FX App"** link |
 | 6 | Will | the app → Team & Access | Invite Jon; Jon signs up |
 
 ---
@@ -40,9 +40,9 @@ Supabase dashboard → **Authentication → URL Configuration**:
 
 Vercel project → **Settings → Domains → Add** → `app.superior-fx.com`.
 
-Vercel then shows the DNS record it needs, normally a **CNAME** for **`app`** pointing to a `…vercel-dns…` address. **Send Jon exactly what Vercel shows**; it can be project-specific.
+Vercel then shows the DNS record it needs, normally a **CNAME** for **`app`** pointing to a `…vercel-dns…` address. **Use exactly what Vercel shows** in step 4; it can be project-specific.
 
-## 4. DNS record (Jon, in GoDaddy)
+## 4. DNS record (Will, in GoDaddy)
 
 GoDaddy → superior-fx.com → **DNS → Add record**:
 
@@ -52,11 +52,23 @@ GoDaddy → superior-fx.com → **DNS → Add record**:
 
 This only adds `app.`. It doesn't touch `www` or the current site, which stay on Base44. Vercel issues the HTTPS certificate automatically, usually within minutes to an hour.
 
-## 5. Link from the Base44 site (Jon)
+## 5. Hidden admin-only link on superior-fx.com (Jon, in Base44)
 
-Add a button or menu link such as **"VFX Supervision"** → `https://app.superior-fx.com`, opening in a **new tab**.
+The public shouldn't see the app at all. Only people signed in to the superior-fx.com site as **admins** should see a **"Sup-FX App"** link, which opens the app in a new tab, where they sign in to the app itself.
 
-**Use a link, not an embed or iframe.** Inside an iframe, the app's project-folder access (Chrome's File System Access) and sign-in session are blocked by the browser.
+Paste this into the Base44 AI chat for the superior-fx.com app:
+
+> Add an admin-only link to the site's navigation labeled **"Sup-FX App"** that opens **https://app.superior-fx.com** in a **new browser tab** (target="_blank", rel="noopener noreferrer").
+> - Show it **only** when the visitor is signed in **and** their user role is **admin**. Hide it completely, including from the HTML and the mobile menu, for logged-out visitors and for signed-in users who aren't admins.
+> - It's a plain external link. Do **not** embed the app in an iframe or a page on this site.
+> - Don't change anything else about the site, its pages, or its public navigation.
+
+Then in Base44, under the app's **Users** settings, make sure Will (and anyone else who needs the app) is an **admin** user on the site, so the link appears for them.
+
+**Notes:**
+- **Use a link, not an embed or iframe.** Inside an iframe, the app's project-folder access (Chrome's File System Access) and sign-in session are blocked by the browser.
+- Hiding the link only keeps the site tidy; it isn't the security. The app at app.superior-fx.com has its own sign-in and roles (Team & Access), so anyone who finds the address still can't get in without an account you've given access to.
+- The app's browser tab reads **"Sup-FX App"**.
 
 ## 6. Accounts
 
