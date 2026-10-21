@@ -25,6 +25,8 @@ import { useRole } from "../lib/role.js";
 import { sortByShotCode } from "../lib/sortShots.js";
 import { assigneeRows, assigneesLabel, getAssignees, renameAssigneeOnTask } from "../lib/taskAssignees.js";
 import { useEnterKey } from "../lib/useEnterKey.js";
+import { DeleteRequestsProvider, useDeleteRequests, useDeleteRequestsContext } from "../lib/deleteRequests.jsx";
+import DeleteRequestsBanner from "../components/DeleteRequestsBanner.jsx";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import { useProjectFolder } from "../lib/useProjectFolder.js";
 import { importPlate } from "../lib/plateImport.js";
@@ -117,15 +119,31 @@ function renameAssigneeInShots(shotList, oldName, newName) {
   }));
 }
 
-function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
+function TaskRow({ task, shot, readOnly, onChange, onRemove, artists }) {
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const status = taskStatusInfo(task.status);
   const { can, canFinal, finalStatus } = useRole();
   const deleteMatches = confirmText.trim().toUpperCase() === "DELETE";
+  const deleteRequests = useDeleteRequestsContext();
+  const deletePending = deleteRequests.pendingFor("task", task.id);
+  const confirmRemove = deleteRequests.isAdmin
+    ? onRemove
+    : async () => {
+        const ok = await deleteRequests.request({
+          kind: "task",
+          targetId: task.id,
+          parentId: shot.id,
+          label: `${shot.shotCode} — ${task.type}`,
+        });
+        if (ok) {
+          setConfirming(false);
+          setConfirmText("");
+        }
+      };
   useEnterKey(() => {
-    if (confirming && deleteMatches) onRemove();
+    if (confirming && deleteMatches) confirmRemove();
   });
 
   const setAssigneeAt = (index, value) => {
@@ -151,6 +169,7 @@ function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
           {task.source === "vendor" ? "Outsourced" : "In-house"}
         </span>
         <span className={`pill${status.tone ? ` pill-${status.tone}` : ""}`}>{status.label}</span>
+        {deletePending && <span className="pill pill-danger">Delete requested</span>}
         <span className="post-task-assignee mono">{assigneesLabel(task)}</span>
         {isInReview(task.status) && (
           <div className="post-task-review-actions">
@@ -177,7 +196,11 @@ function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
     const matches = deleteMatches;
     return (
       <div className="post-task-row post-task-row-confirm">
-        <span className="post-task-confirm-label">Type DELETE to remove this assignment</span>
+        <span className="post-task-confirm-label">
+          {deleteRequests.isAdmin
+            ? "Type DELETE to remove this assignment"
+            : "Type DELETE to ask an Admin to remove this assignment"}
+        </span>
         <input
           className="report-edit-input mono post-task-confirm-input"
           value={confirmText}
@@ -185,8 +208,8 @@ function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
           placeholder="DELETE"
           autoFocus
         />
-        <span className={`btn btn-danger${matches ? "" : " btn-disabled"}`} onClick={matches ? onRemove : undefined}>
-          Confirm delete
+        <span className={`btn btn-danger${matches ? "" : " btn-disabled"}`} onClick={matches ? confirmRemove : undefined}>
+          {deleteRequests.isAdmin ? "Confirm delete" : "Request delete"}
         </span>
         <span
           className="btn btn-secondary"
@@ -262,9 +285,13 @@ function TaskRow({ task, readOnly, onChange, onRemove, artists }) {
           +
         </span>
       </div>
-      <span className="post-task-remove" onClick={() => setConfirming(true)} title="Remove assignment">
-        <TrashIcon />
-      </span>
+      {deletePending ? (
+        <span className="pill pill-danger">Delete requested</span>
+      ) : (
+        <span className="post-task-remove" onClick={() => setConfirming(true)} title="Remove assignment">
+          <TrashIcon />
+        </span>
+      )}
     </div>
   );
 }
@@ -308,8 +335,18 @@ function ShotCard({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const deleteMatches = deleteConfirmText.trim().toUpperCase() === "DELETE";
+  const deleteRequests = useDeleteRequestsContext();
+  const deletePending = deleteRequests.pendingFor("shot", shot.id);
+  const confirmDelete = deleteRequests.isAdmin
+    ? onDelete
+    : async () => {
+        if (await deleteRequests.request({ kind: "shot", targetId: shot.id, label: shot.shotCode })) {
+          setConfirmingDelete(false);
+          setDeleteConfirmText("");
+        }
+      };
   useEnterKey(() => {
-    if (confirmingDelete && deleteMatches) onDelete();
+    if (confirmingDelete && deleteMatches) confirmDelete();
   });
   const update = (patch) => onChange({ ...shot, ...patch });
 
@@ -438,7 +475,8 @@ function ShotCard({
     return (
       <div className="card post-shot-card post-shot-card-confirm">
         <span className="post-shot-confirm-label">
-          Type DELETE to permanently remove {shot.shotCode} and all of its assignments
+          {deleteRequests.isAdmin ? "Type DELETE to permanently remove" : "Type DELETE to ask an Admin to remove"}{" "}
+          {shot.shotCode} and all of its assignments
           {shot.foldersCreatedAt ? " — its folder will be moved into this scene's zzz_DELETED/ folder" : ""}
         </span>
         <input
@@ -449,8 +487,8 @@ function ShotCard({
           autoFocus
         />
         <div className="post-shot-confirm-actions">
-          <span className={`btn btn-danger${deleteMatches ? "" : " btn-disabled"}`} onClick={deleteMatches ? onDelete : undefined}>
-            Confirm delete
+          <span className={`btn btn-danger${deleteMatches ? "" : " btn-disabled"}`} onClick={deleteMatches ? confirmDelete : undefined}>
+            {deleteRequests.isAdmin ? "Confirm delete" : "Request delete"}
           </span>
           <span
             className="btn btn-secondary"
@@ -532,16 +570,19 @@ function ShotCard({
         </div>
         <div className="post-shot-header-actions">
           {shot.dispatched && <span className="pill pill-success">Pushed</span>}
+          {deletePending && <span className="pill pill-danger">Delete requested</span>}
           <span className="report-edit-btn" onClick={onToggleEdit} title={isEditing ? "Done" : "Edit"}>
             {isEditing ? <CheckIcon /> : <PencilIcon />}
           </span>
-          <span
-            className="report-edit-btn post-shot-delete-btn"
-            onClick={() => setConfirmingDelete(true)}
-            title="Delete shot"
-          >
-            <TrashIcon />
-          </span>
+          {!deletePending && (
+            <span
+              className="report-edit-btn post-shot-delete-btn"
+              onClick={() => setConfirmingDelete(true)}
+              title="Delete shot"
+            >
+              <TrashIcon />
+            </span>
+          )}
         </div>
       </div>
 
@@ -668,6 +709,7 @@ function ShotCard({
               <TaskRow
                 key={task.id}
                 task={task}
+                shot={shot}
                 readOnly={!isEditing}
                 onChange={(patch) => updateTask(task.id, patch)}
                 onRemove={() => removeTask(task.id)}
@@ -808,8 +850,18 @@ function SceneGroup({
   const folderPath = buildSceneFolderPath({ show: project?.showCode, scene: scene.scene });
   const readyForFolder = Boolean(folderPath && rootHandle);
 
+  const deleteRequests = useDeleteRequestsContext();
+  const deletePending = deleteRequests.pendingFor("scene", scene.id);
+  const confirmDelete = deleteRequests.isAdmin
+    ? onDeleteScene
+    : async () => {
+        if (await deleteRequests.request({ kind: "scene", targetId: scene.id, label: `SC${scene.scene}` })) {
+          setConfirmingDelete(false);
+          setDeleteConfirmText("");
+        }
+      };
   useEnterKey(() => {
-    if (confirmingDelete && deleteMatches) onDeleteScene();
+    if (confirmingDelete && deleteMatches) confirmDelete();
   });
 
   const startEditingScene = (e) => {
@@ -895,7 +947,8 @@ function SceneGroup({
           {shots.length} shot{shots.length === 1 ? "" : "s"}
         </span>
         {scene.folderCreatedAt && <span className="pill pill-success">Folder created</span>}
-        {!confirmingDelete && !editingScene && (
+        {deletePending && <span className="pill pill-danger">Delete requested</span>}
+        {!confirmingDelete && !editingScene && !deletePending && (
           <span
             className="report-edit-btn post-shot-delete-btn post-scene-delete-btn"
             onClick={(e) => {
@@ -912,7 +965,8 @@ function SceneGroup({
       {confirmingDelete && (
         <div className="post-scene-confirm" onClick={(e) => e.stopPropagation()}>
           <span className="post-shot-confirm-label">
-            Type DELETE to permanently remove SC{scene.scene}
+            {deleteRequests.isAdmin ? "Type DELETE to permanently remove" : "Type DELETE to ask an Admin to remove"} SC
+            {scene.scene}
             {shots.length > 0
               ? ` and its ${shots.length} shot${shots.length === 1 ? "" : "s"} — its folder will be moved into this project's zzz_DELETED_SCENES/ folder`
               : " — nothing on disk is deleted, it has no shots"}
@@ -926,8 +980,8 @@ function SceneGroup({
             autoFocus
           />
           <div className="post-shot-confirm-actions">
-            <span className={`btn btn-danger${deleteMatches ? "" : " btn-disabled"}`} onClick={deleteMatches ? onDeleteScene : undefined}>
-              Confirm delete
+            <span className={`btn btn-danger${deleteMatches ? "" : " btn-disabled"}`} onClick={deleteMatches ? confirmDelete : undefined}>
+              {deleteRequests.isAdmin ? "Confirm delete" : "Request delete"}
             </span>
             <span
               className="btn btn-secondary"
@@ -1012,6 +1066,7 @@ export default function PostReports() {
   const [tab, setTab] = useState(TABS[0]);
   const supported = isFsAccessSupported();
   const canManage = useRole().can("manage_projects");
+  const deleteRequests = useDeleteRequests(project?.id);
 
   const pickFolder = async () => {
     try {
@@ -1368,7 +1423,25 @@ export default function PostReports() {
     });
   };
 
+  // Approving a request runs the same delete an Admin's own DELETE would.
+  // A target that's already gone (deleted some other way) just gets the
+  // request marked approved.
+  const approveDeleteRequest = async (req) => {
+    if (req.kind === "scene") {
+      const scene = scenes.find((s) => s.id === req.target_id);
+      if (scene) await removeScene(scene);
+    } else if (req.kind === "shot") {
+      if (shots.some((s) => s.id === req.target_id)) await removeShot(req.target_id);
+    } else if (req.kind === "task") {
+      setShots((prev) =>
+        prev.map((s) => (s.id === req.parent_id ? { ...s, tasks: s.tasks.filter((t) => t.id !== req.target_id) } : s))
+      );
+    }
+    return deleteRequests.decide(req.id, "approved");
+  };
+
   return (
+    <DeleteRequestsProvider value={deleteRequests}>
     <div className="post-reports">
       <div className="post-reports-header">
         <div className="post-reports-header-top">
@@ -1422,6 +1495,8 @@ export default function PostReports() {
         showCode={project?.showCode}
         impact="scene and shot folders won't be created, renamed, or moved into zzz_DELETED"
       />
+
+      <DeleteRequestsBanner deleteRequests={deleteRequests} onApprove={approveDeleteRequest} />
 
       <FootageIngest
         hidden={tab !== "Ingest"}
@@ -1521,5 +1596,6 @@ export default function PostReports() {
         </>
       )}
     </div>
+    </DeleteRequestsProvider>
   );
 }

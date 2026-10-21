@@ -1,0 +1,67 @@
+.delete-requests {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  margin-bottom: 14px;
+}
+
+.delete-requests-title {
+  color: var(--danger);
+}
+
+.delete-requests-error {
+  font: 12px var(--font-body);
+  color: var(--danger);
+}
+
+.delete-request-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.delete-request-label {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.delete-request-meta {
+  font: 11px var(--font-body);
+  color: var(--text-tertiary);
+}
+
+.delete-request-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.delete-request-warn {
+  font: 12px var(--font-body);
+  color: var(--danger);
+}
+
+.delete-request-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+/* Narrow version for the Home sidebar. */
+.delete-requests-compact {
+  padding: 10px 12px;
+  margin-bottom: 0;
+}
+
+.delete-requests-compact .delete-request-row {
+  gap: 6px;
+}
+
+.delete-requests-compact .delete-request-actions {
+  margin-left: 0;
+  width: 100%;
+}

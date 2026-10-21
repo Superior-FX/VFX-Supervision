@@ -313,3 +313,19 @@
 .home-backup-actions ~ .home-user {
   margin-top: 14px;
 }
+
+.home-request-link {
+  font: 12px var(--font-body);
+  color: var(--danger);
+  cursor: pointer;
+  padding: 4px 2px;
+}
+
+.home-request-link:hover {
+  text-decoration: underline;
+}
+
+.home-project-delete-pill {
+  align-self: center;
+  flex-shrink: 0;
+}

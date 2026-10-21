@@ -20,6 +20,8 @@ import { SCOPED_DATA_BASES, useActiveProjectId, useProjects } from "../lib/proje
 import { useEnterKey } from "../lib/useEnterKey.js";
 import { useRole } from "../lib/role.js";
 import UserBadge from "../components/UserBadge.jsx";
+import DeleteRequestsBanner from "../components/DeleteRequestsBanner.jsx";
+import { useDeleteRequests } from "../lib/deleteRequests.jsx";
 import "./Home.css";
 
 const LEADING_ARTICLES = new Set(["the", "a", "an"]);
@@ -102,7 +104,7 @@ function ProjectFolderRelink({ project, linkedName, onChoose, onCancel }) {
   );
 }
 
-function ProjectDeleteConfirm({ project, onConfirm, onCancel }) {
+function ProjectDeleteConfirm({ project, requestOnly, onConfirm, onCancel }) {
   const [text, setText] = useState("");
   const matches = text.trim().toUpperCase() === "DELETE";
   useEnterKey(() => {
@@ -112,7 +114,8 @@ function ProjectDeleteConfirm({ project, onConfirm, onCancel }) {
   return (
     <div className="card home-project-confirm" onClick={(e) => e.stopPropagation()}>
       <span className="home-project-confirm-label">
-        Type DELETE to permanently remove {project.name} ({project.showCode}) and all of its shots and reports
+        {requestOnly ? "Type DELETE to ask an Admin to remove" : "Type DELETE to permanently remove"} {project.name} (
+        {project.showCode}) and all of its shots and reports
       </span>
       <input
         className="report-edit-input mono home-project-confirm-input"
@@ -123,7 +126,7 @@ function ProjectDeleteConfirm({ project, onConfirm, onCancel }) {
       />
       <div className="home-project-confirm-actions">
         <span className={`btn btn-danger${matches ? "" : " btn-disabled"}`} onClick={matches ? onConfirm : undefined}>
-          Confirm delete
+          {requestOnly ? "Request delete" : "Confirm delete"}
         </span>
         <span className="btn btn-secondary" onClick={onCancel}>
           Cancel
@@ -307,6 +310,7 @@ function NewProjectForm({ onCreate, onCancel }) {
 
 export default function Home() {
   const canManage = useRole().can("manage_projects");
+  const deleteRequests = useDeleteRequests(null);
   const navigate = useNavigate();
   const [projects, setProjects] = useProjects();
   const [activeId, setActiveId] = useActiveProjectId();
@@ -391,6 +395,45 @@ export default function Home() {
     localStorage.setItem("vfx-supe-active-project-id", JSON.stringify(id));
     navigate(`/dashboard?project=${id}`);
   };
+
+  // Same as openProject, but straight to Post Reports — where scene, shot
+  // and assignment delete requests are approved.
+  const openPostReports = (id) => {
+    setActiveId(id);
+    localStorage.setItem("vfx-supe-active-project-id", JSON.stringify(id));
+    navigate("/post-reports");
+  };
+
+  // Admins delete straight away; anyone else files a request.
+  const confirmRemoveProject = async (project) => {
+    if (deleteRequests.isAdmin) {
+      removeProject(project.id);
+      return;
+    }
+    const ok = await deleteRequests.request({
+      kind: "project",
+      targetId: project.id,
+      projectId: project.id,
+      label: `${project.name} (${project.showCode})`,
+    });
+    if (ok) setRemovingId(null);
+  };
+
+  const approveProjectDelete = async (req) => {
+    if (projects.some((p) => p.id === req.target_id)) removeProject(req.target_id);
+    return deleteRequests.decide(req.id, "approved");
+  };
+
+  // Scene/shot/assignment requests are approved in each project's Post
+  // Reports; Home just points the Admin at them.
+  const otherRequestCounts = deleteRequests.isAdmin
+    ? projects
+        .map((p) => ({
+          project: p,
+          count: deleteRequests.requests.filter((r) => r.project_id === p.id && r.kind !== "project").length,
+        }))
+        .filter((row) => row.count > 0)
+    : [];
 
   const createProject = (project) => {
     const next = [...projects, project];
@@ -533,7 +576,8 @@ export default function Home() {
               <ProjectDeleteConfirm
                 key={p.id}
                 project={p}
-                onConfirm={() => removeProject(p.id)}
+                requestOnly={!deleteRequests.isAdmin}
+                onConfirm={() => confirmRemoveProject(p)}
                 onCancel={() => setRemovingId(null)}
               />
             ) : relinkingId === p.id ? (
@@ -598,7 +642,11 @@ export default function Home() {
                     <FolderIcon />
                   </span>
                 )}
-                {canManage && (
+                {deleteRequests.pendingFor("project", p.id) ? (
+                  <span className="pill pill-danger home-project-delete-pill" title="Waiting for an Admin">
+                    Delete requested
+                  </span>
+                ) : canManage && (
                 <span
                   className="home-project-remove"
                   onClick={(e) => {
@@ -614,6 +662,18 @@ export default function Home() {
             )
           )}
         </div>
+
+        <DeleteRequestsBanner
+          deleteRequests={deleteRequests}
+          kinds={["project"]}
+          onApprove={approveProjectDelete}
+          compact
+        />
+        {otherRequestCounts.map(({ project, count }) => (
+          <span className="home-request-link" key={project.id} onClick={() => openPostReports(project.id)}>
+            {count} delete request{count === 1 ? "" : "s"} in {project.showCode} →
+          </span>
+        ))}
 
         {canManage && (
         <div className="home-backup-actions">
