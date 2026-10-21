@@ -1,0 +1,159 @@
+.team {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 28px 32px;
+  max-width: 1100px;
+}
+
+.team-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.team-title {
+  margin: 0;
+  font: 26px var(--font-display);
+  color: var(--text-primary);
+}
+
+.team-sub,
+.team-hint {
+  font: 12px/1.4 var(--font-body);
+  color: var(--text-tertiary);
+}
+
+.team-error {
+  padding: 10px 14px;
+  border-color: var(--danger);
+  color: var(--danger);
+  font: 12px var(--font-body);
+}
+
+.team-notice {
+  font: 12px/1.4 var(--font-body);
+  color: var(--success);
+}
+
+.team-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.team-invite {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.team-invite-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.team-invite-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.team-input,
+.team-select {
+  height: 34px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  padding: 0 10px;
+  font: 13px var(--font-body);
+  min-width: 200px;
+}
+
+.team-input:focus,
+.team-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.team-select:disabled {
+  opacity: 0.5;
+}
+
+.team-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+}
+
+.team-row-wrap {
+  flex-wrap: wrap;
+}
+
+.team-who {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 200px;
+  flex: 0 0 220px;
+}
+
+.team-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 14px var(--font-body);
+  color: var(--text-primary);
+}
+
+.team-email {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.team-you {
+  font-size: 8px;
+}
+
+.team-roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.team-role {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font: 12px var(--font-body);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.team-role.is-disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.team-pills {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.team-small-btn {
+  padding: 5px 10px;
+  font-size: 11px;
+}
+
+.team-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 12px var(--font-body);
+  color: var(--danger);
+}

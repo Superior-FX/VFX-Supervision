@@ -1,7 +1,8 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
+import AuthGate from "./components/AuthGate.jsx";
 import Layout from "./components/Layout.jsx";
+import { AuthProvider } from "./lib/auth.jsx";
 import Home from "./pages/Home.jsx";
-import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Capture from "./pages/Capture.jsx";
 import CaptureReports from "./pages/CaptureReports.jsx";
@@ -16,12 +17,24 @@ import ArtistReport from "./pages/ArtistReport.jsx";
 import ArtistReview from "./pages/ArtistReview.jsx";
 import ArtistAssignments from "./pages/ArtistAssignments.jsx";
 import Help from "./pages/Help.jsx";
+import Team from "./pages/Team.jsx";
 
 export default function App() {
   return (
+    <AuthProvider>
+      <AuthGate>
+        <AppRoutes />
+      </AuthGate>
+    </AuthProvider>
+  );
+}
+
+function AppRoutes() {
+  return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/login" element={<Login />} />
+      {/* Sign-in happens in AuthGate; an old /login bookmark just goes home. */}
+      <Route path="/login" element={<Navigate to="/" replace />} />
 
       <Route element={<Layout />}>
         <Route path="/dashboard" element={<Dashboard />} />
@@ -38,6 +51,7 @@ export default function App() {
         <Route path="/artist-review" element={<ArtistReview />} />
         <Route path="/artist-assignments" element={<ArtistAssignments />} />
         <Route path="/help" element={<Help />} />
+        <Route path="/team" element={<Team />} />
       </Route>
     </Routes>
   );

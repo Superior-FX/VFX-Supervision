@@ -96,7 +96,7 @@ function ArtistForm({ value, onChange, onSave, onCancel }) {
   );
 }
 
-export default function ArtistDirectory({ isAdmin, onRenameArtist }) {
+export default function ArtistDirectory({ canManage, onRenameArtist }) {
   const [artists, setArtists] = useLocalStorageState("vfx-supe-artists", []);
   const [draft, setDraft] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -141,15 +141,15 @@ export default function ArtistDirectory({ isAdmin, onRenameArtist }) {
     <div className="artist-directory">
       <div className="artist-directory-header">
         <span className="pill">{artists.length} artists</span>
-        {isAdmin && !draft && (
+        {canManage && !draft && (
           <span className="btn btn-secondary" onClick={startAdd}>
             + Add Artist
           </span>
         )}
       </div>
 
-      {!isAdmin && (
-        <div className="card artist-directory-hint">Only Admins can add, edit, or remove artists.</div>
+      {!canManage && (
+        <div className="card artist-directory-hint">Only supervisors, producers and Admins can add, edit, or remove artists.</div>
       )}
 
       {draft && <ArtistForm value={draft} onChange={setDraft} onSave={saveAdd} onCancel={cancelAdd} />}
@@ -184,7 +184,7 @@ export default function ArtistDirectory({ isAdmin, onRenameArtist }) {
                     </span>
                   ))}
                 </div>
-                {isAdmin && (
+                {canManage && (
                   <div className="artist-directory-row-actions">
                     <span className="artist-directory-edit" onClick={() => startEdit(a)} title="Edit artist">
                       <PencilIcon />

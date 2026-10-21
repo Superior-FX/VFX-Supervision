@@ -1,9 +1,19 @@
-// Sign-in is disabled for now (see role.js) — the Artist Portal is being
-// built/tested as a single hardcoded artist rather than through the (now
-// unlinked) Login artist picker. To reconnect real sign-in later: read
-// `vfx-supe-current-artist-id` from localStorage instead of matching by name.
-export const CURRENT_ARTIST_NAME = "Will Cox";
+import { useAuth } from "./auth.jsx";
 
-export function resolveCurrentArtist(artists) {
-  return artists.find((a) => a.name.trim().toLowerCase() === CURRENT_ARTIST_NAME.toLowerCase()) ?? null;
+// The roster artist the signed-in person is linked to (Team page sets
+// profile.artist_id). Until someone's linked, fall back to a roster artist
+// with the same name as their profile, so existing data keeps working.
+export function resolveCurrentArtist(artists, profile) {
+  if (!profile) return null;
+  if (profile.artist_id) {
+    const linked = artists.find((a) => a.id === profile.artist_id);
+    if (linked) return linked;
+  }
+  const name = (profile.name ?? "").trim().toLowerCase();
+  return name ? artists.find((a) => a.name.trim().toLowerCase() === name) ?? null : null;
+}
+
+export function useCurrentArtist(artists) {
+  const { profile } = useAuth();
+  return resolveCurrentArtist(artists, profile);
 }

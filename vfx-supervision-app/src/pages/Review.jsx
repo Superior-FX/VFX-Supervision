@@ -10,6 +10,7 @@ import { assigneesLabel, getAssignees, hasAssignee } from "../lib/taskAssignees.
 import { padScene } from "../lib/folderPath.js";
 import { formatVersion } from "../lib/fsAccess.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
+import { useRole } from "../lib/role.js";
 import { sortByDueComplexityName } from "../lib/sortShots.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import { useProjectFolder } from "../lib/useProjectFolder.js";
@@ -41,6 +42,7 @@ function formatSubmitted(iso) {
 
 export default function Review() {
   const project = useActiveProject();
+  const canDecide = useRole().can("review_decide");
   const [searchParams, setSearchParams] = useSearchParams();
   const [postReports, setPostReports] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
   const folder = useProjectFolder(project);
@@ -261,12 +263,16 @@ export default function Review() {
           <div className="btn btn-secondary" onClick={saveNote}>
             Save note
           </div>
-          <div className="btn btn-danger" onClick={() => act("needs_revision")}>
-            Revise
-          </div>
-          <div className="btn btn-primary" onClick={() => act("final")}>
-            Final
-          </div>
+          {canDecide && (
+            <>
+              <div className="btn btn-danger" onClick={() => act("needs_revision")}>
+                Revise
+              </div>
+              <div className="btn btn-primary" onClick={() => act("final")}>
+                Final
+              </div>
+            </>
+          )}
         </div>
       </>
     ) : (

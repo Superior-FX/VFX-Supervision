@@ -1,7 +1,8 @@
 import { Fragment, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { aggregateTaskStatus, taskStatusInfo } from "../data/taskStatus.js";
-import { CURRENT_ARTIST_NAME, resolveCurrentArtist } from "../lib/currentArtist.js";
+import { useCurrentArtist } from "../lib/currentArtist.js";
+import { useAuth } from "../lib/auth.jsx";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { sortByDueComplexityName } from "../lib/sortShots.js";
@@ -25,7 +26,8 @@ export default function ArtistAssignments() {
   const [onlyMine, setOnlyMine] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
 
-  const currentArtist = resolveCurrentArtist(artists);
+  const { profile } = useAuth();
+  const currentArtist = useCurrentArtist(artists);
 
   const shotsWithTasks = postReports.filter((s) => s.tasks.length > 0);
 
@@ -59,7 +61,7 @@ export default function ArtistAssignments() {
 
       {!currentArtist && (
         <div className="card artist-assignments-hint">
-          No artist named "{CURRENT_ARTIST_NAME}" found in the directory — add them in Post Reports → Artists
+          Your account isn't linked to an artist yet ({profile?.name}) — link it on the Team page, or add them in Post Reports → Artists
           to unlock "My tasks".
         </div>
       )}

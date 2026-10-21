@@ -1,21 +1,42 @@
-// Sign-in / role switching is temporarily disabled — everyone is Admin.
-// To reconnect it later:
-// 1. In Layout.jsx and PostReports.jsx, swap
-//    `import { CURRENT_ROLE } from "../lib/role.js"` back to
-//    `useLocalStorageState("vfx-supe-role", "Admin")`.
-// 2. Layout.jsx lost its Artist-only route redirect (it used to bounce
-//    Artist-role users to /upload if they hit a non-Artist-Portal route) and
-//    the sidebar's "Switch role" link. Both were removed since they're
-//    meaningless while role is hardcoded — re-add the ARTIST_ROUTES
-//    array + a useEffect redirect, and the switch-role link/onClick, if
-//    picking this back up.
-// Login.jsx and its role/artist picker are otherwise untouched and ready.
-export const CURRENT_ROLE = "Admin";
+import { useAuth } from "./auth.jsx";
 
-// Who can add/remove footage notes on ingested plates (Post Reports →
-// Ingest). Admin always passes; the rest match the planned Supabase roles.
-const FOOTAGE_NOTE_ROLES = ["Admin", "VFX Supervisor", "Comp Supervisor", "Producer"];
+// What each role may do. Admin isn't listed — it passes every check,
+// including any permission added later. The database enforces the same
+// rules (supabase/migrations); this only decides what the UI shows.
+const PERMISSIONS = {
+  // Everything outside the Artist Portal: Dashboard, Post Reports, Review, Shot Board.
+  studio: ["VFX Supervisor", "Comp Supervisor", "Producer"],
+  // Create/delete projects, add tasks, assign artists, edit the roster, backups.
+  manage_projects: ["VFX Supervisor", "Comp Supervisor", "Producer"],
+  // Team page: invite people, set roles (never Admin), link to artists.
+  manage_users: ["VFX Supervisor", "Comp Supervisor", "Producer"],
+  // Final / Revise in Review & Dailies. Producers can't.
+  review_decide: ["VFX Supervisor", "Comp Supervisor"],
+  footage_notes: ["VFX Supervisor", "Comp Supervisor", "Producer"],
+};
 
-export function canEditFootageNotes(role = CURRENT_ROLE) {
-  return FOOTAGE_NOTE_ROLES.includes(role);
+// Shown in the sidebar pill when someone holds several roles.
+const ROLE_ORDER = ["Admin", "VFX Supervisor", "Comp Supervisor", "Producer", "Artist"];
+
+export function rolesCan(roles, permission) {
+  if (roles.includes("Admin")) return true;
+  return (PERMISSIONS[permission] ?? []).some((r) => roles.includes(r));
+}
+
+export function primaryRole(roles) {
+  return ROLE_ORDER.find((r) => roles.includes(r)) ?? "";
+}
+
+// { profile, roles, can(permission), isAdmin, isArtistOnly, primaryRole }
+export function useRole() {
+  const { profile } = useAuth();
+  const roles = profile?.roles ?? [];
+  return {
+    profile,
+    roles,
+    can: (permission) => rolesCan(roles, permission),
+    isAdmin: roles.includes("Admin"),
+    isArtistOnly: roles.length > 0 && !rolesCan(roles, "studio"),
+    primaryRole: primaryRole(roles),
+  };
 }

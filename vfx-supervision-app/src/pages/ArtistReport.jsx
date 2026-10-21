@@ -1,7 +1,7 @@
 import { Fragment, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { aggregateTaskStatus, taskStatusInfo, withStatus } from "../data/taskStatus.js";
-import { resolveCurrentArtist } from "../lib/currentArtist.js";
+import { useCurrentArtist } from "../lib/currentArtist.js";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { sortByDueComplexityName } from "../lib/sortShots.js";
@@ -17,7 +17,7 @@ export default function ArtistReport() {
   const [artists] = useLocalStorageState("vfx-supe-artists", []);
   const [expandedId, setExpandedId] = useState(null);
 
-  const currentArtist = resolveCurrentArtist(artists);
+  const currentArtist = useCurrentArtist(artists);
 
   // Grouped one row per shot (not per task) — same organization as Shot
   // Tracking: collapsed shows the shot with an aggregate status and
@@ -56,7 +56,7 @@ export default function ArtistReport() {
 
       {!currentArtist && (
         <div className="card artist-report-empty">
-          No artist profile found for you yet — ask an Admin to add you in Post Reports → Artists.
+          Your account isn't linked to an artist yet — ask a supervisor to link you on the Team page.
         </div>
       )}
 

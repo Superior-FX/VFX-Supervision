@@ -1,7 +1,8 @@
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import logo from "../../logo/SuperiorFX_logo_003.jpg";
 import { useActiveProject } from "../lib/projects.js";
-import { CURRENT_ROLE } from "../lib/role.js";
+import { useRole } from "../lib/role.js";
+import UserBadge from "./UserBadge.jsx";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./Layout.css";
 
@@ -49,7 +50,15 @@ const NAV_GROUPS = [
     label: "Reference",
     items: [{ to: "/help", label: "Help & Reference" }],
   },
+  {
+    label: "Admin",
+    permission: "manage_users",
+    items: [{ to: "/team", label: "Team & Access" }],
+  },
 ];
+
+// The only pages an Artist-only account can open (Home sits outside Layout).
+const ARTIST_ROUTES = ["/artist-report", "/upload", "/artist-review", "/help"];
 
 export default function Layout() {
   const navigate = useNavigate();
@@ -62,14 +71,18 @@ export default function Layout() {
     "vfx-supe-nav-open",
     firstVisitGroup ? { [firstVisitGroup.label]: true } : {}
   );
-  const role = CURRENT_ROLE;
-  const isArtist = role === "Artist";
+  const { can, isArtistOnly } = useRole();
 
   if (!activeProject) {
     return <Navigate to="/" replace />;
   }
+  if (isArtistOnly && !ARTIST_ROUTES.some((r) => pathname.startsWith(r))) {
+    return <Navigate to="/artist-report" replace />;
+  }
 
-  const visibleGroups = isArtist ? NAV_GROUPS.filter((g) => g.label === "Artist Portal") : NAV_GROUPS;
+  const visibleGroups = NAV_GROUPS.filter((g) =>
+    isArtistOnly ? g.label === "Artist Portal" || g.label === "Reference" : !g.permission || can(g.permission)
+  );
 
   return (
     <div className="shell">
@@ -129,7 +142,7 @@ export default function Layout() {
         </nav>
 
         <div className="shell-footer">
-          <span className="pill pill-accent shell-role-pill">{role}</span>
+          <UserBadge />
         </div>
       </aside>
 

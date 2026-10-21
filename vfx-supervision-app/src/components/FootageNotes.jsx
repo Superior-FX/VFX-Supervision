@@ -1,19 +1,26 @@
 import { useState } from "react";
-import { CURRENT_ROLE, canEditFootageNotes } from "../lib/role.js";
+import { useRole } from "../lib/role.js";
 import "./FootageNotes.css";
 
 // Extra notes on a shot's ingested footage (shot.footageNotes) — anyone can
 // read them, only supervisors/producers (and Admin) can add or remove.
-// Stored as { id, text, role, createdAt }; role stands in for the author
-// until sign-in is back.
+// Stored as { id, text, author, role, createdAt }. Notes written before
+// sign-in have only role.
 export default function FootageNotes({ notes = [], onChange, compact = false }) {
   const [draft, setDraft] = useState("");
-  const canEdit = Boolean(onChange) && canEditFootageNotes();
+  const { can, profile, primaryRole } = useRole();
+  const canEdit = Boolean(onChange) && can("footage_notes");
 
   const add = () => {
     const text = draft.trim();
     if (!text) return;
-    onChange([...notes, { id: crypto.randomUUID(), text, role: CURRENT_ROLE, createdAt: new Date().toISOString() }]);
+    onChange([...notes, {
+        id: crypto.randomUUID(),
+        text,
+        author: profile?.name || profile?.email || "",
+        role: primaryRole,
+        createdAt: new Date().toISOString(),
+      }]);
     setDraft("");
   };
 
@@ -27,7 +34,7 @@ export default function FootageNotes({ notes = [], onChange, compact = false }) 
         <div className="footage-note" key={n.id}>
           <span className="footage-note-text">{n.text}</span>
           <span className="footage-note-meta mono">
-            {n.role} · {new Date(n.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+            {n.author || n.role} · {new Date(n.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
           </span>
           {canEdit && (
             <span className="footage-note-remove" onClick={() => remove(n.id)} title="Remove note">

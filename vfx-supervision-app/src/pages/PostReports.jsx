@@ -21,7 +21,7 @@ import {
 } from "../lib/fsAccess.js";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject, useProjects } from "../lib/projects.js";
-import { CURRENT_ROLE } from "../lib/role.js";
+import { useRole } from "../lib/role.js";
 import { sortByShotCode } from "../lib/sortShots.js";
 import { assigneeRows, assigneesLabel, getAssignees, renameAssigneeOnTask } from "../lib/taskAssignees.js";
 import { useEnterKey } from "../lib/useEnterKey.js";
@@ -290,7 +290,7 @@ function ShotCard({
   sceneNumber,
   rootHandle,
   artists,
-  isAdmin,
+  canManage,
 }) {
   const navigate = useNavigate();
   const [addTaskType, setAddTaskType] = useState("");
@@ -672,7 +672,7 @@ function ShotCard({
           </div>
 
           {isEditing &&
-            (isAdmin ? (
+            (canManage ? (
               availableTaskTypes.length > 0 && (
                 <select
                   className="effect-add-select post-add-task-select"
@@ -691,7 +691,7 @@ function ShotCard({
                 </select>
               )
             ) : (
-              <span className="label post-add-task-hint">Only Admins can add assignments</span>
+              <span className="label post-add-task-hint">Only supervisors, producers and Admins can add assignments</span>
             ))}
 
           <div className="post-shot-footer">
@@ -791,7 +791,7 @@ function SceneGroup({
   project,
   rootHandle,
   artists,
-  isAdmin,
+  canManage,
 }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -980,7 +980,7 @@ function SceneGroup({
                   sceneNumber={scene.scene}
                   rootHandle={rootHandle}
                   artists={artists}
-                  isAdmin={isAdmin}
+                  canManage={canManage}
                 />
               ))}
             </div>
@@ -1006,7 +1006,7 @@ export default function PostReports() {
   const [folderError, setFolderError] = useState("");
   const [tab, setTab] = useState(TABS[0]);
   const supported = isFsAccessSupported();
-  const isAdmin = CURRENT_ROLE === "Admin";
+  const canManage = useRole().can("manage_projects");
 
   const pickFolder = async () => {
     try {
@@ -1427,7 +1427,7 @@ export default function PostReports() {
       />
 
       {tab === "Ingest" ? null : tab === "Artists" ? (
-        <ArtistDirectory isAdmin={isAdmin} onRenameArtist={renameArtistEverywhere} />
+        <ArtistDirectory canManage={canManage} onRenameArtist={renameArtistEverywhere} />
       ) : (
         <>
           {folderError && <span className="project-create-error">{folderError}</span>}
@@ -1474,7 +1474,7 @@ export default function PostReports() {
                   project={project}
                   rootHandle={rootHandle}
                   artists={artists}
-                  isAdmin={isAdmin}
+                  canManage={canManage}
                 />
               ))}
 
@@ -1504,7 +1504,7 @@ export default function PostReports() {
                           sceneNumber={shot.scene}
                           rootHandle={rootHandle}
                           artists={artists}
-                          isAdmin={isAdmin}
+                          canManage={canManage}
                         />
                       ))}
                     </div>

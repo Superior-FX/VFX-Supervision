@@ -1,0 +1,35 @@
+.user-badge {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.user-badge-who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.user-badge-name {
+  font: 600 12px var(--font-body);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-badge-role {
+  flex-shrink: 0;
+}
+
+.user-badge-signout {
+  font: 11px var(--font-body);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.user-badge-signout:hover {
+  color: var(--text-primary);
+}

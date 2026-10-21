@@ -302,3 +302,14 @@
   display: flex;
   gap: 10px;
 }
+
+/* Signed-in user + Sign out, pinned to the bottom of the sidebar. */
+.home-user {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.home-backup-actions ~ .home-user {
+  margin-top: 14px;
+}

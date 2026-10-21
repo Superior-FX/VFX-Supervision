@@ -18,6 +18,8 @@ import {
 } from "../lib/fsAccess.js";
 import { SCOPED_DATA_BASES, useActiveProjectId, useProjects } from "../lib/projects.js";
 import { useEnterKey } from "../lib/useEnterKey.js";
+import { useRole } from "../lib/role.js";
+import UserBadge from "../components/UserBadge.jsx";
 import "./Home.css";
 
 const LEADING_ARTICLES = new Set(["the", "a", "an"]);
@@ -304,6 +306,7 @@ function NewProjectForm({ onCreate, onCancel }) {
 }
 
 export default function Home() {
+  const canManage = useRole().can("manage_projects");
   const navigate = useNavigate();
   const [projects, setProjects] = useProjects();
   const [activeId, setActiveId] = useActiveProjectId();
@@ -516,9 +519,11 @@ export default function Home() {
 
         <div className="home-projects-header">
           <span className="label">Your projects</span>
-          <span className="home-add-btn" onClick={() => setCreating(true)} title="New project">
-            +
-          </span>
+          {canManage && (
+            <span className="home-add-btn" onClick={() => setCreating(true)} title="New project">
+              +
+            </span>
+          )}
         </div>
 
         <div className="home-projects-list">
@@ -544,7 +549,9 @@ export default function Home() {
                 <div className="home-project-card-main">
                   <span className="home-project-name">{p.name}</span>
                   <span className="home-project-code mono">{p.showCode}</span>
-                  {editingDeliveryId === p.id ? (
+                  {!canManage ? (
+                    p.deliveryDate && <span className="home-project-delivery">Delivery {p.deliveryDate}</span>
+                  ) : editingDeliveryId === p.id ? (
                     <input
                       type="date"
                       className="report-edit-input home-project-delivery-input"
@@ -591,6 +598,7 @@ export default function Home() {
                     <FolderIcon />
                   </span>
                 )}
+                {canManage && (
                 <span
                   className="home-project-remove"
                   onClick={(e) => {
@@ -601,11 +609,13 @@ export default function Home() {
                 >
                   <TrashIcon />
                 </span>
+                )}
               </div>
             )
           )}
         </div>
 
+        {canManage && (
         <div className="home-backup-actions">
           {isFsAccessSupported() && (
             <span className="label home-backup-folder-label" title={backupFolder ? backupFolder.name : undefined}>
@@ -641,6 +651,11 @@ export default function Home() {
           />
           {importError && <span className="home-new-project-error">{importError}</span>}
         </div>
+        )}
+
+        <div className="home-user">
+          <UserBadge />
+        </div>
       </aside>
 
       <main className="home-main">
@@ -658,12 +673,12 @@ export default function Home() {
             onPick={pickBackupFile}
             onCancel={() => setBackupFileList(null)}
           />
-        ) : creating ? (
+        ) : creating && canManage ? (
           <NewProjectForm onCreate={createProject} onCancel={() => setCreating(false)} />
         ) : (
           <div className="home-placeholder">
             <span className="home-placeholder-title">Select a project</span>
-            <span className="home-placeholder-hint">Or click + in the sidebar to start a new one.</span>
+            {canManage && <span className="home-placeholder-hint">Or click + in the sidebar to start a new one.</span>}
           </div>
         )}
       </main>

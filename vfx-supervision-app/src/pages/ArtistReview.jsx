@@ -4,7 +4,7 @@ import AnnotatedPlayer from "../components/AnnotatedPlayer.jsx";
 import FolderStatusBanner from "../components/FolderStatusBanner.jsx";
 import ViewSelect from "../components/ViewSelect.jsx";
 import { taskStatusInfo } from "../data/taskStatus.js";
-import { resolveCurrentArtist } from "../lib/currentArtist.js";
+import { useCurrentArtist } from "../lib/currentArtist.js";
 import { formatVersion } from "../lib/fsAccess.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { sortByDueComplexityName } from "../lib/sortShots.js";
@@ -32,7 +32,7 @@ export default function ArtistReview() {
   // { [taskId]: frame } — where each submission was last left.
   const [lastFrames, setLastFrames] = useLocalStorageState(scopedKey("vfx-supe-viewer-frames", project?.id), {});
   const folder = useProjectFolder(project);
-  const currentArtist = resolveCurrentArtist(artists);
+  const currentArtist = useCurrentArtist(artists);
 
   // The artist's submissions that have something to watch, in this order:
   //   1. Needs Revision first — that's what they need to act on.
@@ -86,7 +86,7 @@ export default function ArtistReview() {
           <span className="review-title">SHOT VIEWER</span>
         </div>
         <div className="card review-empty">
-          No artist profile found for you yet — ask an Admin to add you in Post Reports → Artists.
+          Your account isn't linked to an artist yet — ask a supervisor to link you on the Team page.
         </div>
       </div>
     );

@@ -9,3 +9,7 @@ dist/
 backups/*
 !backups/.gitkeep
 
+
+# Local env (Supabase keys etc.) — never committed
+.env.local
+.env.*.local

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import FolderStatusBanner from "../components/FolderStatusBanner.jsx";
 import { withStatus } from "../data/taskStatus.js";
-import { resolveCurrentArtist } from "../lib/currentArtist.js";
+import { useCurrentArtist } from "../lib/currentArtist.js";
 import { generateReviewProxy, generateSequenceReviewProxy, isProxyableFrame } from "../lib/ffmpeg.js";
 import { buildTaskReviewPath, buildTaskUploadPath, padScene } from "../lib/folderPath.js";
 import {
@@ -95,7 +95,7 @@ export default function Upload() {
   const [sessionDirs, setSessionDirs] = useState(null);
   const supported = isFsAccessSupported();
 
-  const currentArtist = resolveCurrentArtist(artists);
+  const currentArtist = useCurrentArtist(artists);
   const myTask = (t) => hasAssignee(t, currentArtist?.name);
 
 
@@ -530,7 +530,7 @@ export default function Upload() {
 
       {!currentArtist && (
         <div className="card upload-no-artist-hint">
-          No artist profile found for you yet — ask an Admin to add you in Post Reports → Artists.
+          Your account isn't linked to an artist yet — ask a supervisor to link you on the Team page.
         </div>
       )}
 
