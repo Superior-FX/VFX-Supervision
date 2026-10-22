@@ -47,3 +47,4 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-10-21T01:42:38-05:00 — **Will Cox** (Atom-Smasher) — `17e2bbc` Prepare for hosting on Vercel at app.superior-fx.com
 - 2026-10-21T02:16:56-05:00 — **Will Cox** (Atom-Smasher) — `37f61b7` Tab title "Sup-FX App"; go-live guide reflects who does what
 - 2026-10-21T02:27:02-05:00 — **Will Cox** (Atom-Smasher) — `a101453` Say "still syncing from Google Drive" instead of "moved or deleted"
+- 2026-10-21T02:56:11-05:00 — **Will Cox** (Atom-Smasher) — `a2e8cd8` SHARED_STATE: log e970d02 through a101453
