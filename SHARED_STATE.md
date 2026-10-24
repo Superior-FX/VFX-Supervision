@@ -48,3 +48,6 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-10-21T02:16:56-05:00 — **Will Cox** (Atom-Smasher) — `37f61b7` Tab title "Sup-FX App"; go-live guide reflects who does what
 - 2026-10-21T02:27:02-05:00 — **Will Cox** (Atom-Smasher) — `a101453` Say "still syncing from Google Drive" instead of "moved or deleted"
 - 2026-10-21T02:56:11-05:00 — **Will Cox** (Atom-Smasher) — `a2e8cd8` SHARED_STATE: log e970d02 through a101453
+- 2026-10-21T23:31:07-05:00 — **Will Cox** (Atom-Smasher) — `845f174` SHARED_STATE: log a2e8cd8
+- 2026-10-21T23:35:40-05:00 — **Will Cox** (Atom-Smasher) — `1332633` Add Jon's setup steps for the Sup-FX App
+- 2026-10-24T17:34:09-05:00 — **Will Cox** (Atom-Smasher) — `1aa3945` Only list artists approved for a task's type in the assign dropdown
