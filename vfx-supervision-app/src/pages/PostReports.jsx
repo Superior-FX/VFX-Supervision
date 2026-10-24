@@ -260,11 +260,18 @@ function TaskRow({ task, shot, readOnly, onChange, onRemove, artists }) {
                 onChange={(e) => setAssigneeAt(i, e.target.value)}
               >
                 <option value="">Unassigned</option>
-                {artists.map((a) => (
-                  <option value={a.name} key={a.id}>
-                    {a.name} — {artistDepartments(a).join(" / ")}
-                  </option>
-                ))}
+                {/* Only artists approved for this task type (set in the Artists tab) can be picked. */}
+                {artists
+                  .filter((a) => artistDepartments(a).includes(task.type))
+                  .map((a) => (
+                    <option value={a.name} key={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                {/* Keep an existing assignee visible even if they've since lost approval, so it isn't silently shown as Unassigned. */}
+                {value && !artists.some((a) => a.name === value && artistDepartments(a).includes(task.type)) && (
+                  <option value={value}>{value} (not approved for {task.type})</option>
+                )}
               </select>
             )}
             {assigneeRows(task).length > 1 && (
