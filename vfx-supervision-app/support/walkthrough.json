@@ -1,0 +1,301 @@
+{
+  "title": "App Walkthrough",
+  "modules": [
+    {
+      "id": "getting-started",
+      "title": "Getting Started",
+      "audience": "all",
+      "summary": "Sign in, open a project, find your way around, and connect the project folder.",
+      "steps": [
+        {
+          "id": "sign-in",
+          "title": "Sign in",
+          "body": "Open **app.superior-fx.com** in **Chrome or Edge**. Other browsers can't connect to project folders, so uploads and folder creation won't work in them.\n\n- **First time?** Click **New here? Create an account** and sign up with the **same email you were invited with**.\n- Click the confirmation link in the email, then come back and sign in.\n- If you signed up without an invite, a supervisor or Admin has to grant you access on **Team & Access** before you can get in."
+        },
+        {
+          "id": "open-project",
+          "title": "Open a project",
+          "body": "The **Home** page lists **Your projects** down the sidebar. Click one to open it.\n\nEverything you see after that (shots, tasks, reviews) belongs to that project. To switch shows, click **← Projects** at the top of the sidebar.",
+          "route": "/",
+          "routeLabel": "Go to Home"
+        },
+        {
+          "id": "navigation",
+          "title": "Find your way around",
+          "body": "The sidebar is grouped by department:\n\n- **Dashboard**: a company-wide snapshot of every project.\n- **Post-Production**: **Post Reports** (scenes, shots, tasks, ingest, artists), **Review & Dailies**, and **Shot Board**.\n- **Artist Portal**: **Artist Report**, **Upload Shot**, and **Shot Viewer**.\n- **Reference**: checklists, reference docs, and this guide.\n- **Admin**: **Team & Access** (supervisors, producers, and Admins only).\n\nClick a group's header to expand or collapse it; the app remembers what you left open. **Pre-Production** and **Production** show a 🔒 and are locked for now. Artist accounts only see the **Artist Portal** and **Reference**."
+        },
+        {
+          "id": "connect-folder",
+          "title": "Connect the project folder",
+          "body": "Shots, plates, and renders live in the show's folder on disk (for GOTP, the **GOTP** folder on Google Drive). The browser needs your permission to use it.\n\n- If you see **Project folder isn't connected in this browser**, click **Reconnect Folder…** and pick the show folder itself (e.g. **GOTP**), then click **Allow** when Chrome asks.\n- After a Chrome restart you may see **Chrome needs your OK to use the project folder** instead. Just click **Allow Access**.\n\nReconnecting never creates a new folder, so it's always safe to click.",
+          "route": "/post-reports",
+          "routeLabel": "Open Post Reports"
+        },
+        {
+          "id": "live-data",
+          "title": "How sharing works",
+          "body": "Shot, task, and note changes save to the cloud and show up for everyone **live**. There's no Save-to-server step.\n\nVideo files and plates travel through **Google Drive**, so a brand-new upload can take a minute to reach another computer. If you see **Still syncing from Google Drive**, wait; the app retries on its own."
+        }
+      ]
+    },
+    {
+      "id": "project-setup",
+      "title": "Setting Up a Project",
+      "audience": "studio",
+      "summary": "Create a show, build the artist roster, and lay out scenes and shots.",
+      "steps": [
+        {
+          "id": "create-project",
+          "title": "Create a project",
+          "body": "On **Home**, click **+** next to **Your projects**.\n\n1. Type the **project name** (e.g. *The Girl on the Plane*). A **show code** fills in automatically; edit it if you like (3–4 letters, e.g. **GOTP**).\n2. Optionally set a **Delivery date**. The Dashboard counts down to it.\n3. Click **Choose Destination Folder…** and pick where the show folder should be created.\n4. Click **Create Project**.",
+          "route": "/",
+          "routeLabel": "Go to Home"
+        },
+        {
+          "id": "artist-roster",
+          "title": "Build the artist roster",
+          "body": "Go to **Post Reports → Artists** and click **+ Add Artist**.\n\n- Enter the artist's name.\n- Under **Tasks this artist can take**, tick every task type they're approved for (Compositing, Roto / Paint, DMP, and so on).\n- Click **Save**.\n\nThis matters: when you assign a task, the dropdown **only lists artists approved for that task type**. Use the pencil to edit an artist later. Renaming an artist updates their name everywhere it's used.",
+          "route": "/post-reports",
+          "routeLabel": "Open Post Reports"
+        },
+        {
+          "id": "add-scene",
+          "title": "Add scenes",
+          "body": "On **Post Reports → Shots**, click **+ Add Scene** and enter the scene number (e.g. **9**, saved as **SC009**).\n\nIf the project folder is connected, the scene's folder is created on disk right away. Otherwise you'll see a **Create folder** button on the scene to do it later. Use the pencil next to **SC###** to rename a scene; its folder is renamed too.",
+          "route": "/post-reports",
+          "routeLabel": "Open Post Reports"
+        },
+        {
+          "id": "add-shot",
+          "title": "Add and describe shots",
+          "body": "Inside a scene, click **+ Add Shot**, then click the shot's **Edit** (pencil) button:\n\n- Replace **NEW_SHOT** with the real shot code.\n- **Script / client description**: what the script or client asked for.\n- **Internal description**: what the shot actually needs.\n- Set **Complexity**, **Story importance**, **Due date**, and **Pipeline** (Traditional, Hybrid, or AI-assist).\n\nClick **Create folders** to build the shot's folder structure on disk. If you change the shot code afterwards, a **Create folder for new code** button appears. Use the **Collapse/Expand** control to tidy long scenes."
+        },
+        {
+          "id": "plates",
+          "title": "Attach a plate to a shot",
+          "body": "While editing a shot, use **Import plate video…** or **Import plate sequence…**. The app copies the plate into the shot folder and makes a review proxy and thumbnail.\n\nTo bring in many plates at once, use the **Ingest** tab (next module)."
+        },
+        {
+          "id": "export",
+          "title": "Export the shot list",
+          "body": "Click **Export to Spreadsheet…** at the top of Post Reports to download a styled **.xlsx** of every scene and shot. Open it in Excel or Numbers, or upload it to Google Drive to view it as a Sheet."
+        }
+      ]
+    },
+    {
+      "id": "ingest",
+      "title": "Ingesting Footage",
+      "audience": "studio",
+      "summary": "Bring plates in by the batch and let the app match them to shots.",
+      "steps": [
+        {
+          "id": "ingest-add",
+          "title": "Add files",
+          "body": "Go to **Post Reports → Ingest** and click **Add Video Files…** or **Add Folder…** (for image sequences).\n\nFile and folder names are matched to shot codes, so name them like **GOTP_SC002_010_plate.mov**. The project folder must be connected first.",
+          "route": "/post-reports",
+          "routeLabel": "Open Post Reports"
+        },
+        {
+          "id": "ingest-check",
+          "title": "Check the matches",
+          "body": "Each file in the list shows what will happen:\n\n- **No shot matched**: the name didn't match a shot. Rename it or add the shot first.\n- **Replaces current plate**: that shot already has a plate and this will replace it.\n- **Creates shot folders**: the shot's folders don't exist yet and will be made.\n\nClick **×** to remove anything you don't want ingested."
+        },
+        {
+          "id": "ingest-run",
+          "title": "Run the ingest",
+          "body": "Click **Ingest N files**. **Keep the page open until it finishes.** Big plates take a while.\n\nEach row ends as **Ingested**, **Ingested, no proxy** (the copy worked but no preview could be made), or **Failed**. Click **Clear Finished** to tidy the list.\n\nThe **Ingested footage** section below shows a thumbnail per shot. Supervisors and producers can leave **footage notes** there."
+        }
+      ]
+    },
+    {
+      "id": "assigning",
+      "title": "Assigning Work",
+      "audience": "studio",
+      "summary": "Add tasks to a shot, pick artists or vendors, and push the assignment.",
+      "steps": [
+        {
+          "id": "add-task",
+          "title": "Add tasks to a shot",
+          "body": "Edit the shot and choose a task type from **+ add task** (3D Tracking, Roto / Paint, Compositing, DMP, QC / Delivery, etc.). Add as many as the shot needs. Each type can only be added once per shot.",
+          "route": "/post-reports",
+          "routeLabel": "Open Post Reports"
+        },
+        {
+          "id": "assign-task",
+          "title": "Pick who does it",
+          "body": "For each task, choose **In-house** or **Outsourced**:\n\n- **In-house**: pick an artist from the dropdown. Only artists approved for that task type are listed (see *Build the artist roster*).\n- **Outsourced**: type the vendor's name.\n\nClick **+** to put more than one artist or vendor on a task, and **×** to remove one."
+        },
+        {
+          "id": "push",
+          "title": "Push the assignment",
+          "body": "The shot footer counts **assigned tasks** (e.g. *3/3 tasks assigned*). Once every task has someone, click **Push Assignment**.\n\nPushing creates each task's folders under the shot's **02_tasks/** and puts the work in the artist's **Artist Report**. The shot then shows a **Pushed** tag. If you change tasks later, click **Re-push Assignment**."
+        },
+        {
+          "id": "deleting",
+          "title": "Deleting things safely",
+          "body": "Scenes, shots, and assignments all delete the same way: click the trash icon and **type DELETE** to confirm.\n\n- If you're not an Admin, this sends a **delete request** instead, and the item shows **Delete requested** until an Admin decides.\n- Admins see a **Delete requests — waiting for you** banner with **Approve** and **Decline**.\n\nFolders of deleted items are moved into **zzz_DELETED** inside the show folder, not erased."
+        }
+      ]
+    },
+    {
+      "id": "artist-workflow",
+      "title": "Artist Workflow",
+      "audience": "artist",
+      "summary": "See your assignments, start work, submit versions, and read feedback.",
+      "steps": [
+        {
+          "id": "artist-report",
+          "title": "Check your assignments",
+          "body": "Open **Artist Report**. It lists every shot assigned to you with its description, status, and due date.\n\nIf it says **Your account isn't linked to an artist yet**, ask a supervisor to link you on the **Team & Access** page.",
+          "route": "/artist-report",
+          "routeLabel": "Open Artist Report"
+        },
+        {
+          "id": "artist-start",
+          "title": "Start a task",
+          "body": "Click **Start** on a task when you begin. Its status changes from **Assigned** to **WIP** so the supervisors know it's moving.\n\nWork in the shot's task folder under **02_tasks/**: put your project files in **project/** and your renders in **render/**. Click **VIEW** to see the shot and its plate in the **Shot Viewer**."
+        },
+        {
+          "id": "artist-upload",
+          "title": "Submit a version",
+          "body": "Open **Upload Shot**:\n\n1. **Attach to**: pick the shot.\n2. **Submitting for**: pick your task.\n3. **Proxy version**: a new version number is chosen for you. To replace your latest version instead, click **Approve overwrite**.\n4. Click **Upload Video…** or **Upload Image Sequence…** (exr, dpx, png, jpg, tif, or tga). The app makes the review proxy for you.\n5. Write a **Version note** (what changed), then click **Submit**.\n\nThe task becomes **Pending**, which means it's waiting on a supervisor.",
+          "route": "/upload",
+          "routeLabel": "Open Upload Shot"
+        },
+        {
+          "id": "artist-viewer",
+          "title": "Read feedback in the Shot Viewer",
+          "body": "**Shot Viewer** plays your submitted proxy alongside any **supe notes** and frame annotations. Use the version picker to look at older versions (they show **Not the latest**) or the **Plate**.\n\nKeys: **space** play/pause, **← / →** step a frame, **[ / ]** jump between annotated frames, **F** full screen.",
+          "route": "/artist-review",
+          "routeLabel": "Open Shot Viewer"
+        },
+        {
+          "id": "artist-revise",
+          "title": "Handle a revision",
+          "body": "When a supervisor sends a shot back, the task turns **Needs Revision**. Read their notes in the Shot Viewer, click **Resume** in **Artist Report** (back to **WIP**), make the fixes, and submit a new version from **Upload Shot**.\n\nWhen a supervisor finals it, the task shows **Final**. You're done."
+        }
+      ]
+    },
+    {
+      "id": "reviewing",
+      "title": "Reviewing & Dailies",
+      "audience": "studio",
+      "summary": "Watch submissions, annotate frames, and send work back or final it.",
+      "steps": [
+        {
+          "id": "review-queue",
+          "title": "Open the review queue",
+          "body": "**Review & Dailies** lists every task that's **Pending** or **Comp Approved**. Use **Sort by** to order it by Due date, Artist, Task, Scene, or Date submitted.\n\nYou can also jump straight in from **Review →** on a task in Post Reports or the Shot Board.",
+          "route": "/review",
+          "routeLabel": "Open Review & Dailies"
+        },
+        {
+          "id": "review-player",
+          "title": "Use the player",
+          "body": "- **space** play/pause, **← / →** step one frame\n- **F** full screen (Esc to exit)\n- Scroll to **zoom**, middle-drag to **pan**, **0** to reset\n- Loop / play once, and playback speed\n\nUse the version picker to compare older versions or switch to the **Plate**."
+        },
+        {
+          "id": "review-annotate",
+          "title": "Annotate frames",
+          "body": "Pause on a frame and draw on it, then type what needs to change in the frame note. Use undo to remove the last stroke, or remove the frame's annotation entirely. **[ / ]** jumps between annotated frames.\n\nFor overall feedback, write in **Supe notes** and click **Save note**. The artist sees all of it in their Shot Viewer."
+        },
+        {
+          "id": "review-decide",
+          "title": "Revise or Final",
+          "body": "- **Revise** sends it back to the artist as **Needs Revision**.\n- **Final** (VFX Supervisors and Admins) marks the task **Final**.\n- A **Comp Supervisor** sees **Comp Approve** instead: the task becomes **Comp Approved — awaiting VFX Sup**, and a VFX Supervisor gives the last Final.\n\nProducers can watch and read everything but can't Revise or Final."
+        },
+        {
+          "id": "review-hq",
+          "title": "Look closer with HQ renders",
+          "body": "When the normal proxy isn't enough, click **Generate HQ** for a 4K proxy made from the artist's submitted render, or render **6K/8K frames** (a single frame, a frame range, or the full range) for close inspection.\n\nThese take time. **Keep the tab open until they finish.** HQ playback is heavier and may stutter on slower machines."
+        }
+      ]
+    },
+    {
+      "id": "tracking",
+      "title": "Tracking Progress",
+      "audience": "studio",
+      "summary": "Read the Dashboard and Shot Board to see where the show stands.",
+      "steps": [
+        {
+          "id": "dashboard",
+          "title": "The Dashboard",
+          "body": "The top row shows company-wide numbers: **Shots in post**, **Awaiting review**, **Needs revision**, **Overdue shots**, and **Finaled this week**. Below that is one row per project with its progress and delivery countdown.\n\nClick a project to drill in: the pipeline, **Shots by scene** (hover a tile for its tasks, click to open it), the **Review queue**, **Artist load**, and **Needs attention**.",
+          "route": "/dashboard",
+          "routeLabel": "Open Dashboard"
+        },
+        {
+          "id": "shot-board",
+          "title": "The Shot Board",
+          "body": "The **Shot Board** sorts work into **Bidding**, **In progress**, **Sup review**, and **Final** columns, driven live by each task's status. Cards are grouped by shot; click one to expand its tasks. A red **Revise** tag means a task was sent back.\n\nUse **Review →** to open a submission or **VIEW** to open the shot.",
+          "route": "/board",
+          "routeLabel": "Open Shot Board"
+        },
+        {
+          "id": "status-lifecycle",
+          "title": "Task statuses at a glance",
+          "body": "| Status | Meaning |\n|---|---|\n| **Assigned** | Pushed to the artist, not started |\n| **WIP** | Artist clicked Start or Resume |\n| **Pending** | Submitted, waiting on a supervisor |\n| **Comp Approved** | Comp Supervisor approved, waiting on the VFX Supervisor |\n| **Needs Revision** | Sent back with notes |\n| **Final** | Approved and done |"
+        }
+      ]
+    },
+    {
+      "id": "team-access",
+      "title": "Team & Access",
+      "audience": "admin",
+      "summary": "Invite people, set their roles, and link them to the artist roster.",
+      "steps": [
+        {
+          "id": "invite",
+          "title": "Invite someone",
+          "body": "Go to **Admin → Team & Access**. Under **Invite someone**, enter their email, pick their roles, and click **Add invite**.\n\nThen tell them to open the app, choose **Create an account**, and sign up with **that exact email**.",
+          "route": "/team",
+          "routeLabel": "Open Team & Access"
+        },
+        {
+          "id": "roles",
+          "title": "Choose roles",
+          "body": "People can hold more than one role:\n\n- **Admin**: everything, including approving delete requests.\n- **VFX Supervisor**: runs projects and gives the final **Final**.\n- **Comp Supervisor**: runs projects; their Final is **Comp Approve**.\n- **Producer**: runs projects, assignments, and the roster; can't Revise or Final.\n- **Artist**: only the Artist Portal and Reference.\n\nYou can't change your own roles, and only an Admin can edit an Admin."
+        },
+        {
+          "id": "link-artist",
+          "title": "Link accounts to artists",
+          "body": "Every artist account must be linked to their entry in the roster, or their Artist Report and Upload Shot stay empty. Pick their name in the dropdown that reads **Not linked to an artist**.\n\nAdd them in **Post Reports → Artists** first if they're not there yet."
+        },
+        {
+          "id": "grant-remove",
+          "title": "Grant or remove access",
+          "body": "Anyone who signed up without an invite appears at the top. Pick their roles and click **Grant access**.\n\nTo take someone off the team, click **Remove access** and confirm. **Cancel invite** withdraws an invite nobody has used yet."
+        }
+      ]
+    },
+    {
+      "id": "troubleshooting",
+      "title": "Backups & Troubleshooting",
+      "audience": "all",
+      "summary": "Back up the team's data and fix the problems people hit most often.",
+      "steps": [
+        {
+          "id": "backup",
+          "title": "Back up the data",
+          "body": "Supervisors and producers can click **Export All Data** on **Home** to save a backup of every project, scene, shot, and the artist roster.\n\n**Import from Backup Folder…** and **Import from File…** replace the team's shared data **for everyone**. Only use them to recover from a real problem.",
+          "audience": "studio"
+        },
+        {
+          "id": "ts-folder",
+          "title": "Uploads or folders don't work",
+          "body": "- Make sure you're in **Chrome or Edge**.\n- Look for the folder banner and click **Reconnect Folder…** or **Allow Access**.\n- **This shot's folders haven't been created yet**: a supervisor needs to click **Create folders** on the shot in Post Reports, or push the assignment."
+        },
+        {
+          "id": "ts-missing",
+          "title": "A video won't load or my work is missing",
+          "body": "- **Still syncing from Google Drive**: the file hasn't reached your computer yet. Wait a minute; it retries on its own.\n- **Your account isn't linked to an artist yet**: ask a supervisor to link you on Team & Access.\n- **Nothing in my Artist Report**: the shot may not be pushed yet, or you're not approved for that task type in the roster."
+        },
+        {
+          "id": "ts-access",
+          "title": "I can't see a page",
+          "body": "What you see depends on your role. Artists only get the Artist Portal and Reference, and Team & Access is limited to supervisors, producers, and Admins. Ask an Admin if you need more."
+        }
+      ]
+    }
+  ]
+}
