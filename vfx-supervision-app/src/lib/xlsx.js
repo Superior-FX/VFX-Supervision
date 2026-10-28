@@ -11,7 +11,29 @@ function fill(hex) {
   return { type: "pattern", pattern: "solid", fgColor: { argb: `FF${hex}` } };
 }
 
-// columns: [{ header, width }]
+// Thumbnails in an image column are fitted inside this box (px), and every
+// data row is made tall enough to hold one.
+const THUMB_BOX = { width: 112, height: 63 };
+
+function imageSize(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+// "data:image/png;base64,..." -> "png"; null for anything exceljs can't embed.
+function imageExtension(dataUrl) {
+  const match = /^data:image\/(png|jpe?g|gif);base64,/i.exec(dataUrl ?? "");
+  if (!match) return null;
+  const ext = match[1].toLowerCase();
+  return ext === "jpg" ? "jpeg" : ext;
+}
+
+// columns: [{ header, width, image? }] — an `image` column's cells are data:
+//   URLs (or null), embedded as pictures sitting in the cell
 // rows: [[cell, cell, ...], ...] — same order/length as columns
 // cellTier(rowData, colIndex) => "high" | "medium" | null — colors that cell
 // logoBuffer: ArrayBuffer, optional — placed top-right of the title banner
@@ -30,10 +52,14 @@ export async function downloadStyledWorkbook({
   workbook.creator = "Superior-FX";
   const sheet = workbook.addWorksheet(sheetName);
   const colCount = columns.length;
+  const hasImages = columns.some((col) => col.image);
+  const merge = (row) => {
+    if (colCount > 1) sheet.mergeCells(row, 1, row, colCount);
+  };
 
   let r = 1;
 
-  sheet.mergeCells(r, 1, r, colCount);
+  merge(r);
   const titleCell = sheet.getCell(r, 1);
   titleCell.value = title;
   titleCell.font = { name: "Arial", size: 16, bold: true, color: { argb: `FF${BRAND.white}` } };
@@ -43,7 +69,7 @@ export async function downloadStyledWorkbook({
   r += 1;
 
   if (subtitle) {
-    sheet.mergeCells(r, 1, r, colCount);
+    merge(r);
     const subCell = sheet.getCell(r, 1);
     subCell.value = subtitle;
     subCell.font = { name: "Arial", size: 10, italic: true, color: { argb: `FF${BRAND.white}` } };
@@ -67,14 +93,30 @@ export async function downloadStyledWorkbook({
   r += 1;
 
   for (const rowData of rows) {
-    rowData.forEach((value, colIdx) => {
+    // Row height is in points (0.75 per px); 9px of padding around the picture.
+    if (hasImages) sheet.getRow(r).height = Math.round((THUMB_BOX.height + 9) * 0.75);
+    for (const [colIdx, value] of rowData.entries()) {
       const cell = sheet.getCell(r, colIdx + 1);
+      if (columns[colIdx].image) {
+        const extension = imageExtension(value);
+        const size = extension && (await imageSize(value));
+        if (size) {
+          const scale = Math.min(THUMB_BOX.width / size.width, THUMB_BOX.height / size.height);
+          const imageId = workbook.addImage({ base64: value, extension });
+          sheet.addImage(imageId, {
+            tl: { col: colIdx + 0.05, row: r - 1 + 0.08 },
+            ext: { width: Math.round(size.width * scale), height: Math.round(size.height * scale) },
+            editAs: "oneCell",
+          });
+        }
+        continue;
+      }
       cell.value = value;
       cell.alignment = { vertical: "top", wrapText: true };
       const tier = cellTier?.(rowData, colIdx);
       if (tier === "high") cell.fill = fill(BRAND.redSoft);
       else if (tier === "medium") cell.fill = fill(BRAND.orangeSoft);
-    });
+    }
     r += 1;
   }
 
@@ -93,7 +135,7 @@ export async function downloadStyledWorkbook({
   if (logoBuffer) {
     const imageId = workbook.addImage({ buffer: logoBuffer, extension: "jpeg" });
     sheet.addImage(imageId, {
-      tl: { col: colCount - 1.05, row: 0.05 },
+      tl: { col: Math.max(0, colCount - 1.05), row: 0.05 },
       ext: { width: 40, height: 40 },
     });
   }

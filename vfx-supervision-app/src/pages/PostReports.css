@@ -523,6 +523,57 @@
   gap: 10px;
 }
 
+.post-export-form {
+  width: 100%;
+  max-width: 560px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.post-export-form-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.post-export-form-links {
+  font: 11px var(--font-mono);
+  color: var(--text-tertiary);
+}
+
+.post-export-form-links span {
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.post-export-form-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 6px 14px;
+}
+
+.post-export-option {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font: 12px var(--font-body);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.post-export-option.is-locked {
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.post-export-option-hint {
+  font: 10px var(--font-mono);
+  color: var(--text-tertiary);
+}
+
 .post-scene-form-input {
   width: 100%;
 }

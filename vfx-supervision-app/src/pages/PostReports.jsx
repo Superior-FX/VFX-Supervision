@@ -49,6 +49,149 @@ const PIPELINES = [
   { value: "hybrid", label: "Hybrid" },
 ];
 
+// Level-scale columns (Story Importance/Complexity) and the Due Date
+// column each get their own tier, independent of one another — same
+// thresholds computeImportance uses (>=4 high, ==3 medium), just applied
+// per-column instead of collapsed into one combined signal, so a shot that's
+// simple-but-story-critical (or vice versa) still shows which dimension is
+// driving attention.
+const tierFromLevel = (level) => (level >= 4 ? "high" : level === 3 ? "medium" : null);
+const tierFromDueDate = (dueDate) => {
+  if (!dueDate) return null;
+  const days = (new Date(dueDate).getTime() - Date.now()) / 86400000;
+  if (days <= 3) return "high";
+  if (days <= 7) return "medium";
+  return null;
+};
+
+// Every column the shot-list export can include, in sheet order. `locked`
+// columns can't be unticked; `permission` hides the option from anyone
+// without it; `defaultOff` leaves it unticked until someone opts in.
+const EXPORT_COLUMNS = [
+  { key: "thumbnail", header: "Thumbnail", width: 17, image: true, value: (s) => s.thumbnail || null },
+  { key: "scene", header: "Scene", width: 10, value: (s) => `SC${s.scene}` },
+  { key: "shotCode", header: "Shot Code", width: 14, locked: true, value: (s) => s.shotCode },
+  {
+    key: "priority",
+    header: "Priority",
+    width: 10,
+    value: (s) =>
+      computeImportance({ complexity: s.complexity, storyImportance: s.storyImportance, dueDate: s.dueDate }).tier,
+  },
+  {
+    key: "storyImportance",
+    header: "Story Importance",
+    width: 16,
+    value: (s) => STORY_IMPORTANCE_LEVELS[s.storyImportance - 1] ?? "",
+    tier: (v) => tierFromLevel(STORY_IMPORTANCE_LEVELS.indexOf(v) + 1),
+  },
+  {
+    key: "complexity",
+    header: "Complexity",
+    width: 12,
+    value: (s) => COMPLEXITY_LEVELS[s.complexity - 1] ?? "",
+    tier: (v) => tierFromLevel(COMPLEXITY_LEVELS.indexOf(v) + 1),
+  },
+  {
+    key: "pipeline",
+    header: "Pipeline",
+    width: 12,
+    value: (s) => PIPELINES.find((p) => p.value === s.pipeline)?.label ?? s.pipeline,
+  },
+  { key: "dispatched", header: "Pushed to Post", width: 14, value: (s) => (s.dispatched ? "Yes" : "No") },
+  { key: "dueDate", header: "Due Date", width: 12, value: (s) => s.dueDate, tier: tierFromDueDate },
+  { key: "timecodeIn", header: "TC In", width: 13, value: (s) => s.timecodeIn ?? "" },
+  { key: "timecodeOut", header: "TC Out", width: 13, value: (s) => s.timecodeOut ?? "" },
+  {
+    key: "bidCost",
+    header: "Bid Cost",
+    width: 11,
+    permission: "view_costs",
+    defaultOff: true,
+    value: (s) => s.bidCost ?? null,
+  },
+  { key: "scriptDescription", header: "Script Description", width: 30, value: (s) => s.scriptDescription },
+  { key: "internalDescription", header: "Internal Description", width: 30, value: (s) => s.internalDescription },
+  { key: "foldersCreated", header: "Folder Created", width: 14, value: (s) => (s.foldersCreatedAt ? "Yes" : "No") },
+  {
+    key: "tasks",
+    header: "Tasks",
+    width: 40,
+    value: (s) =>
+      s.tasks.map((t) => `${t.type}: ${taskStatusInfo(t.status).label} (${assigneesLabel(t)})`).join("; "),
+  },
+];
+
+const DEFAULT_EXPORT_KEYS = EXPORT_COLUMNS.filter((c) => !c.defaultOff).map((c) => c.key);
+
+// Pick the columns, then export. The choice is remembered on this computer.
+function ExportShotsForm({ shots, onExport, onCancel }) {
+  const { can } = useRole();
+  const options = EXPORT_COLUMNS.filter((c) => !c.permission || can(c.permission));
+  const [savedKeys, setSavedKeys] = useLocalStorageState("vfx-supe-export-columns", DEFAULT_EXPORT_KEYS);
+  const selected = new Set([...savedKeys, ...options.filter((c) => c.locked).map((c) => c.key)]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const withThumbnail = shots.filter((s) => s.thumbnail).length;
+
+  const toggle = (key) =>
+    setSavedKeys((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  const setAll = (on) => setSavedKeys(on ? options.map((c) => c.key) : options.filter((c) => c.locked).map((c) => c.key));
+
+  const run = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await onExport(options.filter((c) => selected.has(c.key)));
+      onCancel();
+    } catch (err) {
+      console.error("Shot list export failed:", err);
+      setError("Couldn't build the spreadsheet — try again.");
+      setBusy(false);
+    }
+  };
+  useEnterKey(run);
+
+  return (
+    <div className="card post-export-form">
+      <div className="post-export-form-head">
+        <span className="label">Export to spreadsheet — columns to include</span>
+        <span className="post-export-form-links">
+          <span onClick={() => setAll(true)}>All</span> · <span onClick={() => setAll(false)}>None</span>
+        </span>
+      </div>
+      <div className="post-export-form-options">
+        {options.map((c) => (
+          <label key={c.key} className={`post-export-option${c.locked ? " is-locked" : ""}`}>
+            <input
+              type="checkbox"
+              checked={selected.has(c.key)}
+              disabled={c.locked}
+              onChange={() => toggle(c.key)}
+            />
+            {c.header}
+            {c.key === "thumbnail" && (
+              <span className="post-export-option-hint">
+                {withThumbnail}/{shots.length}
+              </span>
+            )}
+          </label>
+        ))}
+      </div>
+      {error && <span className="project-create-error">{error}</span>}
+      <div className="post-scene-form-actions">
+        <span className={`btn btn-primary${busy ? " btn-disabled" : ""}`} onClick={run}>
+          {busy ? "Exporting…" : `Export ${shots.length} Shot${shots.length === 1 ? "" : "s"}`}
+        </span>
+        <span className="btn btn-secondary" onClick={onCancel}>
+          Cancel
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function ImageIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -1071,6 +1214,7 @@ export default function PostReports() {
   const [expandedSceneIds, setExpandedSceneIds] = useState([]);
   const [expandedShotIds, setExpandedShotIds] = useState([]);
   const [addingScene, setAddingScene] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const folder = useProjectFolder(project);
   const rootHandle = folder.rootHandle;
   const [folderError, setFolderError] = useState("");
@@ -1328,20 +1472,11 @@ export default function PostReports() {
   // loads, not discovered later when a delete "doesn't seem to have worked."
   const expectsFolder = scenes.some((s) => s.folderCreatedAt) || shots.some((s) => s.foldersCreatedAt);
 
-  // Level-scale columns (Story Importance/Complexity) and the Due Date
-  // column each get their own tier, independent of one another — same
-  // thresholds computeImportance uses (>=4 high, ==3 medium), just applied
-  // per-column instead of collapsed into one combined signal, so a shot that's
-  // simple-but-story-critical (or vice versa) still shows which dimension is
-  // driving attention.
-  const tierFromLevel = (level) => (level >= 4 ? "high" : level === 3 ? "medium" : null);
-  const tierFromDueDate = (dueDate) => {
-    if (!dueDate) return null;
-    const days = (new Date(dueDate).getTime() - Date.now()) / 86400000;
-    if (days <= 3) return "high";
-    if (days <= 7) return "medium";
-    return null;
-  };
+  // Shots in the same scene/shot order shown on screen.
+  const orderedShots = useMemo(
+    () => [...orderedScenes.flatMap((scene) => shotsByScene.get(scene.id) ?? []), ...ungroupedShots],
+    [orderedScenes, shotsByScene, ungroupedShots]
+  );
 
   // One row per shot, in the same scene/shot order shown on screen. A real
   // .xlsx (not CSV) — cell colors and the branded header banner need actual
@@ -1349,59 +1484,11 @@ export default function PostReports() {
   // instead of depending on someone manually setting up conditional
   // formatting in the destination sheet. Opens directly in Excel, Numbers,
   // or Google Sheets (upload to Drive, or File > Import).
-  const exportShotListXlsx = async () => {
-    const columns = [
-      { header: "Scene", width: 10 },
-      { header: "Shot Code", width: 14 },
-      { header: "Priority", width: 10 },
-      { header: "Story Importance", width: 16 },
-      { header: "Complexity", width: 12 },
-      { header: "Pipeline", width: 12 },
-      { header: "Pushed to Post", width: 14 },
-      { header: "Due Date", width: 12 },
-      { header: "Script Description", width: 30 },
-      { header: "Internal Description", width: 30 },
-      { header: "Folder Created", width: 14 },
-      { header: "Tasks", width: 40 },
-    ];
-
-    const shotToRow = (shot) => {
-      const priority = computeImportance({
-        complexity: shot.complexity,
-        storyImportance: shot.storyImportance,
-        dueDate: shot.dueDate,
-      }).tier;
-      const tasksSummary = shot.tasks
-        .map((t) => `${t.type}: ${taskStatusInfo(t.status).label} (${assigneesLabel(t)})`)
-        .join("; ");
-      return [
-        `SC${shot.scene}`,
-        shot.shotCode,
-        priority,
-        STORY_IMPORTANCE_LEVELS[shot.storyImportance - 1] ?? "",
-        COMPLEXITY_LEVELS[shot.complexity - 1] ?? "",
-        shot.pipeline,
-        shot.dispatched ? "Yes" : "No",
-        shot.dueDate,
-        shot.scriptDescription,
-        shot.internalDescription,
-        shot.foldersCreatedAt ? "Yes" : "No",
-        tasksSummary,
-      ];
-    };
-
-    const rows = [];
-    for (const scene of orderedScenes) {
-      for (const shot of shotsByScene.get(scene.id) ?? []) rows.push(shotToRow(shot));
-    }
-    for (const shot of ungroupedShots) rows.push(shotToRow(shot));
-
-    const cellTier = (rowData, colIdx) => {
-      if (colIdx === 3) return tierFromLevel(STORY_IMPORTANCE_LEVELS.indexOf(rowData[3]) + 1);
-      if (colIdx === 4) return tierFromLevel(COMPLEXITY_LEVELS.indexOf(rowData[4]) + 1);
-      if (colIdx === 7) return tierFromDueDate(rowData[7]);
-      return null;
-    };
+  // `columns` is the ticked subset of EXPORT_COLUMNS, in sheet order.
+  const exportShotListXlsx = async (columns) => {
+    const rows = orderedShots.map((shot) => columns.map((col) => col.value(shot)));
+    const cellTier = (rowData, colIdx) => columns[colIdx].tier?.(rowData[colIdx]) ?? null;
+    const usesTiers = columns.some((col) => col.tier);
 
     const showCode = project?.showCode || "vfx-supe";
     const logoBuffer = await fetch(sfxLogo).then((res) => res.arrayBuffer());
@@ -1419,11 +1506,13 @@ export default function PostReports() {
       columns,
       rows,
       cellTier,
-      legend: [
-        { color: BRAND.redSoft, text: "High complexity/importance, or due ≤3 days away" },
-        { color: BRAND.orangeSoft, text: "Medium complexity/importance, or due 4–7 days away" },
-        { color: null, text: "No fill = Low/normal, or no near-term due date" },
-      ],
+      legend: usesTiers
+        ? [
+            { color: BRAND.redSoft, text: "High complexity/importance, or due ≤3 days away" },
+            { color: BRAND.orangeSoft, text: "Medium complexity/importance, or due 4–7 days away" },
+            { color: null, text: "No fill = Low/normal, or no near-term due date" },
+          ]
+        : null,
       logoBuffer,
     });
   };
@@ -1473,7 +1562,7 @@ export default function PostReports() {
             {tab === "Shots" && (scenes.length > 0 || shots.length > 0) && (
               <span
                 className="btn btn-secondary post-export-csv-btn"
-                onClick={exportShotListXlsx}
+                onClick={() => setExporting((v) => !v)}
                 title="Downloads a styled .xlsx — open in Excel, Numbers, or upload to Google Drive to view as a Sheet"
               >
                 Export to Spreadsheet…
@@ -1526,6 +1615,10 @@ export default function PostReports() {
               Automatic folder creation needs Chrome or Edge — you can still track scenes/shots and copy folder
               paths manually.
             </div>
+          )}
+
+          {exporting && (
+            <ExportShotsForm shots={orderedShots} onExport={exportShotListXlsx} onCancel={() => setExporting(false)} />
           )}
 
           {addingScene && (
