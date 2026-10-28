@@ -16,8 +16,12 @@ import {
   pickDestinationFolder,
   readJsonFile,
 } from "../lib/fsAccess.js";
-import { useActiveProjectId, useProjects } from "../lib/projects.js";
-import { deleteProjectData } from "../lib/sharedStore.js";
+import { scopedKey, useActiveProjectId, useProjects } from "../lib/projects.js";
+import { deleteProjectData, write as writeShared } from "../lib/sharedStore.js";
+import { IMPORT_ACCEPT, readImportFile } from "../lib/readImportFile.js";
+import { toRecords } from "../lib/shotImport.js";
+import { blankScene, blankShot } from "../lib/shotRecords.js";
+import ShotImportReview from "../components/ShotImportReview.jsx";
 import { useEnterKey } from "../lib/useEnterKey.js";
 import { useRole } from "../lib/role.js";
 import UserBadge from "../components/UserBadge.jsx";
@@ -204,6 +208,12 @@ function NewProjectForm({ onCreate, onCancel }) {
   const [destinationHandle, setDestinationHandle] = useState(null);
   const [folderError, setFolderError] = useState("");
   const [creating, setCreating] = useState(false);
+  const [mode, setMode] = useState("scratch"); // "scratch" | "import"
+  const [step, setStep] = useState("form"); // "form" | "review"
+  const [importFile, setImportFile] = useState(null); // { name, sheets } | null
+  const [importError, setImportError] = useState("");
+  const [readingFile, setReadingFile] = useState(false);
+  const importInputRef = useRef(null);
   const supported = isFsAccessSupported();
 
   // Stable id for this draft so the folder handle can be saved under it
@@ -228,34 +238,119 @@ function NewProjectForm({ onCreate, onCancel }) {
   };
 
   const canCreate = name.trim() && showCodeValid && (!supported || destinationHandle) && !creating;
+  const canReview = canCreate && importFile;
+
+  // Makes only the show-code root folder; returns false (with the error
+  // shown) if that failed. Scene/shot folders stay a Post Reports step.
+  const makeRootFolder = async (trimmedShowCode) => {
+    if (!destinationHandle) return true;
+    try {
+      await createProjectRootFolder(draftId, destinationHandle, trimmedShowCode);
+      return true;
+    } catch (err) {
+      const message = "Couldn't create the project folder — try choosing the destination again.";
+      setFolderError(message);
+      setImportError(message);
+      return false;
+    }
+  };
+
+  const projectRecord = (trimmedShowCode) => ({
+    id: draftId,
+    name: name.trim(),
+    showCode: trimmedShowCode,
+    deliveryDate: deliveryDate || undefined,
+    createdAt: new Date().toISOString(),
+  });
 
   const create = async () => {
     if (!canCreate) return;
     const trimmedShowCode = showCode.trim().toUpperCase();
-    if (destinationHandle) {
-      setCreating(true);
-      try {
-        await createProjectRootFolder(draftId, destinationHandle, trimmedShowCode);
-      } catch (err) {
-        setCreating(false);
-        setFolderError("Couldn't create the project folder — try choosing the destination again.");
-        return;
-      }
-      setCreating(false);
-    }
-    onCreate({
-      id: draftId,
-      name: name.trim(),
-      showCode: trimmedShowCode,
-      deliveryDate: deliveryDate || undefined,
-      createdAt: new Date().toISOString(),
-    });
+    setCreating(true);
+    const ok = await makeRootFolder(trimmedShowCode);
+    setCreating(false);
+    if (ok) onCreate(projectRecord(trimmedShowCode));
   };
-  useEnterKey(create);
+
+  const pickImportFile = async (file) => {
+    if (!file) return;
+    setImportFile(null);
+    setImportError("");
+    setReadingFile(true);
+    try {
+      const sheets = await readImportFile(file);
+      if (!sheets.length || sheets.every((s) => s.rows.length < 2)) throw new Error("That file has no rows to import.");
+      setImportFile({ name: file.name, sheets });
+      // Prefill the project name from "Studio - VFX LIST - SHOW NAME.xlsx".
+      if (!name.trim()) {
+        const guess = file.name
+          .replace(/\.[^.]+$/, "")
+          .split(/\s+-\s+/)
+          .pop()
+          .trim();
+        if (guess && guess.length <= 60) handleNameChange(guess.replace(/\b\w+/g, (w) => w[0] + w.slice(1).toLowerCase()));
+      }
+    } catch (err) {
+      setImportError(err?.message || "Couldn't read that file.");
+    } finally {
+      setReadingFile(false);
+    }
+  };
+
+  const importShots = async (rows) => {
+    const trimmedShowCode = showCode.trim().toUpperCase();
+    setCreating(true);
+    setImportError("");
+    const ok = await makeRootFolder(trimmedShowCode);
+    if (!ok) {
+      setCreating(false);
+      return;
+    }
+    const { scenes, shots } = toRecords(rows, blankShot, blankScene);
+    writeShared(scopedKey("vfx-supe-scenes", draftId), scenes);
+    writeShared(scopedKey("vfx-supe-post-reports", draftId), shots);
+    setCreating(false);
+    onCreate(projectRecord(trimmedShowCode));
+  };
+
+  useEnterKey(() => {
+    if (step === "review") return; // textareas there need Enter
+    if (mode === "import") {
+      if (canReview) setStep("review");
+    } else create();
+  });
+
+  if (step === "review" && importFile) {
+    return (
+      <ShotImportReview
+        fileName={importFile.name}
+        sheets={importFile.sheets}
+        showCode={showCode.trim().toUpperCase()}
+        busy={creating}
+        error={importError}
+        onBack={() => setStep("form")}
+        onImport={importShots}
+      />
+    );
+  }
 
   return (
     <div className="card home-new-project">
       <span className="label">New project</span>
+      <div className="home-new-project-mode">
+        {[
+          ["scratch", "Start from scratch"],
+          ["import", "Import spreadsheet"],
+        ].map(([value, label]) => (
+          <span
+            key={value}
+            className={`home-new-project-mode-btn${mode === value ? " is-active" : ""}`}
+            onClick={() => setMode(value)}
+          >
+            {label}
+          </span>
+        ))}
+      </div>
       <div className="home-new-project-fields">
         <input
           className="report-edit-input"
@@ -299,10 +394,41 @@ function NewProjectForm({ onCreate, onCancel }) {
       )}
       {folderError && <span className="home-new-project-error">{folderError}</span>}
 
+      {mode === "import" && (
+        <>
+          <span className="btn btn-secondary" onClick={() => importInputRef.current?.click()}>
+            {readingFile ? "Reading…" : importFile ? `File: ${importFile.name}` : "Choose Spreadsheet…"}
+          </span>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept={IMPORT_ACCEPT}
+            className="home-backup-file-input"
+            onChange={(e) => {
+              pickImportFile(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+          <span className="label home-new-project-hint">
+            .xlsx, .csv, or a PDF exported from a spreadsheet. Read on this computer — nothing is uploaded.
+          </span>
+          {importError && <span className="home-new-project-error">{importError}</span>}
+        </>
+      )}
+
       <div className="home-new-project-actions">
-        <span className={`btn btn-primary${canCreate ? "" : " btn-disabled"}`} onClick={canCreate ? create : undefined}>
-          {creating ? "Creating…" : "Create Project"}
-        </span>
+        {mode === "import" ? (
+          <span
+            className={`btn btn-primary${canReview ? "" : " btn-disabled"}`}
+            onClick={canReview ? () => setStep("review") : undefined}
+          >
+            Review Shots →
+          </span>
+        ) : (
+          <span className={`btn btn-primary${canCreate ? "" : " btn-disabled"}`} onClick={canCreate ? create : undefined}>
+            {creating ? "Creating…" : "Create Project"}
+          </span>
+        )}
         <span className="btn btn-secondary" onClick={onCancel}>
           Cancel
         </span>

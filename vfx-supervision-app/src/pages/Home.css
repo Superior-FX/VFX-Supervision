@@ -275,6 +275,40 @@
   gap: 12px;
 }
 
+/* The import review table needs the whole main area, not a centered card. */
+.home-main:has(.shot-import) {
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 20px;
+  min-height: 0;
+}
+
+.home-new-project-mode {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.home-new-project-mode-btn {
+  flex: 1;
+  text-align: center;
+  font: 600 12px var(--font-body);
+  padding: 8px 10px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.home-new-project-mode-btn + .home-new-project-mode-btn {
+  border-left: 1px solid var(--border);
+}
+
+.home-new-project-mode-btn.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .home-new-project-fields {
   display: flex;
   gap: 8px;

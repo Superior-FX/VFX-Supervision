@@ -574,3 +574,9 @@
   color: var(--text-tertiary);
   font-size: 12px;
 }
+
+.post-tc-input {
+  background: var(--card-bg);
+  border-color: var(--border-soft);
+  width: 120px;
+}

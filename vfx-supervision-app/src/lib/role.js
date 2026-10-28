@@ -13,6 +13,9 @@ const PERMISSIONS = {
   // Final / Revise in Review & Dailies. Producers can't.
   review_decide: ["VFX Supervisor", "Comp Supervisor"],
   footage_notes: ["VFX Supervisor", "Comp Supervisor", "Producer"],
+  // Shot bid costs (from an imported VFX list). UI-only: the cost still
+  // travels with the shot record, so anyone with database access can read it.
+  view_costs: ["Producer"],
 };
 
 // Shown in the sidebar pill when someone holds several roles.

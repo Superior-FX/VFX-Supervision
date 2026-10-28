@@ -34,6 +34,7 @@ import { importPlate } from "../lib/plateImport.js";
 import { BRAND } from "../lib/brandColors.js";
 import ArtistDirectory, { artistDepartments } from "./postReports/ArtistDirectory.jsx";
 import FootageIngest from "./postReports/FootageIngest.jsx";
+import { blankScene, blankShot } from "../lib/shotRecords.js";
 import "./PostReports.css";
 
 const TABS = ["Shots", "Ingest", "Artists"];
@@ -70,43 +71,6 @@ function TrashIcon() {
       />
     </svg>
   );
-}
-
-function blankScene(scene) {
-  return {
-    id: crypto.randomUUID(),
-    scene,
-    folderCreatedAt: null,
-    createdAt: new Date().toISOString(),
-  };
-}
-
-function blankShot(sceneId, sceneNumber) {
-  return {
-    id: crypto.randomUUID(),
-    sceneId,
-    // Denormalized copy of the parent scene's number — kept in sync at
-    // creation time so Shot Board / Shot Detail (which read shot.scene
-    // directly and aren't part of this pass) keep working unchanged.
-    scene: sceneNumber,
-    shotCode: "",
-    pipeline: "traditional",
-    scriptDescription: "",
-    internalDescription: "",
-    thumbnail: null,
-    tasks: [],
-    dispatched: false,
-    boardStatus: "bidding",
-    complexity: 1,
-    storyImportance: 1,
-    dueDate: "",
-    foldersCreatedAt: null,
-    // The shotCode that was actually on disk the last time folders were
-    // created — compared against the live shotCode so the UI can tell when
-    // they've drifted apart instead of silently pointing at a stale folder.
-    foldersCreatedForCode: null,
-    submittedAt: new Date().toISOString(),
-  };
 }
 
 // Task assignees are stored as name snapshots, not live artist references —
@@ -333,6 +297,7 @@ function ShotCard({
   canManage,
 }) {
   const navigate = useNavigate();
+  const canViewCosts = useRole().can("view_costs");
   const [addTaskType, setAddTaskType] = useState("");
   // { stage, fraction } while importing, then null; plateMessage is the
   // last error/warning.
@@ -620,6 +585,36 @@ function ShotCard({
                 />
               </div>
               <div className="post-shot-meta-field">
+                <span className="label">Timecode in</span>
+                <input
+                  className="report-edit-input mono post-tc-input"
+                  placeholder="00:00:00:00"
+                  value={shot.timecodeIn || ""}
+                  onChange={(e) => update({ timecodeIn: e.target.value })}
+                />
+              </div>
+              <div className="post-shot-meta-field">
+                <span className="label">Timecode out</span>
+                <input
+                  className="report-edit-input mono post-tc-input"
+                  placeholder="00:00:00:00"
+                  value={shot.timecodeOut || ""}
+                  onChange={(e) => update({ timecodeOut: e.target.value })}
+                />
+              </div>
+              {canViewCosts && (
+                <div className="post-shot-meta-field">
+                  <span className="label">Bid cost</span>
+                  <input
+                    className="report-edit-input mono post-tc-input"
+                    type="number"
+                    min={0}
+                    value={shot.bidCost ?? ""}
+                    onChange={(e) => update({ bidCost: e.target.value === "" ? null : Number(e.target.value) })}
+                  />
+                </div>
+              )}
+              <div className="post-shot-meta-field">
                 <span className="label">Pipeline</span>
                 <select
                   className="report-edit-input mono post-due-input"
@@ -639,6 +634,14 @@ function ShotCard({
               <span className="pill mono">C: {shot.complexity}/5</span>
               <span className="pill mono">Story: {shot.storyImportance}/5</span>
               {shot.dueDate && <span className="pill mono">Due {shot.dueDate}</span>}
+              {(shot.timecodeIn || shot.timecodeOut) && (
+                <span className="pill mono">
+                  TC {shot.timecodeIn || "—"} – {shot.timecodeOut || "—"}
+                </span>
+              )}
+              {canViewCosts && shot.bidCost != null && (
+                <span className="pill mono">Bid ${shot.bidCost.toLocaleString()}</span>
+              )}
             </div>
           )}
 
@@ -1073,7 +1076,9 @@ export default function PostReports() {
   const [folderError, setFolderError] = useState("");
   const [tab, setTab] = useState(TABS[0]);
   const supported = isFsAccessSupported();
-  const canManage = useRole().can("manage_projects");
+  const { can } = useRole();
+  const canManage = can("manage_projects");
+  const canViewCosts = can("view_costs");
   const deleteRequests = useDeleteRequests(project?.id);
 
   const pickFolder = async () => {
@@ -1458,6 +1463,11 @@ export default function PostReports() {
             {tab === "Shots" && (
               <span className="pill">
                 {scenes.length} scene{scenes.length === 1 ? "" : "s"} · {shots.length} shot{shots.length === 1 ? "" : "s"}
+              </span>
+            )}
+            {tab === "Shots" && canViewCosts && shots.some((s) => s.bidCost != null) && (
+              <span className="pill mono" title="Sum of every shot's bid cost">
+                Bid total ${shots.reduce((sum, s) => sum + (s.bidCost ?? 0), 0).toLocaleString()}
               </span>
             )}
             {tab === "Shots" && (scenes.length > 0 || shots.length > 0) && (
