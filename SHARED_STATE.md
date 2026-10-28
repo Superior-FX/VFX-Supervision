@@ -51,3 +51,7 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-10-21T23:31:07-05:00 — **Will Cox** (Atom-Smasher) — `845f174` SHARED_STATE: log a2e8cd8
 - 2026-10-21T23:35:40-05:00 — **Will Cox** (Atom-Smasher) — `1332633` Add Jon's setup steps for the Sup-FX App
 - 2026-10-24T17:34:09-05:00 — **Will Cox** (Atom-Smasher) — `1aa3945` Only list artists approved for a task's type in the assign dropdown
+- 2026-10-24T17:34:09-05:00 — **Will Cox** (Atom-Smasher) — `d2262bf` SHARED_STATE: log 845f174 through latest
+- 2026-10-24T18:55:01-05:00 — **Will Cox** (Atom-Smasher) — `1c5dc61` Add Support tab with a step-by-step app walkthrough
+- 2026-10-27T23:24:52-05:00 — **Will Cox** (Atom-Smasher) — `9e0b4ac` Import a VFX list spreadsheet when creating a project
+- 2026-10-28T01:24:34-05:00 — **Will Cox** (Atom-Smasher) — `891dc62` Export thumbnails and pick which columns go in the shot list
