@@ -48,6 +48,35 @@
   background: var(--surface);
 }
 
+/* Taller rows so the shot thumbnail is readable at a glance; content is
+   centered against the thumbnail rather than pinned to the top. */
+.artist-report-row td {
+  vertical-align: middle;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.artist-report-thumb-cell {
+  width: 140px;
+}
+
+.artist-report-thumb {
+  display: block;
+  width: 128px;
+  height: 72px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.artist-report-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+}
+
 /* Same importance color-coding as Post Reports, Shot Board, and Shot
    Tracking — a table row has no left border of its own under
    border-collapse, so it's drawn as an inset shadow on the first cell. */

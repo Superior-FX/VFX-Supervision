@@ -10,6 +10,16 @@ import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "../styles/reportsTable.css";
 import "./ArtistReport.css";
 
+function ImageIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="9" cy="10" r="1.6" fill="currentColor" />
+      <path d="M4 17l5-5 4 4 3-3 4 4" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export default function ArtistReport() {
   const navigate = useNavigate();
   const project = useActiveProject();
@@ -69,6 +79,7 @@ export default function ArtistReport() {
               <thead>
                 <tr>
                   <th></th>
+                  <th></th>
                   <th>Shot</th>
                   <th>Description</th>
                   <th>Status</th>
@@ -87,6 +98,15 @@ export default function ArtistReport() {
                         onClick={() => setExpandedId(isExpanded ? null : shot.id)}
                       >
                         <td className="artist-report-expand-cell">{isExpanded ? "▲" : "▼"}</td>
+                        <td className="artist-report-thumb-cell">
+                          {shot.thumbnail ? (
+                            <img className="artist-report-thumb" src={shot.thumbnail} alt={`${shot.shotCode} thumbnail`} />
+                          ) : (
+                            <div className="artist-report-thumb artist-report-thumb-placeholder">
+                              <ImageIcon />
+                            </div>
+                          )}
+                        </td>
                         <td>
                           <span className="report-shot-code">{shot.shotCode}</span>
                         </td>
@@ -100,7 +120,7 @@ export default function ArtistReport() {
                       </tr>
                       {isExpanded && (
                         <tr className="report-expanded-row">
-                          <td colSpan={5}>
+                          <td colSpan={6}>
                             <div className="artist-report-tasks">
                               {myTasks.map((task) => {
                                 const taskStatus = taskStatusInfo(task.status);
