@@ -59,3 +59,5 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-11-07T15:03:55-06:00 — **Will Cox** (Atom-Smasher) — `6b82ae7` List shots in shot-code order on Artist Report and Shot Board
 - 2026-11-07T15:15:55-06:00 — **Will Cox** (Atom-Smasher) — `9fa708e` Sort every shot list by shot code
 - 2026-11-07T15:24:20-06:00 — **Will Cox** (Atom-Smasher) — `27d4bcd` Show shot thumbnails on Artist Report with taller rows
+- 2026-11-07T15:26:28-06:00 — **Will Cox** (Atom-Smasher) — `4c7ef1d` SHARED_STATE: log 4db17f7 through 27d4bcd
+- 2026-11-07T16:17:27-06:00 — **Will Cox** (Atom-Smasher) — `d294048` Rename Roto / Paint task to Roto / Paint / Matte
