@@ -55,3 +55,7 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-10-24T18:55:01-05:00 — **Will Cox** (Atom-Smasher) — `1c5dc61` Add Support tab with a step-by-step app walkthrough
 - 2026-10-27T23:24:52-05:00 — **Will Cox** (Atom-Smasher) — `9e0b4ac` Import a VFX list spreadsheet when creating a project
 - 2026-10-28T01:24:34-05:00 — **Will Cox** (Atom-Smasher) — `891dc62` Export thumbnails and pick which columns go in the shot list
+- 2026-10-28T02:57:15-05:00 — **Will Cox** (Atom-Smasher) — `4db17f7` SHARED_STATE: log d2262bf through 891dc62
+- 2026-11-07T15:03:55-06:00 — **Will Cox** (Atom-Smasher) — `6b82ae7` List shots in shot-code order on Artist Report and Shot Board
+- 2026-11-07T15:15:55-06:00 — **Will Cox** (Atom-Smasher) — `9fa708e` Sort every shot list by shot code
+- 2026-11-07T15:24:20-06:00 — **Will Cox** (Atom-Smasher) — `27d4bcd` Show shot thumbnails on Artist Report with taller rows
