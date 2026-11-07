@@ -7,7 +7,7 @@ import { taskStatusInfo } from "../data/taskStatus.js";
 import { useCurrentArtist } from "../lib/currentArtist.js";
 import { formatVersion } from "../lib/fsAccess.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
-import { sortByDueComplexityName } from "../lib/sortShots.js";
+import { sortByShotCode } from "../lib/sortShots.js";
 import { hasAssignee } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import { useProjectFolder } from "../lib/useProjectFolder.js";
@@ -36,18 +36,18 @@ export default function ArtistReview() {
 
   // The artist's submissions that have something to watch, in this order:
   //   1. Needs Revision first — that's what they need to act on.
-  //   2. Within each group (several revisions, or everything else), soonest
-  //      due date first; then complexity, then shot code, as everywhere else.
+  //   2. Within each group (several revisions, or everything else), listed
+  //      in shot-code order, as everywhere else.
   const submissions = useMemo(() => {
     if (!currentArtist) return [];
-    const byDue = sortByDueComplexityName(postReports);
-    const dueRank = new Map(byDue.map((shot, i) => [shot.id, i]));
-    const list = byDue.flatMap((shot) =>
+    const byCode = sortByShotCode(postReports);
+    const codeRank = new Map(byCode.map((shot, i) => [shot.id, i]));
+    const list = byCode.flatMap((shot) =>
       shot.tasks.filter((t) => t.reviewFile && hasAssignee(t, currentArtist.name)).map((task) => ({ shot, task }))
     );
     const revisionRank = (e) => (e.task.status === "needs_revision" ? 0 : 1);
     return list.sort(
-      (a, b) => revisionRank(a) - revisionRank(b) || dueRank.get(a.shot.id) - dueRank.get(b.shot.id)
+      (a, b) => revisionRank(a) - revisionRank(b) || codeRank.get(a.shot.id) - codeRank.get(b.shot.id)
     );
   }, [postReports, currentArtist?.name]);
 

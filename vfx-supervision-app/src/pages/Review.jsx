@@ -11,16 +11,17 @@ import { padScene } from "../lib/folderPath.js";
 import { formatVersion } from "../lib/fsAccess.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { useRole } from "../lib/role.js";
-import { sortByDueComplexityName } from "../lib/sortShots.js";
+import { sortByDueComplexityName, sortByShotCode } from "../lib/sortShots.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import { useProjectFolder } from "../lib/useProjectFolder.js";
 import { usePlateProxy, useReviewProxy, versionChoices } from "../lib/useReviewProxy.js";
 import "./Review.css";
 
-// How the queue is ordered/narrowed. "due" and "submitted" show every
-// pending submission; the other three narrow it to one artist/task/scene
-// (still soonest-due first inside that).
+// How the queue is ordered/narrowed. "shot", "due" and "submitted" show
+// every pending submission; the other three narrow it to one
+// artist/task/scene (still in shot-code order inside that).
 const SORT_MODES = [
+  { id: "shot", label: "Shot" },
   { id: "due", label: "Due date" },
   { id: "artist", label: "Artist" },
   { id: "task", label: "Task" },
@@ -52,7 +53,7 @@ export default function Review() {
   // Where the player is (for the 6K/8K dialog's default frame) and how long the proxy is.
   const [playerFrame, setPlayerFrame] = useState(0);
   const [frameCount, setFrameCount] = useState(0);
-  const [sortMode, setSortMode] = useLocalStorageState(scopedKey("vfx-supe-review-sort", project?.id), "due");
+  const [sortMode, setSortMode] = useLocalStorageState(scopedKey("vfx-supe-review-sort-v2", project?.id), "shot");
   const [sortValue, setSortValue] = useLocalStorageState(scopedKey("vfx-supe-review-sort-value", project?.id), "");
 
   // Every task still awaiting a supervisor call, one row per task (same
@@ -60,7 +61,7 @@ export default function Review() {
   // shot, same reasoning as there.
   const queue = useMemo(
     () =>
-      sortByDueComplexityName(postReports).flatMap((shot) =>
+      sortByShotCode(postReports).flatMap((shot) =>
         shot.tasks.filter((t) => isInReview(t.status)).map((task) => ({ shot, task }))
       ),
     [postReports]
@@ -85,11 +86,15 @@ export default function Review() {
       // Newest submission first; anything without a recorded date goes last.
       return [...queue].sort((a, b) => (submittedAt(b.task) ?? "").localeCompare(submittedAt(a.task) ?? ""));
     }
+    if (sortMode === "due") {
+      const dueRank = new Map(sortByDueComplexityName(postReports).map((shot, i) => [shot.id, i]));
+      return [...queue].sort((a, b) => dueRank.get(a.shot.id) - dueRank.get(b.shot.id));
+    }
     if (sortMode === "artist") return queue.filter(({ task }) => hasAssignee(task, activeValue));
     if (sortMode === "task") return queue.filter(({ task }) => task.type === activeValue);
     if (sortMode === "scene") return queue.filter(({ shot }) => sceneLabel(shot) === activeValue);
     return queue;
-  }, [queue, sortMode, activeValue]);
+  }, [queue, sortMode, activeValue, postReports]);
 
   const requestedTaskId = searchParams.get("task");
   // A deep link (Post Reports / Shot Board "Review →") always opens its

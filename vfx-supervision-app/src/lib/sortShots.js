@@ -1,7 +1,8 @@
 // Shared shot-ordering rules:
-// - Shot Tracking: due date (soonest first)
+// - Dashboard "needs attention" tiebreak + Review's "Due date" option: due date (soonest first)
 //   -> complexity (highest first) -> shot code, as a tiebreak chain.
-// - Post Reports, Artist Report, Shot Board: shot code alone — more of a filing/lookup view than a
+// - Every shot list (Post Reports, Artist Report, Shot Board, Review,
+//   Upload, Artist Portal): shot code alone — more of a filing/lookup view than a
 //   priority one, so it stays plain alphanumeric.
 // Each is a tiebreak chain ending in shot code so the order is always
 // fully deterministic, never dependent on array insertion order.

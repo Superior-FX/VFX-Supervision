@@ -185,7 +185,7 @@
         {
           "id": "review-queue",
           "title": "Open the review queue",
-          "body": "**Review & Dailies** lists every task that's **Pending** or **Comp Approved**. Use **Sort by** to order it by Due date, Artist, Task, Scene, or Date submitted.\n\nYou can also jump straight in from **Review →** on a task in Post Reports or the Shot Board.",
+          "body": "**Review & Dailies** lists every task that's **Pending** or **Comp Approved**. Use **Sort by** to order it by Shot, Due date, Artist, Task, Scene, or Date submitted.\n\nYou can also jump straight in from **Review →** on a task in Post Reports or the Shot Board.",
           "route": "/review",
           "routeLabel": "Open Review & Dailies"
         },

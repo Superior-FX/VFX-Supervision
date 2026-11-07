@@ -5,7 +5,7 @@ import { useCurrentArtist } from "../lib/currentArtist.js";
 import { useAuth } from "../lib/auth.jsx";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
-import { sortByDueComplexityName } from "../lib/sortShots.js";
+import { sortByShotCode } from "../lib/sortShots.js";
 import { assigneesLabel, getAssignees, hasAssignee } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "../styles/reportsTable.css";
@@ -31,7 +31,7 @@ export default function ArtistAssignments() {
 
   const shotsWithTasks = postReports.filter((s) => s.tasks.length > 0);
 
-  const filteredShots = sortByDueComplexityName(
+  const filteredShots = sortByShotCode(
     onlyMine && currentArtist
       ? shotsWithTasks.filter((s) => s.tasks.some((t) => hasAssignee(t, currentArtist.name)))
       : shotsWithTasks

@@ -21,7 +21,7 @@ import {
 import { scopedKey, useActiveProject } from "../lib/projects.js";
 import { groupSequenceFiles } from "../lib/sequenceGrouping.js";
 import { hqProxyName, legacyHqProxyName } from "../lib/hqProxy.js";
-import { sortByDueComplexityName } from "../lib/sortShots.js";
+import { sortByShotCode } from "../lib/sortShots.js";
 import { hasAssignee } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import { useProjectFolder } from "../lib/useProjectFolder.js";
@@ -102,7 +102,7 @@ export default function Upload() {
   // Same "what's actually actionable right now" scoping as before: only
   // shots where this artist has a task in wip show up at all.
   const myShots = currentArtist
-    ? sortByDueComplexityName(postReports.filter((s) => s.tasks.some((t) => myTask(t) && t.status === "wip")))
+    ? sortByShotCode(postReports.filter((s) => s.tasks.some((t) => myTask(t) && t.status === "wip")))
     : [];
 
   const selectedShot = myShots.find((s) => s.id === selectedShotId);
