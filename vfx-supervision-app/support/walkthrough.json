@@ -54,7 +54,7 @@
         {
           "id": "artist-roster",
           "title": "Build the artist roster",
-          "body": "Go to **Post Reports → Artists** and click **+ Add Artist**.\n\n- Enter the artist's name.\n- Under **Tasks this artist can take**, tick every task type they're approved for (Compositing, Roto / Paint, DMP, and so on).\n- Click **Save**.\n\nThis matters: when you assign a task, the dropdown **only lists artists approved for that task type**. Use the pencil to edit an artist later. Renaming an artist updates their name everywhere it's used.",
+          "body": "Go to **Post Reports → Artists** and click **+ Add Artist**.\n\n- Enter the artist's name.\n- Under **Tasks this artist can take**, tick every task type they're approved for (Compositing, Roto / Paint / Matte, DMP, and so on).\n- Click **Save**.\n\nThis matters: when you assign a task, the dropdown **only lists artists approved for that task type**. Use the pencil to edit an artist later. Renaming an artist updates their name everywhere it's used.",
           "route": "/post-reports",
           "routeLabel": "Open Post Reports"
         },
@@ -116,7 +116,7 @@
         {
           "id": "add-task",
           "title": "Add tasks to a shot",
-          "body": "Edit the shot and choose a task type from **+ add task** (3D Tracking, Roto / Paint, Compositing, DMP, QC / Delivery, etc.). Add as many as the shot needs. Each type can only be added once per shot.",
+          "body": "Edit the shot and choose a task type from **+ add task** (3D Tracking, Roto / Paint / Matte, Compositing, DMP, QC / Delivery, etc.). Add as many as the shot needs. Each type can only be added once per shot.",
           "route": "/post-reports",
           "routeLabel": "Open Post Reports"
         },

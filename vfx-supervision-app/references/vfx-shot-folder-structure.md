@@ -57,7 +57,7 @@ work happens in either app; every other task type's `project/` stays flat.
 | Task type | Folder |
 |---|---|
 | Compositing | `01_comp` (`project/{nuke,AE}` + `render/`) |
-| Roto / Paint | `02_roto_matte` |
+| Roto / Paint / Matte | `02_roto_matte` |
 | AI Generation | `03_ai` |
 | Particle / Fluid Simulation | `04_particle_fluid` |
 | 3D Tracking / Matchmove | `05_tracking` |

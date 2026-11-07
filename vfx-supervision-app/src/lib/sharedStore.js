@@ -1,5 +1,6 @@
 import { SCOPED_DATA_BASES } from "./projects.js";
 import { supabase } from "./supabase.js";
+import { normalizeRecord } from "../data/postTasks.js";
 
 // The team's shared data (supabase/migrations/003): projects, the artist
 // roster and every project's shots/scenes/reports, one row per item in
@@ -125,7 +126,7 @@ export async function loadAll() {
     for (const row of data) {
       const docKey = docKeyOf(row.collection, row.project_id);
       if (!next.has(docKey)) next.set(docKey, { rows: new Map(), list: EMPTY });
-      next.get(docKey).rows.set(row.id, { position: row.position, data: row.data });
+      next.get(docKey).rows.set(row.id, { position: row.position, data: normalizeRecord(row.data) });
     }
     if (data.length < PAGE) break;
   }
@@ -174,7 +175,7 @@ function applyRemote(payload) {
   const docKey = docKeyOf(row.collection, row.project_id);
   const d = doc(docKey);
   if (payload.eventType === "DELETE") d.rows.delete(row.id);
-  else d.rows.set(row.id, { position: row.position, data: row.data });
+  else d.rows.set(row.id, { position: row.position, data: normalizeRecord(row.data) });
   rebuildList(d);
   notify(docKey);
 }
@@ -275,7 +276,7 @@ async function refetchRow({ collection, project_id, id }) {
     .maybeSingle();
   const docKey = docKeyOf(collection, project_id);
   const d = doc(docKey);
-  if (data) d.rows.set(id, { position: data.position, data: data.data });
+  if (data) d.rows.set(id, { position: data.position, data: normalizeRecord(data.data) });
   else d.rows.delete(id);
   rebuildList(d);
   notify(docKey);
@@ -307,7 +308,7 @@ export async function replaceAll(data) {
   const add = (collection, projectId, list) =>
     (list ?? []).forEach((item, position) => {
       if (item?.id === undefined || item?.id === null || item?.id === "") return;
-      rows.push({ collection, project_id: projectId, id: String(item.id), position, data: item });
+      rows.push({ collection, project_id: projectId, id: String(item.id), position, data: normalizeRecord(item) });
     });
 
   add("projects", "", data.projects);
