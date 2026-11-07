@@ -4,7 +4,7 @@ import { aggregateTaskStatus, taskStatusInfo, withStatus } from "../data/taskSta
 import { useCurrentArtist } from "../lib/currentArtist.js";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
-import { sortByDueComplexityName } from "../lib/sortShots.js";
+import { sortByShotCode } from "../lib/sortShots.js";
 import { hasAssignee } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "../styles/reportsTable.css";
@@ -27,7 +27,7 @@ export default function ArtistReport() {
     ? postReports.filter((shot) => shot.tasks.some((t) => hasAssignee(t, currentArtist.name)))
     : [];
 
-  const shotGroups = sortByDueComplexityName(shotsWithMyTasks).map((shot) => ({
+  const shotGroups = sortByShotCode(shotsWithMyTasks).map((shot) => ({
     shot,
     myTasks: shot.tasks.filter((t) => hasAssignee(t, currentArtist.name)),
   }));

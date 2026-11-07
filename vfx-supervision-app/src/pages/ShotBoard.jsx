@@ -4,7 +4,7 @@ import { boardColumnForStatus, isInReview } from "../data/taskStatus.js";
 import { buildTaskUploadPath } from "../lib/folderPath.js";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
-import { sortByDueComplexityName } from "../lib/sortShots.js";
+import { sortByShotCode } from "../lib/sortShots.js";
 import { getAssignees } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import "./ShotBoard.css";
@@ -63,8 +63,8 @@ export default function ShotBoard() {
   // the columns on its own, live off task.status, so a shot with several
   // tasks in different stages shows up in several columns at once rather
   // than being stuck at one column for all of them. Shots are pre-sorted
-  // so higher-priority shots cluster first within a column.
-  const taskCards = sortByDueComplexityName(shots).flatMap((shot) => shot.tasks.map((task) => ({ shot, task })));
+  // by shot code (natural alphanumeric) so each column reads in order.
+  const taskCards = sortByShotCode(shots).flatMap((shot) => shot.tasks.map((task) => ({ shot, task })));
 
   return (
     <div className="board">
