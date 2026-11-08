@@ -61,3 +61,5 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-11-07T15:24:20-06:00 — **Will Cox** (Atom-Smasher) — `27d4bcd` Show shot thumbnails on Artist Report with taller rows
 - 2026-11-07T15:26:28-06:00 — **Will Cox** (Atom-Smasher) — `4c7ef1d` SHARED_STATE: log 4db17f7 through 27d4bcd
 - 2026-11-07T16:17:27-06:00 — **Will Cox** (Atom-Smasher) — `d294048` Rename Roto / Paint task to Roto / Paint / Matte
+- 2026-11-07T16:48:31-06:00 — **Will Cox** (Atom-Smasher) — `137fde6` SHARED_STATE: log 4c7ef1d through d294048
+- 2026-11-07T18:15:07-06:00 — **Will Cox** (Atom-Smasher) — `4db9c37` Show shot thumbnails on collapsed scene bars; bigger shot thumbs
