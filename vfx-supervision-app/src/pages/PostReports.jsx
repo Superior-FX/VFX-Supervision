@@ -1102,6 +1102,17 @@ function SceneGroup({
         </span>
         {scene.folderCreatedAt && <span className="pill pill-success">Folder created</span>}
         {deletePending && <span className="pill pill-danger">Delete requested</span>}
+        {/* Collapsed only: a strip of the scene's shot thumbnails, so you
+            can tell scenes apart without opening them. Overflow is clipped. */}
+        {!isExpanded && shots.some((s) => s.thumbnail) && (
+          <div className="post-scene-thumbs">
+            {shots
+              .filter((s) => s.thumbnail)
+              .map((s) => (
+                <img key={s.id} className="post-scene-thumb" src={s.thumbnail} alt={s.shotCode} title={s.shotCode} />
+              ))}
+          </div>
+        )}
         {!confirmingDelete && !editingScene && !deletePending && (
           <span
             className="report-edit-btn post-shot-delete-btn post-scene-delete-btn"

@@ -102,8 +102,8 @@
 }
 
 .post-shot-thumb {
-  width: 56px;
-  height: 40px;
+  width: 96px;
+  height: 54px;
   border-radius: 5px;
   object-fit: cover;
   background: var(--surface);
@@ -121,8 +121,8 @@
 }
 
 .post-shot-thumb-placeholder {
-  width: 56px;
-  height: 40px;
+  width: 96px;
+  height: 54px;
   border-radius: 5px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -490,6 +490,27 @@
 
 .post-scene-delete-btn {
   margin-left: auto;
+}
+
+.post-scene-thumbs {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  margin-left: 6px;
+  /* fade the clipped edge instead of cutting a thumbnail in half hard */
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+}
+
+.post-scene-thumb {
+  width: 48px;
+  height: 27px;
+  border-radius: 3px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  flex: none;
 }
 
 .post-scene-confirm {
