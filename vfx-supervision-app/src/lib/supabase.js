@@ -10,4 +10,4 @@ export const supabaseConfigured = Boolean(url && anonKey);
 
 export const supabase = supabaseConfigured ? createClient(url, anonKey) : null;
 
-export const ROLES = ["Admin", "VFX Supervisor", "Comp Supervisor", "Producer", "Artist"];
+export const ROLES = ["Admin", "VFX Supervisor", "Comp Supervisor", "Producer", "Post-Supervisor", "Artist"];

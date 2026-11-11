@@ -5,21 +5,21 @@ import { useAuth } from "./auth.jsx";
 // rules (supabase/migrations); this only decides what the UI shows.
 const PERMISSIONS = {
   // Everything outside the Artist Portal: Dashboard, Post Reports, Review, Shot Board.
-  studio: ["VFX Supervisor", "Comp Supervisor", "Producer"],
+  studio: ["VFX Supervisor", "Comp Supervisor", "Producer", "Post-Supervisor"],
   // Create/delete projects, add tasks, assign artists, edit the roster, backups.
-  manage_projects: ["VFX Supervisor", "Comp Supervisor", "Producer"],
+  manage_projects: ["VFX Supervisor", "Comp Supervisor", "Producer", "Post-Supervisor"],
   // Team page: invite people, set roles (never Admin), link to artists.
-  manage_users: ["VFX Supervisor", "Comp Supervisor", "Producer"],
-  // Final / Revise in Review & Dailies. Producers can't.
+  manage_users: ["VFX Supervisor", "Comp Supervisor", "Producer", "Post-Supervisor"],
+  // Final / Revise in Review & Dailies. Producers and Post-Supervisors can't.
   review_decide: ["VFX Supervisor", "Comp Supervisor"],
-  footage_notes: ["VFX Supervisor", "Comp Supervisor", "Producer"],
+  footage_notes: ["VFX Supervisor", "Comp Supervisor", "Producer", "Post-Supervisor"],
   // Shot bid costs (from an imported VFX list). UI-only: the cost still
   // travels with the shot record, so anyone with database access can read it.
-  view_costs: ["Producer"],
+  view_costs: ["Producer", "Post-Supervisor"],
 };
 
 // Shown in the sidebar pill when someone holds several roles.
-const ROLE_ORDER = ["Admin", "VFX Supervisor", "Comp Supervisor", "Producer", "Artist"];
+const ROLE_ORDER = ["Admin", "VFX Supervisor", "Comp Supervisor", "Producer", "Post-Supervisor", "Artist"];
 
 export function rolesCan(roles, permission) {
   if (roles.includes("Admin")) return true;

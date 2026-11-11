@@ -202,7 +202,7 @@
         {
           "id": "review-decide",
           "title": "Revise or Final",
-          "body": "- **Revise** sends it back to the artist as **Needs Revision**.\n- **Final** (VFX Supervisors and Admins) marks the task **Final**.\n- A **Comp Supervisor** sees **Comp Approve** instead: the task becomes **Comp Approved — awaiting VFX Sup**, and a VFX Supervisor gives the last Final.\n\nProducers can watch and read everything but can't Revise or Final."
+          "body": "- **Revise** sends it back to the artist as **Needs Revision**.\n- **Final** (VFX Supervisors and Admins) marks the task **Final**.\n- A **Comp Supervisor** sees **Comp Approve** instead: the task becomes **Comp Approved — awaiting VFX Sup**, and a VFX Supervisor gives the last Final.\n\nProducers and Post-Supervisors can watch and read everything but can't Revise or Final."
         },
         {
           "id": "review-hq",
@@ -254,7 +254,7 @@
         {
           "id": "roles",
           "title": "Choose roles",
-          "body": "People can hold more than one role:\n\n- **Admin**: everything, including approving delete requests.\n- **VFX Supervisor**: runs projects and gives the final **Final**.\n- **Comp Supervisor**: runs projects; their Final is **Comp Approve**.\n- **Producer**: runs projects, assignments, and the roster; can't Revise or Final.\n- **Artist**: only the Artist Portal and Reference.\n\nYou can't change your own roles, and only an Admin can edit an Admin."
+          "body": "People can hold more than one role:\n\n- **Admin**: everything, including approving delete requests.\n- **VFX Supervisor**: runs projects and gives the final **Final**.\n- **Comp Supervisor**: runs projects; their Final is **Comp Approve**.\n- **Producer**: runs projects, assignments, and the roster; can't Revise or Final.\n- **Post-Supervisor**: same as a Producer. Reviews and leaves notes but can't Revise or Final; can remove only the footage notes they wrote.\n- **Artist**: only the Artist Portal and Reference.\n\nYou can't change your own roles, and only an Admin can edit an Admin."
         },
         {
           "id": "link-artist",

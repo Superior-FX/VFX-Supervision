@@ -4,12 +4,17 @@ import "./FootageNotes.css";
 
 // Extra notes on a shot's ingested footage (shot.footageNotes) — anyone can
 // read them, only supervisors/producers (and Admin) can add or remove.
-// Stored as { id, text, author, role, createdAt }. Notes written before
+// A Post-Supervisor can add, but removes only the notes they wrote.
+// Stored as { id, text, authorId, roles, author, role, createdAt }. Notes written before
 // sign-in have only role.
 export default function FootageNotes({ notes = [], onChange, compact = false }) {
   const [draft, setDraft] = useState("");
-  const { can, profile, primaryRole } = useRole();
+  const { can, profile, roles, primaryRole } = useRole();
   const canEdit = Boolean(onChange) && can("footage_notes");
+  // A Post-Supervisor may only remove notes they wrote themselves (never an
+  // Admin's, or anyone else's). Every other role that can edit removes any.
+  const ownNotesOnly = primaryRole === "Post-Supervisor";
+  const canRemove = (n) => canEdit && (!ownNotesOnly || (n.authorId && n.authorId === profile?.id && !(n.roles ?? []).includes("Admin")));
 
   const add = () => {
     const text = draft.trim();
@@ -17,6 +22,8 @@ export default function FootageNotes({ notes = [], onChange, compact = false }) 
     onChange([...notes, {
         id: crypto.randomUUID(),
         text,
+        authorId: profile?.id ?? null,
+        roles,
         author: profile?.name || profile?.email || "",
         role: primaryRole,
         createdAt: new Date().toISOString(),
@@ -24,7 +31,7 @@ export default function FootageNotes({ notes = [], onChange, compact = false }) 
     setDraft("");
   };
 
-  const remove = (id) => onChange(notes.filter((n) => n.id !== id));
+  const remove = (id) => onChange(notes.filter((n) => n.id !== id || !canRemove(n)));
 
   if (!canEdit && notes.length === 0) return compact ? null : <span className="footage-notes-empty">No footage notes.</span>;
 
@@ -36,7 +43,7 @@ export default function FootageNotes({ notes = [], onChange, compact = false }) 
           <span className="footage-note-meta mono">
             {n.author || n.role} · {new Date(n.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
           </span>
-          {canEdit && (
+          {canRemove(n) && (
             <span className="footage-note-remove" onClick={() => remove(n.id)} title="Remove note">
               ×
             </span>
