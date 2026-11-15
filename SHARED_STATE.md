@@ -63,3 +63,5 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-11-07T16:17:27-06:00 — **Will Cox** (Atom-Smasher) — `d294048` Rename Roto / Paint task to Roto / Paint / Matte
 - 2026-11-07T16:48:31-06:00 — **Will Cox** (Atom-Smasher) — `137fde6` SHARED_STATE: log 4c7ef1d through d294048
 - 2026-11-07T18:15:07-06:00 — **Will Cox** (Atom-Smasher) — `4db9c37` Show shot thumbnails on collapsed scene bars; bigger shot thumbs
+- 2026-11-07T18:15:11-06:00 — **Will Cox** (Atom-Smasher) — `8d5b7d9` SHARED_STATE: log 137fde6 through 4db9c37
+- 2026-11-10T23:42:32-06:00 — **Will Cox** (Atom-Smasher) — `26c9de0` Add Post-Supervisor role (Producer rights, own footage notes only)
