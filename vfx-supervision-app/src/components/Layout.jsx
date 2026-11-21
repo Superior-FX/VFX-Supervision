@@ -34,6 +34,7 @@ const NAV_GROUPS = [
       { to: "/post-reports", label: "Post Reports" },
       { to: "/review", label: "Review & Dailies" },
       { to: "/board", label: "Shot Board" },
+      { to: "/client-review", label: "Client Review", permission: "manage_users" },
     ],
   },
   {
@@ -127,7 +128,7 @@ export default function Layout() {
                   <span className="shell-nav-chevron">{group.locked ? "🔒" : isOpen ? "▾" : "▸"}</span>
                 </button>
               )}
-              {isOpen && group.items.map((item) => (
+              {isOpen && group.items.filter((item) => !item.permission || can(item.permission)).map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}

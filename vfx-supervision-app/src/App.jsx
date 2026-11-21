@@ -19,16 +19,27 @@ import ArtistReview from "./pages/ArtistReview.jsx";
 import ArtistAssignments from "./pages/ArtistAssignments.jsx";
 import Help from "./pages/Help.jsx";
 import Team from "./pages/Team.jsx";
+import ClientLinks from "./pages/ClientLinks.jsx";
+import ClientReview from "./pages/ClientReview.jsx";
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AuthGate>
-        <DataGate>
-          <AppRoutes />
-        </DataGate>
-      </AuthGate>
-    </AuthProvider>
+    <Routes>
+      {/* Client review links: public, outside sign-in and the team's data. */}
+      <Route path="/r/:token" element={<ClientReview />} />
+      <Route
+        path="/*"
+        element={
+          <AuthProvider>
+            <AuthGate>
+              <DataGate>
+                <AppRoutes />
+              </DataGate>
+            </AuthGate>
+          </AuthProvider>
+        }
+      />
+    </Routes>
   );
 }
 
@@ -46,6 +57,7 @@ function AppRoutes() {
         <Route path="/breakdown" element={<ScriptBreakdown />} />
         <Route path="/script-reports" element={<ScriptReports />} />
         <Route path="/board" element={<ShotBoard />} />
+        <Route path="/client-review" element={<ClientLinks />} />
         <Route path="/post-reports" element={<PostReports />} />
         <Route path="/shot/:shotId" element={<ShotDetail />} />
         <Route path="/review" element={<Review />} />
