@@ -119,11 +119,27 @@ export async function reconnectProjectRootFolder(projectId, folderName) {
   return root;
 }
 
+// A saved folder handle can go stale (e.g. Google Drive for Desktop
+// remounted after a restart), and then the permission calls never settle —
+// every folder action would hang on "Creating…" with no error. So they get
+// a time limit, and the error says what fixes it.
+export const FOLDER_TIMEOUT_MESSAGE =
+  "The project folder isn't responding. On the Home page, reconnect the project folder (pick it again), then try again.";
+
+export function withFolderTimeout(promise, ms = 20000) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(Object.assign(new Error(FOLDER_TIMEOUT_MESSAGE), { name: "TimeoutError" })), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 export async function ensurePermission(handle) {
   if (!handle) return false;
   const opts = { mode: "readwrite" };
-  if ((await handle.queryPermission(opts)) === "granted") return true;
-  return (await handle.requestPermission(opts)) === "granted";
+  if ((await withFolderTimeout(handle.queryPermission(opts))) === "granted") return true;
+  // Longer limit: this one may be waiting on the person to click Allow.
+  return (await withFolderTimeout(handle.requestPermission(opts), 60000)) === "granted";
 }
 
 async function subdir(parent, name, create = true) {

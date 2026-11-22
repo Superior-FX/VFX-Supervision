@@ -18,6 +18,7 @@ import {
   moveShotFolderToDeleted,
   pickProjectRootFolder,
   renameSceneFolder,
+  withFolderTimeout,
 } from "../lib/fsAccess.js";
 import { computeImportance } from "../lib/importance.js";
 import { scopedKey, useActiveProject, useProjects } from "../lib/projects.js";
@@ -739,14 +740,14 @@ function NewSceneForm({ project, rootHandle, onCreate, onCancel }) {
       try {
         const ok = await ensurePermission(rootHandle);
         if (!ok) throw new Error("Project folder access was denied.");
-        await withTimeout(createSceneFolder(rootHandle, { scene: sceneNumber }), 20000);
+        await withFolderTimeout(createSceneFolder(rootHandle, { scene: sceneNumber }));
         record.folderCreatedAt = new Date().toISOString();
       } catch (err) {
         console.error("Scene folder creation failed:", err);
         setCreating(false);
         setError(
           err?.name === "TimeoutError"
-            ? "The project folder didn't respond in 20 seconds. Check that Google Drive is running and not paused, then try again, or add the scene now and create its folder later."
+            ? `${err.message} Or add the scene now and create its folder later.`
             : `Couldn't create the scene folder: ${err?.message || err}`
         );
         return;
@@ -791,13 +792,6 @@ function NewSceneForm({ project, rootHandle, onCreate, onCancel }) {
   );
 }
 
-function withTimeout(promise, ms) {
-  let timer;
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(Object.assign(new Error("Timed out"), { name: "TimeoutError" })), ms);
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-}
 
 function SceneGroup({
   scene,
@@ -1158,10 +1152,14 @@ export default function PostReports() {
           shotCode: shot.foldersCreatedForCode,
         });
         if (result.moved) setFolderError("");
+        else
+          setFolderError(
+            `${shot.shotCode} was removed from tracking, but no folder named ${shot.foldersCreatedForCode} was found under SC${padScene(shot.scene)}. If it's spelled differently on disk, move or delete it by hand.`
+          );
       } catch (err) {
         console.error("Couldn't move deleted shot's folder into zzz_DELETED/:", err);
         setFolderError(
-          `${shot.shotCode} was removed from tracking, but its folder couldn't be fully removed from disk — check it manually.`
+          err?.name === "TimeoutError" ? `${shot.shotCode} was removed from tracking, but its folder is still on disk. ${err.message}` : `${shot.shotCode} was removed from tracking, but its folder couldn't be fully removed from disk — check it manually.`
         );
       }
     }
@@ -1221,11 +1219,17 @@ export default function PostReports() {
           return;
         }
         const result = await moveSceneFolderToDeleted(rootHandle, { scene: padScene(scene.scene) });
+        // Not moved = no folder by exactly that name (e.g. SC057_063 on disk
+        // for scene 057-063). Say so rather than looking like success.
         if (result.moved) setFolderError("");
+        else
+          setFolderError(
+            `SC${scene.scene} was removed from tracking, but no folder named SC${padScene(scene.scene)} was found in the project folder. If its folder is spelled differently on disk, move or delete it by hand.`
+          );
       } catch (err) {
         console.error("Couldn't move deleted scene's folder into zzz_DELETED_SCENES/:", err);
         setFolderError(
-          `SC${scene.scene} was removed from tracking, but its folder couldn't be fully removed from disk — check it manually.`
+          err?.name === "TimeoutError" ? `SC${scene.scene} was removed from tracking, but its folder is still on disk. ${err.message}` : `SC${scene.scene} was removed from tracking, but its folder couldn't be fully removed from disk — check it manually.`
         );
       }
     }
