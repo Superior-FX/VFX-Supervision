@@ -726,21 +726,29 @@ function NewSceneForm({ project, rootHandle, onCreate, onCancel }) {
   const [error, setError] = useState("");
   const canCreate = scene.trim().length > 0 && !creating;
 
-  const create = async () => {
-    if (!canCreate) return;
+  // A Google Drive folder that's paused, offline or still syncing can leave
+  // the folder call hanging with no error, so it gets a time limit.
+  const create = async ({ skipFolder = false } = {}) => {
+    if (!canCreate && !skipFolder) return;
+    if (!scene.trim()) return;
     const sceneNumber = padScene(scene);
     const record = blankScene(sceneNumber);
-    if (rootHandle) {
+    if (rootHandle && !skipFolder) {
       setCreating(true);
+      setError("");
       try {
         const ok = await ensurePermission(rootHandle);
-        if (!ok) throw new Error("permission denied");
-        await createSceneFolder(rootHandle, { scene: sceneNumber });
+        if (!ok) throw new Error("Project folder access was denied.");
+        await withTimeout(createSceneFolder(rootHandle, { scene: sceneNumber }), 20000);
         record.folderCreatedAt = new Date().toISOString();
       } catch (err) {
         console.error("Scene folder creation failed:", err);
         setCreating(false);
-        setError("Couldn't create the scene folder — try again.");
+        setError(
+          err?.name === "TimeoutError"
+            ? "The project folder didn't respond in 20 seconds. Check that Google Drive is running and not paused, then try again, or add the scene now and create its folder later."
+            : `Couldn't create the scene folder: ${err?.message || err}`
+        );
         return;
       }
       setCreating(false);
@@ -770,12 +778,25 @@ function NewSceneForm({ project, rootHandle, onCreate, onCancel }) {
         <span className={`btn btn-primary${canCreate ? "" : " btn-disabled"}`} onClick={canCreate ? create : undefined}>
           {creating ? "Creating…" : "Create Scene"}
         </span>
+        {error && rootHandle && (
+          <span className="btn btn-secondary" onClick={() => create({ skipFolder: true })}>
+            Add without folder
+          </span>
+        )}
         <span className="btn btn-secondary" onClick={onCancel}>
           Cancel
         </span>
       </div>
     </div>
   );
+}
+
+function withTimeout(promise, ms) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(Object.assign(new Error("Timed out"), { name: "TimeoutError" })), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 function SceneGroup({
