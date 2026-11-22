@@ -235,3 +235,17 @@
   gap: 8px;
   flex-shrink: 0;
 }
+
+.clinks-feedback-toggle {
+  align-self: flex-start;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font: 12px var(--font-body);
+  cursor: pointer;
+}
+
+.clinks-feedback {
+  padding: 0 0 12px 12px;
+}

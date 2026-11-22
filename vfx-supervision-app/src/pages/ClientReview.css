@@ -186,3 +186,101 @@
     flex: 0 0 auto;
   }
 }
+
+/* Client feedback under the player (and in its full-screen bottom row). */
+.crev-name,
+.crev-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-bg);
+}
+
+.crev-feedback.is-compact {
+  padding: 8px 10px;
+  gap: 6px;
+  min-width: 280px;
+}
+
+.crev-feedback-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.crev-hint {
+  font: 12px var(--font-body);
+  color: var(--text-secondary);
+}
+
+.crev-name-row {
+  display: flex;
+  gap: 8px;
+}
+
+.crev-input,
+.crev-comment {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-primary);
+  font: 13px var(--font-body);
+}
+
+.crev-comment {
+  min-height: 70px;
+  resize: vertical;
+}
+
+.crev-feedback.is-compact .crev-comment {
+  min-height: 40px;
+}
+
+.crev-decision {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.crev-save {
+  font: 11px var(--font-mono);
+  color: var(--text-tertiary);
+}
+
+.crev-save.is-error,
+.crev-feedback-error {
+  color: var(--danger);
+  font: 12px var(--font-body);
+}
+
+.crev-link-btn {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.crev-list-pill {
+  margin-top: 4px;
+  font-size: 10px;
+}
+
+@media (max-width: 720px) {
+  .crev-body {
+    flex-direction: column;
+  }
+  .crev-list {
+    flex: none;
+    width: 100%;
+    max-height: none;
+  }
+}

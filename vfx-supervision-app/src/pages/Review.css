@@ -211,3 +211,14 @@
   font: 12px var(--font-body);
   color: var(--warning);
 }
+
+.review-client-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.review-client-marks-note {
+  font: 12px var(--font-body);
+  color: var(--warning, var(--text-secondary));
+}

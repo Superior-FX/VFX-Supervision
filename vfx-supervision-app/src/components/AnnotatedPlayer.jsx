@@ -337,6 +337,18 @@ export default function AnnotatedPlayer({
 
   const removeAnnotation = (id) => onChange(annotations.filter((a) => a.id !== id));
 
+  // A typed note on a frame without drawing on it first.
+  const addNoteHere = () => {
+    if (current) return;
+    onChange([...annotations, { id: crypto.randomUUID(), frame, strokes: [], note: "" }]);
+  };
+
+  const addNoteButton = editable && !current && (
+    <button className="aplayer-btn aplayer-add-note" onClick={addNoteHere}>
+      + Add a note on frame {formatFrame(frame)}
+    </button>
+  );
+
   const commitNote = () => {
     if (!current) return;
     const note = noteDraft.trim();
@@ -788,14 +800,14 @@ export default function AnnotatedPlayer({
         (editable || sorted.length > 0 || notesContent) && <div className="aplayer-bottom">
           {frameNote ?? (
             <div className="aplayer-note aplayer-note-empty">
-              {editable ? "Draw on this frame to add a note to it." : "No note on this frame."}
+              {editable ? <>Draw on this frame, or {addNoteButton}</> : "No note on this frame."}
             </div>
           )}
           {notesContent}
         </div>
       ) : (
         <div className="aplayer-side">
-          {frameNote}
+          {frameNote ?? addNoteButton}
           {sorted.length > 0 && (
             <div className="aplayer-list">
               <span className="label">Annotated frames ({sorted.length})</span>

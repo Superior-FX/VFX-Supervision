@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import ClientFeedbackEntry from "../components/ClientFeedback.jsx";
 import { taskFolderSlug } from "../data/postTasks.js";
 import { taskStatusInfo } from "../data/taskStatus.js";
 import { formatVersion } from "../lib/fsAccess.js";
@@ -11,6 +12,7 @@ import {
   unshare,
 } from "../lib/googleDrive.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
+import { hasContent, loadProjectFeedback } from "../lib/reviewFeedback.js";
 import { sortByShotCode } from "../lib/sortShots.js";
 import { supabase } from "../lib/supabase.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
@@ -59,6 +61,9 @@ export default function ClientLinks() {
   const [linksError, setLinksError] = useState("");
   const [confirmRevoke, setConfirmRevoke] = useState(null);
   const [copied, setCopied] = useState(null);
+  const [feedback, setFeedback] = useState([]);
+  const [feedbackError, setFeedbackError] = useState("");
+  const [openFeedback, setOpenFeedback] = useState(() => new Set()); // tokens shown expanded
 
   useEffect(() => preloadGoogle(), []);
 
@@ -94,9 +99,37 @@ export default function ClientLinks() {
     setLinks(data ?? []);
   }, [project?.id]);
 
+  const loadFeedback = useCallback(async () => {
+    if (!project) return;
+    try {
+      setFeedback((await loadProjectFeedback(project.id)).filter(hasContent));
+      setFeedbackError("");
+    } catch (err) {
+      setFeedbackError(err.message);
+    }
+  }, [project?.id]);
+
   useEffect(() => {
     loadLinks();
-  }, [loadLinks]);
+    loadFeedback();
+  }, [loadLinks, loadFeedback]);
+
+  const feedbackByToken = useMemo(() => {
+    const map = new Map();
+    for (const f of feedback) {
+      if (!map.has(f.token)) map.set(f.token, []);
+      map.get(f.token).push(f);
+    }
+    return map;
+  }, [feedback]);
+
+  const toggleFeedback = (token) =>
+    setOpenFeedback((prev) => {
+      const next = new Set(prev);
+      if (next.has(token)) next.delete(token);
+      else next.add(token);
+      return next;
+    });
 
   const toggle = (key) =>
     setSelected((prev) => {
@@ -257,6 +290,7 @@ export default function ClientLinks() {
       </div>
 
       {linksError && <div className="card clinks-error">{linksError}</div>}
+      {feedbackError && <div className="card clinks-error">{feedbackError}</div>}
 
       <section className="card clinks-new">
         <div className="clinks-section-head">
@@ -351,14 +385,24 @@ export default function ClientLinks() {
       </section>
 
       <section className="card clinks-existing">
-        <span className="label">Links for this project</span>
+        <div className="clinks-section-head">
+          <span className="label">Links for this project</span>
+          <button type="button" className="btn btn-secondary" onClick={loadFeedback}>
+            Refresh feedback
+          </button>
+        </div>
         {links.length === 0 ? (
           <div className="clinks-empty">No links yet.</div>
         ) : (
           links.map((link) => {
             const state = linkState(link);
+            const linkFeedback = feedbackByToken.get(link.token) ?? [];
+            const approved = linkFeedback.filter((f) => f.decision === "approved").length;
+            const changes = linkFeedback.filter((f) => f.decision === "changes").length;
+            const open = openFeedback.has(link.token);
             return (
-              <div className={`clinks-link is-${state}`} key={link.token}>
+              <div className="clinks-link-wrap" key={link.token}>
+              <div className={`clinks-link is-${state}`}>
                 <div className="clinks-link-main">
                   <span className="clinks-link-title">{link.title || "Untitled review"}</span>
                   <span className="clinks-link-meta">
@@ -375,6 +419,14 @@ export default function ClientLinks() {
                   <span className="clinks-link-shots mono">
                     {link.items.map((it) => `${it.shotCode} ${formatVersion(it.version)}`).join(" · ")}
                   </span>
+                  {linkFeedback.length > 0 && (
+                    <button type="button" className="clinks-feedback-toggle" onClick={() => toggleFeedback(link.token)}>
+                      {open ? "▾" : "▸"} Client feedback: {linkFeedback.length} shot
+                      {linkFeedback.length === 1 ? "" : "s"}
+                      {approved ? ` · ${approved} approved` : ""}
+                      {changes ? ` · ${changes} changes requested` : ""}
+                    </button>
+                  )}
                   {state === "expired" && (
                     <span className="clinks-link-note">
                       The link no longer opens, but its files are still shared in Drive — revoke to unshare them.
@@ -411,6 +463,14 @@ export default function ClientLinks() {
                       </button>
                     ))}
                 </div>
+              </div>
+              {open && (
+                <div className="cfb-group clinks-feedback">
+                  {linkFeedback.map((f) => (
+                    <ClientFeedbackEntry key={f.id} feedback={f} showShot />
+                  ))}
+                </div>
+              )}
               </div>
             );
           })

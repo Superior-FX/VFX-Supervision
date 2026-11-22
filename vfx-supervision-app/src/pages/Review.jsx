@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import AnnotatedPlayer from "../components/AnnotatedPlayer.jsx";
+import ClientFeedbackEntry from "../components/ClientFeedback.jsx";
 import FolderStatusBanner from "../components/FolderStatusBanner.jsx";
 import { useHqRenders } from "../components/HqRenders.jsx";
 import ViewSelect from "../components/ViewSelect.jsx";
@@ -10,6 +11,7 @@ import { assigneesLabel, getAssignees, hasAssignee } from "../lib/taskAssignees.
 import { padScene } from "../lib/folderPath.js";
 import { formatVersion } from "../lib/fsAccess.js";
 import { scopedKey, useActiveProject } from "../lib/projects.js";
+import { hasContent, loadProjectFeedback } from "../lib/reviewFeedback.js";
 import { useRole } from "../lib/role.js";
 import { sortByDueComplexityName, sortByShotCode } from "../lib/sortShots.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
@@ -139,6 +141,22 @@ export default function Review() {
   });
   const { plateUrl, plateError } = usePlateProxy(folder, current?.shot, viewingPlate);
 
+  // Client feedback from review links, refetched when the task changes so
+  // new notes show up without a reload. Quietly absent if migration 006
+  // hasn't been run or the role can't read it.
+  const [clientFeedback, setClientFeedback] = useState([]);
+  const [clientMarksId, setClientMarksId] = useState(null);
+  useEffect(() => {
+    if (!project?.id) return;
+    let cancelled = false;
+    loadProjectFeedback(project.id)
+      .then((rows) => !cancelled && setClientFeedback(rows.filter(hasContent)))
+      .catch(() => !cancelled && setClientFeedback([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [project?.id, current?.task.id]);
+
   const chooseTask = (taskId) => {
     setSearchParams(taskId ? { task: taskId } : {});
   };
@@ -159,6 +177,20 @@ export default function Review() {
   const currentVersion = current?.task.version ?? null;
   const shownVersion = viewingOld ? view : currentVersion;
   const versionAnnotations = (current?.task.annotations ?? []).filter((a) => a.version === shownVersion);
+
+  const shownClientFeedback =
+    current && !viewingPlate
+      ? clientFeedback.filter(
+          (f) =>
+            f.shot_code === current.shot.shotCode &&
+            f.task_type === current.task.type &&
+            String(f.version) === String(shownVersion)
+        )
+      : [];
+  const clientMarks = shownClientFeedback.find((f) => f.id === clientMarksId) ?? null;
+  useEffect(() => {
+    setClientMarksId(null);
+  }, [current?.task.id, view]);
   const saveAnnotations = (list) => {
     const others = (current.task.annotations ?? []).filter((a) => a.version !== currentVersion);
     updateCurrentTask({ annotations: [...others, ...list.map((a) => ({ ...a, version: currentVersion }))] });
@@ -204,6 +236,21 @@ export default function Review() {
   };
 
   const shownNotes = current ? versionNotes(current.task, shownVersion) : {};
+
+  const clientFeedbackBox = shownClientFeedback.length > 0 && (
+    <div className="card review-client-feedback cfb-group">
+      <span className="label">Client feedback — {formatVersion(shownVersion)}</span>
+      {clientMarks && <span className="review-client-marks-note">Showing {clientMarks.reviewer_name}'s marks — look only.</span>}
+      {shownClientFeedback.map((f) => (
+        <ClientFeedbackEntry
+          key={f.id}
+          feedback={f}
+          marksShown={clientMarksId === f.id}
+          onToggleMarks={() => setClientMarksId((id) => (id === f.id ? null : f.id))}
+        />
+      ))}
+    </div>
+  );
 
   // The latest version's supe note is editable; an older one's is shown as
   // it was left.
@@ -254,6 +301,7 @@ export default function Review() {
           </div>
         )}
         {supeNotesBox}
+        {clientFeedbackBox}
       </div>
     );
 
@@ -397,8 +445,8 @@ export default function Review() {
               onDeleteUhq={hq.requestDeleteUhq}
               onFrameSettle={setPlayerFrame}
               onFrameCount={setFrameCount}
-              annotations={viewingPlate ? [] : versionAnnotations}
-              onChange={isLatest ? saveAnnotations : undefined}
+              annotations={viewingPlate ? [] : clientMarks ? clientMarks.annotations : versionAnnotations}
+              onChange={isLatest && !clientMarks ? saveAnnotations : undefined}
               notes={renderNotes}
               actions={actions}
             />

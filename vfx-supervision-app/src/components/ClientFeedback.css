@@ -1,0 +1,66 @@
+.cfb-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.cfb-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cfb-shot {
+  font-size: 12px;
+}
+
+.cfb-who {
+  font: 13px var(--font-body);
+  color: var(--text-primary);
+}
+
+.cfb-when {
+  font: 11px var(--font-mono);
+  color: var(--text-tertiary);
+}
+
+.cfb-marks {
+  margin-left: auto;
+}
+
+.cfb-comment {
+  font: 13px var(--font-body);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+.cfb-frames {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font: 12px var(--font-body);
+  color: var(--text-secondary);
+}
+
+.cfb-frames li {
+  display: flex;
+  gap: 10px;
+}
+
+.cfb-drawn {
+  color: var(--text-tertiary);
+}
+
+.cfb-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

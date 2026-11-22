@@ -471,3 +471,12 @@
   padding: 0 8px;
   font-size: 10px;
 }
+
+/* "+ Add a note on frame N", for a typed note without drawing first. */
+.aplayer-add-note {
+  align-self: flex-start;
+}
+
+.aplayer-note-empty .aplayer-add-note {
+  margin-left: 4px;
+}
