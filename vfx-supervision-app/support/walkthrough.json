@@ -146,7 +146,7 @@
         {
           "id": "artist-report",
           "title": "Check your assignments",
-          "body": "Open **Artist Report**. It lists every shot assigned to you with its description, status, and due date.\n\nIf it says **Your account isn't linked to an artist yet**, ask a supervisor to link you on the **Team & Access** page.",
+          "body": "Open **Artist Report**. Each shot assigned to you is a card: its thumbnail, status, due date and description, with every task you have on it listed underneath.\n\nIf it says **Your account isn't linked to an artist yet**, ask a supervisor to link you on the **Team & Access** page.",
           "route": "/artist-report",
           "routeLabel": "Open Artist Report"
         },

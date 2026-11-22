@@ -40,34 +40,41 @@
   color: var(--text-tertiary);
 }
 
-.artist-report-row {
-  cursor: pointer;
+/* One card per shot, everything visible at once. */
+.artist-report-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  align-items: start;
 }
 
-.artist-report-row:hover {
-  background: var(--surface);
+.artist-report-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
 }
 
-/* Taller rows so the shot thumbnail is readable at a glance; content is
-   centered against the thumbnail rather than pinned to the top. */
-.artist-report-row td {
-  vertical-align: middle;
-  padding-top: 10px;
-  padding-bottom: 10px;
+/* Same importance color-coding as Post Reports, Shot Board, and Shot
+   Tracking, as a colored left edge on the card. */
+.artist-report-card.importance-danger {
+  box-shadow: inset 3px 0 0 var(--danger);
 }
 
-.artist-report-thumb-cell {
-  width: 140px;
+.artist-report-card.importance-warning {
+  box-shadow: inset 3px 0 0 var(--warning);
 }
 
 .artist-report-thumb {
   display: block;
-  width: 128px;
-  height: 72px;
+  width: 100%;
+  aspect-ratio: 16 / 9;
   border-radius: 6px;
   object-fit: cover;
   background: var(--surface);
   border: 1px solid var(--border);
+  box-sizing: border-box;
 }
 
 .artist-report-thumb-placeholder {
@@ -77,50 +84,73 @@
   color: var(--text-tertiary);
 }
 
-/* Same importance color-coding as Post Reports, Shot Board, and Shot
-   Tracking — a table row has no left border of its own under
-   border-collapse, so it's drawn as an inset shadow on the first cell. */
-.artist-report-row.importance-danger td:first-child {
-  box-shadow: inset 3px 0 0 var(--danger);
+.artist-report-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 
-.artist-report-row.importance-warning td:first-child {
-  box-shadow: inset 3px 0 0 var(--warning);
+.artist-report-code {
+  font: 700 14px var(--font-mono);
+  color: var(--text-primary);
+  white-space: nowrap;
 }
 
-.artist-report-expand-cell {
-  width: 20px;
-  color: var(--text-tertiary);
-  font-size: 10px;
+.artist-report-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.artist-report-desc {
+  margin: 0;
+  font: 13px var(--font-body);
+  color: var(--text-secondary);
+  line-height: 1.4;
 }
 
 .artist-report-tasks {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
 }
 
-.artist-report-task-row {
+.artist-report-task {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
+  flex-direction: column;
+  gap: 8px;
   padding: 8px 10px;
-  background: var(--card-bg);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 6px;
+}
+
+.artist-report-task-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .artist-report-task-type {
   font: 700 11px var(--font-mono);
   color: var(--text-primary);
-  min-width: 170px;
-  flex-shrink: 0;
 }
 
-/* Invisible copy of the VIEW button: holds a button-sized space between
-   VIEW and Start/Resume so they aren't mis-clicked for each other. */
-.artist-report-gap {
-  visibility: hidden;
-  pointer-events: none;
+.artist-report-task-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Start / Resume sits apart from VIEW so they aren't mis-clicked for each other. */
+.artist-report-start {
+  margin-left: 16px;
 }
