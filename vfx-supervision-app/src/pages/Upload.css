@@ -267,3 +267,26 @@
   font: 12px var(--font-body);
   color: var(--warning);
 }
+
+.upload-not-started {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 14px;
+  font: 13px var(--font-body);
+}
+
+.upload-not-started ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.upload-not-started-tag {
+  margin-left: 8px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}

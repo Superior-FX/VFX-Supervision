@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import FolderStatusBanner from "../components/FolderStatusBanner.jsx";
 import { withStatus } from "../data/taskStatus.js";
 import { useCurrentArtist } from "../lib/currentArtist.js";
@@ -103,6 +104,16 @@ export default function Upload() {
   // shots where this artist has a task in wip show up at all.
   const myShots = currentArtist
     ? sortByShotCode(postReports.filter((s) => s.tasks.some((t) => myTask(t) && t.status === "wip")))
+    : [];
+
+  // Assigned to this artist but not yet in wip, so not uploadable — listed
+  // so a missing task isn't a mystery.
+  const notStartedTasks = currentArtist
+    ? sortByShotCode(postReports).flatMap((shot) =>
+        shot.tasks
+          .filter((t) => myTask(t) && (t.status === "assigned" || t.status === "needs_revision"))
+          .map((task) => ({ shot, task }))
+      )
     : [];
 
   const selectedShot = myShots.find((s) => s.id === selectedShotId);
@@ -273,9 +284,14 @@ export default function Upload() {
     setUploadError("");
     setProxyWarning("");
     try {
-      const dest = await resolveDestination();
-      const { file, handle } = await pickVideoFile(dest.renderDir);
+      // The picker must open while Chrome still counts this as a click, so
+      // it comes first: the folder lookups below can take seconds on a
+      // Google Drive folder, and by then Chrome refuses to show a picker.
+      if (!(await ensurePermission(rootHandle))) throw new Error("Project folder access was denied.");
+      const { file, handle } = await pickVideoFile(sessionDirs?.renderDir, { pickerId: "upload-render-video" });
       setUploading(true);
+      reportProgress("Finding the task folders…");
+      const dest = await resolveDestination();
       beginSession(dest);
       // A video already sitting in render/ (e.g. rendered straight there)
       // doesn't need copying — it's used where it is.
@@ -326,9 +342,12 @@ export default function Upload() {
     setUploadError("");
     setProxyWarning("");
     try {
-      const dest = await resolveDestination();
-      const folderHandle = await pickSequenceFolder(dest.renderDir);
+      // Picker first, for the same reason as uploadVideo.
+      if (!(await ensurePermission(rootHandle))) throw new Error("Project folder access was denied.");
+      const folderHandle = await pickSequenceFolder(sessionDirs?.renderDir, { pickerId: "upload-render-sequence" });
       setUploading(true);
+      reportProgress("Finding the task folders…");
+      const dest = await resolveDestination();
       const files = await readFolderFiles(folderHandle);
       if (files.length === 0) {
         setUploadError("That folder is empty.");
@@ -557,6 +576,22 @@ export default function Upload() {
             <span className="label upload-no-shots-hint">
               No shots in progress for {currentArtist.name} — click Start in Artist Report first.
             </span>
+          )}
+          {notStartedTasks.length > 0 && (
+            <div className="card upload-not-started">
+              <span className="label">Not started yet — these won't appear here until you click Start:</span>
+              <ul>
+                {notStartedTasks.map(({ shot, task }) => (
+                  <li key={task.id}>
+                    <span className="mono">{shot.shotCode}</span> — {task.type}
+                    {task.status === "needs_revision" && <span className="upload-not-started-tag">needs revision</span>}
+                  </li>
+                ))}
+              </ul>
+              <Link to="/artist-report" className="btn btn-secondary">
+                Open Artist Report
+              </Link>
+            </div>
           )}
 
           {selectedShot && (
