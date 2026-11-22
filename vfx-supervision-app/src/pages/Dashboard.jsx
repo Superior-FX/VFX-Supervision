@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import ShotTasksDialog from "../components/ShotTasksDialog.jsx";
+import { DeleteRequestsProvider, useDeleteRequests } from "../lib/deleteRequests.jsx";
+import { useRole } from "../lib/role.js";
+import { useProjectFolder } from "../lib/useProjectFolder.js";
 import { getVersion, subscribeAny } from "../lib/sharedStore.js";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { aggregateTaskStatus, isInReview, statusSince, taskStatusInfo } from "../data/taskStatus.js";
@@ -193,14 +197,14 @@ function Overview({ projects, activeId, onOpen }) {
 
 // ------------------------------------------------------------ project view
 
-function ShotTile({ shot, onOpen }) {
+function ShotTile({ shot, onOpen, onContextMenu }) {
   const status = aggregateTaskStatus(shot.tasks);
   const statusKey = shot.tasks.length ? Object.keys(STATUS_COLORS).find((k) => taskStatusInfo(k) === status) : null;
   const color = statusKey ? STATUS_COLORS[statusKey] : "var(--border)";
   const importance = computeImportance(shot);
   const overdue = isShotOverdue(shot);
   return (
-    <div className="dash-tile" style={{ "--tile-color": color }} onClick={onOpen}>
+    <div className="dash-tile" style={{ "--tile-color": color }} onClick={onOpen} onContextMenu={onContextMenu}>
       <div className="dash-tile-thumb">
         {shot.thumbnail ? <img src={shot.thumbnail} alt={`${shot.shotCode} thumbnail`} /> : <ImageIcon />}
         {importance.tier === "high" && <span className="dash-tile-flag" title="High importance" />}
@@ -242,7 +246,39 @@ function ShotTile({ shot, onOpen }) {
 
 function ProjectView({ project, onBack }) {
   const navigate = useNavigate();
-  const [shots] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project.id), []);
+  const [shots, setShots] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project.id), []);
+  const [artists] = useLocalStorageState("vfx-supe-artists", []);
+  const canManage = useRole().can("manage_projects");
+  const folder = useProjectFolder(project);
+  const deleteRequests = useDeleteRequests(project.id);
+  // Right-click menu on a shot tile ({ shot, x, y }), and the shot whose
+  // tasks dialog is open.
+  const [menu, setMenu] = useState(null);
+  const [editingShotId, setEditingShotId] = useState(null);
+  const editingShot = shots.find((s) => s.id === editingShotId) ?? null;
+
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const onKey = (e) => e.key === "Escape" && close();
+    window.addEventListener("mousedown", close);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menu]);
+
+  const openTileMenu = (shot) => (e) => {
+    if (!canManage) return; // keep the browser's own menu for everyone else
+    e.preventDefault();
+    setMenu({ shot, x: Math.min(e.clientX, window.innerWidth - 190), y: Math.min(e.clientY, window.innerHeight - 60) });
+  };
+
+  const saveShotTasks = (shotId, patch) =>
+    setShots((prev) => prev.map((s) => (s.id === shotId ? { ...s, ...patch } : s)));
   const stats = useMemo(() => computeProjectStats(shots), [shots]);
   const delivery = deliveryInfo(project.deliveryDate);
   const openShot = (shot) => navigate(`/shot/${shot.shotCode}`);
@@ -314,7 +350,31 @@ function ProjectView({ project, onBack }) {
     .slice(0, 8);
 
   return (
-    <>
+    <DeleteRequestsProvider value={deleteRequests}>
+      {menu && (
+        <div className="stasks-menu" style={{ left: menu.x, top: menu.y }} onMouseDown={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            className="stasks-menu-item"
+            onClick={() => {
+              setEditingShotId(menu.shot.id);
+              setMenu(null);
+            }}
+          >
+            Add / remove tasks…
+          </button>
+        </div>
+      )}
+      {editingShot && (
+        <ShotTasksDialog
+          key={editingShot.id}
+          shot={editingShot}
+          artists={artists}
+          rootHandle={folder.rootHandle}
+          onSave={(patch) => saveShotTasks(editingShot.id, patch)}
+          onClose={() => setEditingShotId(null)}
+        />
+      )}
       <div className="dashboard-header">
         <div className="dash-project-header">
           <span className="dash-back" onClick={onBack}>
@@ -367,7 +427,7 @@ function ProjectView({ project, onBack }) {
       <div className="card dash-section">
         <div className="dash-section-head">
           <span className="label">Shots by scene</span>
-          <span className="dash-muted">Hover for tasks · click to open</span>
+          <span className="dash-muted">Hover for tasks · click to open{canManage ? " · right-click to add or remove tasks" : ""}</span>
         </div>
         {scenes.length === 0 && <span className="dash-empty">No shots in post yet.</span>}
         {scenes.map(([scene, sceneShots]) => {
@@ -382,7 +442,7 @@ function ProjectView({ project, onBack }) {
               </div>
               <div className="dash-tiles">
                 {sceneShots.map((shot) => (
-                  <ShotTile key={shot.id} shot={shot} onOpen={() => openShot(shot)} />
+                  <ShotTile key={shot.id} shot={shot} onOpen={() => openShot(shot)} onContextMenu={openTileMenu(shot)} />
                 ))}
               </div>
             </div>
@@ -467,7 +527,7 @@ function ProjectView({ project, onBack }) {
           </div>
         ))}
       </div>
-    </>
+    </DeleteRequestsProvider>
   );
 }
 

@@ -1,0 +1,90 @@
+.stasks-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: #000a;
+}
+
+.stasks-dialog {
+  width: min(820px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  box-shadow: 0 16px 48px #000a;
+  box-sizing: border-box;
+}
+
+.stasks-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stasks-thumb {
+  width: 96px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.stasks-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.stasks-code {
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.stasks-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stasks-progress {
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Right-click menu on Dashboard shot tiles. */
+.stasks-menu {
+  position: fixed;
+  z-index: 55;
+  min-width: 170px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card-bg);
+  box-shadow: 0 8px 24px #0008;
+}
+
+.stasks-menu-item {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-primary);
+  font: 13px var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.stasks-menu-item:hover {
+  background: var(--accent-soft);
+}
