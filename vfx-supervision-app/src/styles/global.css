@@ -22,6 +22,8 @@
   --danger-soft: #fb718520;
   --info: #c084fc;
   --info-soft: #c084fc20;
+  --client: #22d3ee;
+  --client-soft: #22d3ee20;
 
   --font-display: "Archivo Black", sans-serif;
   --font-body: "Space Grotesk", sans-serif;
@@ -90,6 +92,11 @@ body {
 .pill-info {
   border-color: var(--info);
   color: var(--info);
+}
+
+.pill-client {
+  border-color: var(--client);
+  color: var(--client);
 }
 
 .btn {

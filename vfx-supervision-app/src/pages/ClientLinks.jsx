@@ -49,7 +49,7 @@ function linkState(link) {
 export default function ClientLinks() {
   const project = useActiveProject();
   const [postReports] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
-  const [finalsOnly, setFinalsOnly] = useState(false);
+  const [clientPendingOnly, setClientPendingOnly] = useState(false);
   const [selected, setSelected] = useState(() => new Set());
   const [title, setTitle] = useState("");
   const [clientName, setClientName] = useState("");
@@ -72,10 +72,10 @@ export default function ClientLinks() {
     () =>
       sortByShotCode(postReports).flatMap((shot) =>
         (shot.tasks ?? [])
-          .filter((t) => t.reviewFile && t.version && (!finalsOnly || t.status === "final"))
+          .filter((t) => t.reviewFile && t.version && (!clientPendingOnly || t.status === "client_review"))
           .map((task) => ({ shot, task, key: itemKey(shot.id, task.id) }))
       ),
-    [postReports, finalsOnly]
+    [postReports, clientPendingOnly]
   );
 
   const chosen = candidates.filter((c) => selected.has(c.key));
@@ -296,14 +296,20 @@ export default function ClientLinks() {
         <div className="clinks-section-head">
           <span className="label">New link</span>
           <label className="clinks-check">
-            <input type="checkbox" checked={finalsOnly} onChange={(e) => setFinalsOnly(e.target.checked)} />
-            Finals only
+            <input
+              type="checkbox"
+              checked={clientPendingOnly}
+              onChange={(e) => setClientPendingOnly(e.target.checked)}
+            />
+            Pending client review only
           </label>
         </div>
 
         {candidates.length === 0 ? (
           <div className="clinks-empty">
-            {finalsOnly ? "No finaled tasks with a review proxy yet." : "No tasks have a review proxy yet."}
+            {clientPendingOnly
+              ? "No tasks are pending client review. Send one from Review & Dailies with Client Review."
+              : "No tasks have a review proxy yet."}
           </div>
         ) : (
           <div className="clinks-list">

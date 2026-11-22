@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { supabase, supabaseConfigured } from "./supabase.js";
+import { forgetToken as forgetDriveToken } from "./googleDrive.js";
 
 // Signed-in session + the matching row from public.profiles.
 //   session: undefined while loading, null when signed out.
@@ -49,6 +50,7 @@ export function AuthProvider({ children }) {
   }, [userId, refreshProfile]);
 
   const signOut = useCallback(async () => {
+    forgetDriveToken(); // the saved Google Drive sign-in goes with it
     await supabase?.auth.signOut();
     setProfile(null);
   }, []);

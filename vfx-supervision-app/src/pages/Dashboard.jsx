@@ -34,6 +34,7 @@ const STATUS_LABELS = {
   final: "Final",
   pending: "In review",
   comp_approved: "Comp approved",
+  client_review: "Client review",
   wip: "WIP",
   needs_revision: "Revise",
   assigned: "Not started",
@@ -318,7 +319,7 @@ function ProjectView({ project, onBack }) {
     for (const { task } of taskRows) {
       if (task.status === "final") continue;
       for (const name of getAssignees(task)) {
-        if (!map.has(name)) map.set(name, { assigned: 0, wip: 0, pending: 0, comp_approved: 0, needs_revision: 0, final: 0, total: 0 });
+        if (!map.has(name)) map.set(name, { assigned: 0, wip: 0, pending: 0, comp_approved: 0, client_review: 0, needs_revision: 0, final: 0, total: 0 });
         const entry = map.get(name);
         entry[task.status in entry ? task.status : "assigned"]++;
         entry.total++;
@@ -400,7 +401,14 @@ function ProjectView({ project, onBack }) {
         <Kpi
           label="Awaiting review"
           value={stats.inReview}
-          sub={stats.byStatus.comp_approved ? `${stats.byStatus.comp_approved} comp approved` : undefined}
+          sub={
+            [
+              stats.byStatus.comp_approved && `${stats.byStatus.comp_approved} comp approved`,
+              stats.byStatus.client_review && `${stats.byStatus.client_review} with client`,
+            ]
+              .filter(Boolean)
+              .join(" · ") || undefined
+          }
           tone={stats.inReview ? "accent" : null}
           onClick={() => navigate("/review")}
         />

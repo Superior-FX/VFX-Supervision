@@ -185,7 +185,7 @@
         {
           "id": "review-queue",
           "title": "Open the review queue",
-          "body": "**Review & Dailies** lists every task that's **Pending** or **Comp Approved**. Use **Sort by** to order it by Shot, Due date, Artist, Task, Scene, or Date submitted.\n\nYou can also jump straight in from **Review →** on a task in Post Reports or the Shot Board.",
+          "body": "**Review & Dailies** lists every task that's **Pending**, **Comp Approved**, or **Pending Client Review**. Use **Sort by** to order it by Shot, Due date, Artist, Task, Scene, or Date submitted.\n\nYou can also jump straight in from **Review →** on a task in Post Reports or the Shot Board.",
           "route": "/review",
           "routeLabel": "Open Review & Dailies"
         },
@@ -202,7 +202,7 @@
         {
           "id": "review-decide",
           "title": "Revise or Final",
-          "body": "- **Revise** sends it back to the artist as **Needs Revision**.\n- **Final** (VFX Supervisors and Admins) marks the task **Final**.\n- A **Comp Supervisor** sees **Comp Approve** instead: the task becomes **Comp Approved — awaiting VFX Sup**, and a VFX Supervisor gives the last Final.\n\nProducers and Post-Supervisors can watch and read everything but can't Revise or Final."
+          "body": "- **Revise** sends it back to the artist as **Needs Revision**.\n- **Final** (VFX Supervisors and Admins) marks the task **Final**.\n- A **Comp Supervisor** sees **Comp Approve** instead: the task becomes **Comp Approved — awaiting VFX Sup**, and a VFX Supervisor gives the last Final.\n- **Client Review** (VFX Supervisors and Admins) approves it internally and marks it **Pending Client Review**. It stays in Review & Dailies, and on **Client Review** you can tick **Pending client review only** to pick these for a client link. When the client has answered, click **Final** or **Revise**.\n\nProducers and Post-Supervisors can watch and read everything but can't Revise or Final."
         },
         {
           "id": "review-hq",
@@ -234,7 +234,7 @@
         {
           "id": "status-lifecycle",
           "title": "Task statuses at a glance",
-          "body": "| Status | Meaning |\n|---|---|\n| **Assigned** | Pushed to the artist, not started |\n| **WIP** | Artist clicked Start or Resume |\n| **Pending** | Submitted, waiting on a supervisor |\n| **Comp Approved** | Comp Supervisor approved, waiting on the VFX Supervisor |\n| **Needs Revision** | Sent back with notes |\n| **Final** | Approved and done |"
+          "body": "| Status | Meaning |\n|---|---|\n| **Assigned** | Pushed to the artist, not started |\n| **WIP** | Artist clicked Start or Resume |\n| **Pending** | Submitted, waiting on a supervisor |\n| **Comp Approved** | Comp Supervisor approved, waiting on the VFX Supervisor |\n| **Pending Client Review** | Approved internally, waiting on the client |\n| **Needs Revision** | Sent back with notes |\n| **Final** | Approved and done |"
         }
       ]
     },

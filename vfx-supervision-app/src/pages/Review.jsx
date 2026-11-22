@@ -45,7 +45,7 @@ function formatSubmitted(iso) {
 
 export default function Review() {
   const project = useActiveProject();
-  const { can, canFinal, finalStatus } = useRole();
+  const { can, canFinal, canSendToClient, finalStatus } = useRole();
   const canDecide = can("review_decide");
   const [searchParams, setSearchParams] = useSearchParams();
   const [postReports, setPostReports] = useLocalStorageState(scopedKey("vfx-supe-post-reports", project?.id), []);
@@ -322,6 +322,15 @@ export default function Review() {
               <div className="btn btn-danger" onClick={() => act("needs_revision")}>
                 Revise
               </div>
+              {canSendToClient(current.task.status) && (
+                <div
+                  className="btn btn-secondary"
+                  onClick={() => act("client_review")}
+                  title="Approved internally: send it to the client before it's finaled"
+                >
+                  Client Review
+                </div>
+              )}
               {canFinal(current.task.status) && (
                 <div className="btn btn-primary" onClick={() => act(finalStatus)}>
                   {finalStatus === "comp_approved" ? "Comp Approve" : "Final"}
@@ -403,6 +412,7 @@ export default function Review() {
                   {shot.shotCode} — {task.type}
                   {task.version ? ` ${formatVersion(task.version)}` : ""} — {assigneesLabel(task)}
                   {task.status === "comp_approved" ? " — comp approved" : ""}
+                  {task.status === "client_review" ? " — with client" : ""}
                   {sortMode === "submitted"
                     ? submittedAt(task)
                       ? ` — submitted ${formatSubmitted(submittedAt(task))}`
@@ -430,6 +440,7 @@ export default function Review() {
             {current.task.status === "comp_approved" && (
               <span className="pill pill-info">Comp approved — awaiting VFX Sup</span>
             )}
+            {current.task.status === "client_review" && <span className="pill pill-client">Pending client review</span>}
             <span className="review-meta-assignee">{assigneesLabel(current.task)}</span>
           </div>
 

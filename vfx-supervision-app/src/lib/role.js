@@ -40,7 +40,7 @@ export function primaryRole(roles) {
 }
 
 // { profile, roles, can(permission), isAdmin, isArtistOnly, primaryRole,
-//   finalStatus, canFinal(status) }
+//   finalStatus, canFinal(status), canSendToClient(status) }
 export function useRole() {
   const { profile } = useAuth();
   const roles = profile?.roles ?? [];
@@ -56,7 +56,14 @@ export function useRole() {
     // (a Comp Supervisor can't re-approve something already comp_approved).
     canFinal: (status) => {
       const next = finalStatusFor(roles);
+      // A Comp Supervisor's approval comes before the client sees it, so it
+      // doesn't apply to something already out for client review.
+      if (next === "comp_approved" && status === "client_review") return false;
       return Boolean(next) && next !== status;
     },
+    // Client Review: internal approval that sends the task out to the
+    // client before it's finaled. The same people whose Final is final.
+    canSendToClient: (status) =>
+      finalStatusFor(roles) === "final" && (status === "pending" || status === "comp_approved"),
   };
 }

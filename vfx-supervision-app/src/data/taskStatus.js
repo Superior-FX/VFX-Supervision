@@ -4,19 +4,24 @@
 //   -> needs_revision (supervisor clicks Revise) -> back to wip via Resume
 //   -> comp_approved (Comp Supervisor clicks Final) -> final (VFX Supervisor)
 //   -> final (VFX Supervisor / Admin clicks Final, from pending or comp_approved)
+//   -> client_review (VFX Supervisor / Admin clicks Client Review: approved
+//      internally, now waiting on the client) -> final or needs_revision
 export const TASK_STATUSES = {
   assigned: { label: "Assigned", tone: null },
   wip: { label: "WIP", tone: "warning" },
   pending: { label: "Pending", tone: "accent" },
   comp_approved: { label: "Comp Approved", tone: "info" },
+  client_review: { label: "Pending Client Review", tone: "client" },
   needs_revision: { label: "Needs Revision", tone: "danger" },
   final: { label: "Final", tone: "success" },
 };
 
-// Submitted and waiting on a supervisor: either nobody has looked yet, or
-// the Comp Supervisor approved it and it's waiting on the VFX Supervisor.
+// Submitted and still waiting on a final call: nobody has looked yet, the
+// Comp Supervisor approved it and it's waiting on the VFX Supervisor, or
+// it's approved internally and waiting on the client. All three stay in
+// Review & Dailies, where the Final / Revise call is made.
 export function isInReview(status) {
-  return status === "pending" || status === "comp_approved";
+  return status === "pending" || status === "comp_approved" || status === "client_review";
 }
 
 export function taskStatusInfo(status) {
@@ -64,6 +69,7 @@ export function aggregateTaskStatus(tasks) {
   if (statuses.includes("wip")) return taskStatusInfo("wip");
   if (statuses.includes("pending")) return taskStatusInfo("pending");
   if (statuses.includes("comp_approved")) return taskStatusInfo("comp_approved");
+  if (statuses.includes("client_review")) return taskStatusInfo("client_review");
   if (statuses.length > 0 && statuses.every((s) => s === "final")) return taskStatusInfo("final");
   return taskStatusInfo("assigned");
 }

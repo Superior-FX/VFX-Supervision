@@ -49,14 +49,45 @@ export function preloadGoogle() {
   if (driveConfigured) loadGis().catch(() => {});
 }
 
-let token = null; // { value, expiresAt }
+// The access token is kept in this browser until it expires (~1 hour), so a
+// reload or another tab of the app doesn't ask Google again. It's a short-
+// lived token only (no refresh token), and it's dropped as soon as Drive
+// rejects it.
+const TOKEN_KEY = "vfx-supe-google-drive-token";
+
+function readStoredToken() {
+  try {
+    const t = JSON.parse(localStorage.getItem(TOKEN_KEY) || "null");
+    return t && typeof t.value === "string" && t.expiresAt > Date.now() ? t : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeToken(t) {
+  try {
+    if (t) localStorage.setItem(TOKEN_KEY, JSON.stringify(t));
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // Storage blocked: it just won't be remembered past this page.
+  }
+}
+
+let token = readStoredToken(); // { value, expiresAt }
+
+export function forgetToken() {
+  token = null;
+  storeToken(null);
+}
 
 export function hasDriveToken() {
+  // Another tab may have signed in since this one loaded.
+  if (!(token && token.expiresAt > Date.now() + 60_000)) token = readStoredToken();
   return Boolean(token && token.expiresAt > Date.now() + 60_000);
 }
 
-// Asks Google for an access token (a popup the first time each session,
-// silent after that until it expires, ~1 hour). Call from a click handler.
+// Asks Google for an access token: a popup when there's no live one in this
+// browser, none again until it expires (~1 hour). Call from a click handler.
 export async function getDriveToken() {
   if (hasDriveToken()) return token.value;
   await loadGis();
@@ -74,6 +105,7 @@ export async function getDriveToken() {
           return;
         }
         token = { value: res.access_token, expiresAt: Date.now() + Number(res.expires_in) * 1000 };
+        storeToken(token);
         resolve(token.value);
       },
       error_callback: (err) => reject(new Error(err?.message || "Google sign-in was closed.")),
@@ -95,7 +127,7 @@ async function driveFetch(path, { method = "GET", body, params = {} } = {}) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (res.status === 401) token = null;
+  if (res.status === 401) forgetToken();
   if (!res.ok) {
     let message = `Google Drive returned ${res.status}.`;
     try {

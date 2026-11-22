@@ -29,7 +29,7 @@ export default function TaskRow({ task, shot, readOnly, onChange, onRemove, arti
   const [confirming, setConfirming] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const status = taskStatusInfo(task.status);
-  const { can, canFinal, finalStatus } = useRole();
+  const { can, canFinal, canSendToClient, finalStatus } = useRole();
   const deleteMatches = confirmText.trim().toUpperCase() === "DELETE";
   const deleteRequests = useDeleteRequestsContext();
   const deletePending = deleteRequests.pendingFor("task", task.id);
@@ -84,6 +84,15 @@ export default function TaskRow({ task, shot, readOnly, onChange, onRemove, arti
             {can("review_decide") && (
               <span className="btn btn-danger post-task-review-btn" onClick={() => onChange({ status: "needs_revision" })}>
                 Revise
+              </span>
+            )}
+            {canSendToClient(task.status) && (
+              <span
+                className="btn btn-secondary post-task-review-btn"
+                onClick={() => onChange({ status: "client_review" })}
+                title="Approved internally: send it to the client before it's finaled"
+              >
+                Client Review
               </span>
             )}
             {canFinal(task.status) && (
