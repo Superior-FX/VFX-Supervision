@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { ensurePermission, isFsAccessSupported, loadRootHandle, reconnectProjectRootFolder } from "./fsAccess.js";
+import {
+  ensurePermission,
+  isFsAccessSupported,
+  loadRootHandle,
+  reconnectProjectRootFolder,
+  withFolderTimeout,
+} from "./fsAccess.js";
+
+// A stale folder handle (folder moved, renamed, or a Google Drive virtual
+// drive that stopped answering) can make Chrome never answer a permission
+// query, which left every page stuck at "loading". Past this, the saved
+// folder is treated as gone, so the page offers Reconnect Folder… instead.
+const CHECK_TIMEOUT_MS = 5000;
 
 // The project's on-disk root folder, shared by every page that touches it
 // (Post Reports, Review & Dailies, Upload Shot) — previously each page
@@ -27,12 +39,14 @@ export function useProjectFolder(project) {
     let cancelled = false;
     (async () => {
       try {
-        const handle = await loadRootHandle(project.id);
+        const handle = await withFolderTimeout(loadRootHandle(project.id), CHECK_TIMEOUT_MS);
+        const perm = handle ? await withFolderTimeout(handle.queryPermission({ mode: "readwrite" }), CHECK_TIMEOUT_MS) : null;
         if (cancelled) return;
         setRootHandle(handle);
-        if (handle) setPermission(await handle.queryPermission({ mode: "readwrite" }));
-      } catch {
-        // treated as "missing"
+        setPermission(perm);
+      } catch (err) {
+        // treated as "missing" — the banner's Reconnect Folder… fixes it
+        if (err?.name === "TimeoutError") console.warn("Saved project folder didn't answer; treating it as disconnected.");
       } finally {
         if (!cancelled) setLoaded(true);
       }
@@ -49,7 +63,7 @@ export function useProjectFolder(project) {
     if (!rootHandle || permission === "granted") return;
     const id = setInterval(async () => {
       try {
-        setPermission(await rootHandle.queryPermission({ mode: "readwrite" }));
+        setPermission(await withFolderTimeout(rootHandle.queryPermission({ mode: "readwrite" }), CHECK_TIMEOUT_MS));
       } catch {
         // leave as is
       }

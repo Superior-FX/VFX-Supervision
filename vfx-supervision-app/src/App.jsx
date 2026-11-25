@@ -13,6 +13,7 @@ import ShotBoard from "./pages/ShotBoard.jsx";
 import ShotDetail from "./pages/ShotDetail.jsx";
 import PostReports from "./pages/PostReports.jsx";
 import Review from "./pages/Review.jsx";
+import EditViewer from "./pages/EditViewer.jsx";
 import Upload from "./pages/Upload.jsx";
 import ArtistReport from "./pages/ArtistReport.jsx";
 import ArtistReview from "./pages/ArtistReview.jsx";
@@ -61,6 +62,7 @@ function AppRoutes() {
         <Route path="/post-reports" element={<PostReports />} />
         <Route path="/shot/:shotId" element={<ShotDetail />} />
         <Route path="/review" element={<Review />} />
+        <Route path="/edit-viewer" element={<EditViewer />} />
         <Route path="/upload" element={<Upload />} />
         <Route path="/artist-report" element={<ArtistReport />} />
         <Route path="/artist-review" element={<ArtistReview />} />

@@ -33,6 +33,7 @@ const NAV_GROUPS = [
     items: [
       { to: "/post-reports", label: "Post Reports" },
       { to: "/review", label: "Review & Dailies" },
+      { to: "/edit-viewer", label: "Edit Viewer" },
       { to: "/board", label: "Shot Board" },
       { to: "/client-review", label: "Client Review", permission: "manage_users" },
     ],

@@ -22,7 +22,7 @@
         {
           "id": "navigation",
           "title": "Find your way around",
-          "body": "The sidebar is grouped by department:\n\n- **Dashboard**: a company-wide snapshot of every project.\n- **Post-Production**: **Post Reports** (scenes, shots, tasks, ingest, artists), **Review & Dailies**, and **Shot Board**.\n- **Artist Portal**: **Artist Report**, **Upload Shot**, and **Shot Viewer**.\n- **Reference**: checklists, reference docs, and this guide.\n- **Admin**: **Team & Access** (supervisors, producers, and Admins only).\n\nClick a group's header to expand or collapse it; the app remembers what you left open. **Pre-Production** and **Production** show a 🔒 and are locked for now. Artist accounts only see the **Artist Portal** and **Reference**."
+          "body": "The sidebar is grouped by department:\n\n- **Dashboard**: a company-wide snapshot of every project.\n- **Post-Production**: **Post Reports** (scenes, shots, tasks, ingest, artists), **Review & Dailies**, **Edit Viewer**, and **Shot Board**.\n- **Artist Portal**: **Artist Report**, **Upload Shot**, and **Shot Viewer**.\n- **Reference**: checklists, reference docs, and this guide.\n- **Admin**: **Team & Access** (supervisors, producers, and Admins only).\n\nClick a group's header to expand or collapse it; the app remembers what you left open. **Pre-Production** and **Production** show a 🔒 and are locked for now. Artist accounts only see the **Artist Portal** and **Reference**."
         },
         {
           "id": "connect-folder",
@@ -215,6 +215,13 @@
           "id": "review-hq",
           "title": "Look closer with HQ renders",
           "body": "When the normal proxy isn't enough, click **Generate HQ** for a 4K proxy made from the artist's submitted render, or render **6K/8K frames** (a single frame, a frame range, or the full range) for close inspection.\n\nThese take time. **Keep the tab open until they finish.** HQ playback is heavier and may stutter on slower machines."
+        },
+        {
+          "id": "edit-viewer",
+          "title": "Watch the cut in the Edit Viewer",
+          "body": "**Post-Production → Edit Viewer** strings every shot's latest submission together in shot-code order, so you can check continuity. Each shot plays its **Compositing** version if it has one, otherwise its most recently submitted task. Tick **Fill gaps with plates** to drop in the plate for shots with nothing submitted yet, and use **All scenes** to watch one scene.\n\nClick a shot in **Shots in the cut** or on the timeline to jump to it. The coloured bar under each timeline block shows the task's status.\n\n| Key | Does |\n|---|---|\n| **Space** | Play / pause |\n| **↑ / ↓** | Previous / next shot |\n| **← / →** | Back / forward one frame |\n| **Shift + ← / →** | One second |\n| **Home / End** | First / last shot |\n| **F** | Full screen |\n\nThe project folder must be connected. Shots that haven't synced from Google Drive yet are listed under **Left out**.",
+          "route": "/edit-viewer",
+          "routeLabel": "Open the Edit Viewer"
         }
       ]
     },
