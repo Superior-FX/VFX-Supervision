@@ -59,6 +59,13 @@
           "routeLabel": "Open Post Reports"
         },
         {
+          "id": "spreadsheet",
+          "title": "The Spreadsheet view",
+          "body": "Post Reports opens on the **Spreadsheet** tab: every shot as one row. Click any cell to edit it: shot code, story importance, complexity, pipeline, due date, timecodes, and descriptions. Use **All scenes** to show a single scene. Click a task that's waiting on review to open it in Review & Dailies, or a thumbnail to open the shot.\n\nScenes, tasks, folders, plates, and pushes are handled on the **Shots** tab.",
+          "route": "/post-reports",
+          "routeLabel": "Open Post Reports"
+        },
+        {
           "id": "add-scene",
           "title": "Add scenes",
           "body": "On **Post Reports → Shots**, click **+ Add Scene** and enter the scene number (e.g. **9**, saved as **SC009**).\n\nIf the project folder is connected, the scene's folder is created on disk right away. Otherwise you'll see a **Create folder** button on the scene to do it later. Use the pencil next to **SC###** to rename a scene; its folder is renamed too.",
@@ -202,7 +209,7 @@
         {
           "id": "review-decide",
           "title": "Revise or Final",
-          "body": "- **Revise** sends it back to the artist as **Needs Revision**.\n- **Final** (VFX Supervisors and Admins) marks the task **Final**.\n- A **Comp Supervisor** sees **Comp Approve** instead: the task becomes **Comp Approved — awaiting VFX Sup**, and a VFX Supervisor gives the last Final.\n- **Client Review** (VFX Supervisors and Admins) approves it internally and marks it **Pending Client Review**. It stays in Review & Dailies, and on **Client Review** you can tick **Pending client review only** to pick these for a client link. When the client has answered, click **Final** or **Revise**.\n\nProducers and Post-Supervisors can watch and read everything but can't Revise or Final."
+          "body": "- **Revise** sends it back to the artist as **Needs Revision**.\n- **Final** (VFX Supervisors and Admins) marks the task **Final**.\n- A **Comp Supervisor** sees **Comp Approve** instead: the task becomes **Comp Approved — awaiting VFX Sup**, and a VFX Supervisor gives the last Final.\n- **Client Review** (VFX Supervisors and Admins) approves it internally and marks it **Pending Client Review**. It stays in Review & Dailies, and on **Client Review** you can tick **Pending client review only** to pick these for a client link. When the client has answered, click **Final** or **Revise**.\n- **Unfinal**: a finaled task shows an **Unfinal** button on the **Shots** tab of Post Reports. It sends the task back to Review & Dailies as **Pending**. Anyone except Artists can use it.\n\nProducers and Post-Supervisors can watch and read everything but can't Revise or Final."
         },
         {
           "id": "review-hq",

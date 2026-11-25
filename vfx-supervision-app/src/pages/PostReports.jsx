@@ -35,11 +35,13 @@ import { importPlate } from "../lib/plateImport.js";
 import { BRAND } from "../lib/brandColors.js";
 import ArtistDirectory, { artistDepartments } from "./postReports/ArtistDirectory.jsx";
 import FootageIngest from "./postReports/FootageIngest.jsx";
+import ShotSpreadsheet from "./postReports/ShotSpreadsheet.jsx";
 import TaskRow, { TrashIcon } from "../components/TaskRow.jsx";
 import { blankScene, blankShot } from "../lib/shotRecords.js";
 import "./PostReports.css";
 
-const TABS = ["Shots", "Ingest", "Artists"];
+// Spreadsheet is the default view; Shots is the scene-grouped card view.
+const TABS = ["Spreadsheet", "Shots", "Ingest", "Artists"];
 
 // Shots with no matching scene (e.g. pushed from Capture Reports before
 // scenes existed) are grouped under this synthetic bucket.
@@ -1050,6 +1052,7 @@ export default function PostReports() {
   const rootHandle = folder.rootHandle;
   const [folderError, setFolderError] = useState("");
   const [tab, setTab] = useState(TABS[0]);
+  const isShotView = tab === "Spreadsheet" || tab === "Shots";
   const supported = isFsAccessSupported();
   const { can } = useRole();
   const canManage = can("manage_projects");
@@ -1385,22 +1388,22 @@ export default function PostReports() {
             {/* First-time setup only — once folders exist on disk, the
                 banner's Reconnect (which never creates a new show folder)
                 is the way back. */}
-            {tab === "Shots" && supported && !rootHandle && !expectsFolder && folder.status !== "loading" && (
+            {isShotView && supported && !rootHandle && !expectsFolder && folder.status !== "loading" && (
               <span className="btn btn-secondary" onClick={pickFolder}>
                 Choose Destination Folder…
               </span>
             )}
-            {tab === "Shots" && (
+            {isShotView && (
               <span className="pill">
                 {scenes.length} scene{scenes.length === 1 ? "" : "s"} · {shots.length} shot{shots.length === 1 ? "" : "s"}
               </span>
             )}
-            {tab === "Shots" && canViewCosts && shots.some((s) => s.bidCost != null) && (
+            {isShotView && canViewCosts && shots.some((s) => s.bidCost != null) && (
               <span className="pill mono" title="Sum of every shot's bid cost">
                 Bid total ${shots.reduce((sum, s) => sum + (s.bidCost ?? 0), 0).toLocaleString()}
               </span>
             )}
-            {tab === "Shots" && (scenes.length > 0 || shots.length > 0) && (
+            {isShotView && (scenes.length > 0 || shots.length > 0) && (
               <span
                 className="btn btn-secondary post-export-csv-btn"
                 onClick={() => setExporting((v) => !v)}
@@ -1448,6 +1451,19 @@ export default function PostReports() {
 
       {tab === "Ingest" ? null : tab === "Artists" ? (
         <ArtistDirectory canManage={canManage} onRenameArtist={renameArtistEverywhere} />
+      ) : tab === "Spreadsheet" ? (
+        <>
+          {folderError && <span className="project-create-error">{folderError}</span>}
+          {exporting && (
+            <ExportShotsForm shots={orderedShots} onExport={exportShotListXlsx} onCancel={() => setExporting(false)} />
+          )}
+          <ShotSpreadsheet
+            shots={orderedShots}
+            onPatch={patchShot}
+            canEdit={canManage}
+            canViewCosts={canViewCosts}
+          />
+        </>
       ) : (
         <>
           {folderError && <span className="project-create-error">{folderError}</span>}

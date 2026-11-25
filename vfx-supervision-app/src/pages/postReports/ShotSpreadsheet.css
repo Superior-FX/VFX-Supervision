@@ -1,0 +1,158 @@
+.sheet-card {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sheet-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sheet-filter {
+  width: auto;
+  min-width: 130px;
+  border: 1px solid var(--border);
+}
+
+.sheet-wrap {
+  overflow: auto;
+  max-height: calc(100vh - 260px);
+}
+
+.sheet-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 100%;
+}
+
+.sheet-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
+  text-align: left;
+  white-space: nowrap;
+  font: 600 9px var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sheet-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border-soft, var(--border));
+  border-right: 1px solid var(--border-soft, var(--border));
+  vertical-align: middle;
+  font: 12px var(--font-body);
+  color: var(--text-secondary);
+  background: var(--card-bg);
+}
+
+.sheet-table tbody tr:hover td {
+  background: var(--surface);
+}
+
+/* Shot code stays in view while scrolling sideways. */
+.sheet-table .sheet-sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.sheet-table th.sheet-sticky-col {
+  z-index: 3;
+}
+
+.sheet-table tbody tr.sheet-row-danger td:first-child {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+.sheet-table tbody tr.sheet-row-warning td:first-child {
+  box-shadow: inset 3px 0 0 var(--warning);
+}
+
+.sheet-nowrap {
+  white-space: nowrap;
+}
+
+.sheet-input {
+  width: 100%;
+  min-width: 90px;
+  box-sizing: border-box;
+  padding: 5px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  font: 12px var(--font-body);
+}
+
+.sheet-input.mono {
+  font-family: var(--font-mono);
+}
+
+.sheet-input:hover {
+  border-color: var(--border);
+}
+
+.sheet-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.sheet-input-wide {
+  min-width: 240px;
+}
+
+.sheet-input-cost {
+  min-width: 80px;
+}
+
+.sheet-static {
+  display: block;
+  padding: 5px 6px;
+  white-space: nowrap;
+}
+
+.sheet-artists {
+  white-space: normal;
+  min-width: 140px;
+}
+
+.sheet-thumb-col {
+  width: 72px;
+}
+
+.sheet-thumb {
+  display: block;
+  width: 64px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.sheet-thumb-empty {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: default;
+}
+
+.sheet-tasks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 200px;
+}
+
+.sheet-task-link {
+  cursor: pointer;
+}
