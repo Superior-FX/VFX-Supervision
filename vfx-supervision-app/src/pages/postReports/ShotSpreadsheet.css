@@ -204,3 +204,15 @@
 .sheet-table td.sheet-client-cell {
   background: color-mix(in srgb, var(--client, var(--accent)) 10%, var(--card-bg));
 }
+
+.sheet-notes-editing {
+  min-width: 260px;
+  max-height: 200px;
+}
+
+.sheet-note-input {
+  resize: vertical;
+  min-height: 34px;
+  border-color: var(--border);
+  white-space: pre-wrap;
+}

@@ -38,6 +38,7 @@ import FootageIngest from "./postReports/FootageIngest.jsx";
 import ShotSpreadsheet from "./postReports/ShotSpreadsheet.jsx";
 import { hasContent, loadProjectFeedback } from "../lib/reviewFeedback.js";
 import { clientNotesText, internalNotesText, submittedVersionsText } from "../lib/shotNotes.js";
+import { withCurrentSupNote } from "../lib/versionNotes.js";
 import TaskRow, { TrashIcon } from "../components/TaskRow.jsx";
 import { blankScene, blankShot } from "../lib/shotRecords.js";
 import "./PostReports.css";
@@ -1155,6 +1156,16 @@ export default function PostReports() {
     setShots((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
   };
 
+  // A supe note edited in the Spreadsheet — saved exactly like Review &
+  // Dailies' Save note, so the artist's Shot Viewer and Review see it.
+  const saveSupNote = (shotId, taskId, text) => {
+    setShots((prev) =>
+      prev.map((s) =>
+        s.id === shotId ? { ...s, tasks: s.tasks.map((t) => (t.id === taskId ? withCurrentSupNote(t, text) : t)) } : s
+      )
+    );
+  };
+
   // For async work that finishes later (plate import): merges into whatever
   // the shot looks like by then.
   const patchShot = (id, patch) => {
@@ -1513,6 +1524,7 @@ export default function PostReports() {
             shots={orderedShots}
             feedback={clientFeedback}
             onPatch={patchShot}
+            onSaveSupNote={saveSupNote}
             canEdit={canManage}
             canViewCosts={canViewCosts}
           />

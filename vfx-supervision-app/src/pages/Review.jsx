@@ -229,9 +229,23 @@ export default function Review() {
 
   // Acting on a task drops it out of the pending queue — clear the
   // selection so the picker falls back to whatever's next instead of
-  // pointing at a task id that's no longer in the list.
+  // pointing at a task id that's no longer in the list. Whatever is typed
+  // in Supe notes is saved with it: Revise/Final used to drop an unsaved
+  // note, since moving on to the next task clears the box.
   const act = (status) => {
-    updateCurrentTask({ status });
+    if (!current) return;
+    setPostReports((prev) =>
+      prev.map((s) =>
+        s.id === current.shot.id
+          ? {
+              ...s,
+              tasks: s.tasks.map((t) =>
+                t.id === current.task.id ? applyTaskPatch(withCurrentSupNote(t, supNote), { status }) : t
+              ),
+            }
+          : s
+      )
+    );
     setSearchParams({});
   };
 

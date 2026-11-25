@@ -35,6 +35,10 @@ export function clientNotes(shot, feedback) {
   return out;
 }
 
+// A task's supe note on its current version ("" if none).
+export const taskSupNote = (task) =>
+  (versionNotes(task, task.version ?? null).supNote ?? task.supNote ?? "").trim();
+
 // The supervisor's note on each task's latest version.
 // [{ task, version, note }]
 export function internalNotes(shot) {
@@ -42,7 +46,7 @@ export function internalNotes(shot) {
     .map((task) => ({
       task,
       version: task.version != null ? formatVersion(task.version) : "",
-      note: (versionNotes(task, task.version ?? null).supNote ?? task.supNote ?? "").trim(),
+      note: taskSupNote(task),
     }))
     .filter((n) => n.note);
 }

@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { STORY_IMPORTANCE_LEVELS } from "../../data/importance.js";
 import { isInReview, taskStatusInfo } from "../../data/taskStatus.js";
 import { COMPLEXITY_LEVELS } from "../../data/vfxEffects.js";
 import { computeImportance } from "../../lib/importance.js";
-import { clientNotes, internalNotes, submittedVersions } from "../../lib/shotNotes.js";
+import { clientNotes, internalNotes, submittedVersions, taskSupNote } from "../../lib/shotNotes.js";
+import { formatVersion } from "../../lib/fsAccess.js";
 import { assigneesLabel, getAssignees } from "../../lib/taskAssignees.js";
 import "./ShotSpreadsheet.css";
 
@@ -46,7 +47,39 @@ function LevelCell({ value, levels, onChange, readOnly }) {
   );
 }
 
-export default function ShotSpreadsheet({ shots, feedback, onPatch, canEdit, canViewCosts }) {
+// One task's supe note, editable. Typed into a local draft and saved when
+// the box loses focus (saving trims, which would eat spaces mid-typing).
+// Saved the same way as Review & Dailies' Supe notes, on the task's current
+// version, so it shows for the artist in Shot Viewer and back in Review.
+function SupNoteEditor({ task, onSave }) {
+  const saved = taskSupNote(task);
+  const [draft, setDraft] = useState(saved);
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    if (!focused) setDraft(saved);
+  }, [saved, focused]);
+  return (
+    <div className="sheet-note">
+      <span className="sheet-note-head">
+        {task.type} {task.version != null && <span className="mono">{formatVersion(task.version)}</span>}
+      </span>
+      <textarea
+        className="sheet-input sheet-note-input"
+        rows={2}
+        placeholder="Supe note…"
+        value={draft}
+        onFocus={() => setFocused(true)}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          setFocused(false);
+          if (draft.trim() !== saved) onSave(draft);
+        }}
+      />
+    </div>
+  );
+}
+
+export default function ShotSpreadsheet({ shots, feedback, onPatch, onSaveSupNote, canEdit, canViewCosts }) {
   const navigate = useNavigate();
   const [sceneFilter, setSceneFilter] = useState("");
 
@@ -188,6 +221,13 @@ export default function ShotSpreadsheet({ shots, feedback, onPatch, canEdit, can
                     </div>
                   </td>
                   <td>
+                    {canEdit && shot.tasks.length > 0 ? (
+                      <div className="sheet-notes sheet-notes-editing">
+                        {shot.tasks.map((task) => (
+                          <SupNoteEditor key={task.id} task={task} onSave={(text) => onSaveSupNote(shot.id, task.id, text)} />
+                        ))}
+                      </div>
+                    ) : (
                     <div className="sheet-notes">
                       {internalNotes(shot).map((n) => (
                         <div key={n.task.id} className="sheet-note">
@@ -199,6 +239,7 @@ export default function ShotSpreadsheet({ shots, feedback, onPatch, canEdit, can
                       ))}
                       {internalNotes(shot).length === 0 && <span className="sheet-static">—</span>}
                     </div>
+                    )}
                   </td>
                   <td>
                     <div className="sheet-tasks">
