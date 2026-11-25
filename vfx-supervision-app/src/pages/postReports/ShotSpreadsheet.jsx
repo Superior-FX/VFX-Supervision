@@ -4,6 +4,7 @@ import { STORY_IMPORTANCE_LEVELS } from "../../data/importance.js";
 import { isInReview, taskStatusInfo } from "../../data/taskStatus.js";
 import { COMPLEXITY_LEVELS } from "../../data/vfxEffects.js";
 import { computeImportance } from "../../lib/importance.js";
+import { clientNotes, internalNotes, submittedVersions } from "../../lib/shotNotes.js";
 import { assigneesLabel, getAssignees } from "../../lib/taskAssignees.js";
 import "./ShotSpreadsheet.css";
 
@@ -45,7 +46,7 @@ function LevelCell({ value, levels, onChange, readOnly }) {
   );
 }
 
-export default function ShotSpreadsheet({ shots, onPatch, canEdit, canViewCosts }) {
+export default function ShotSpreadsheet({ shots, feedback, onPatch, canEdit, canViewCosts }) {
   const navigate = useNavigate();
   const [sceneFilter, setSceneFilter] = useState("");
 
@@ -87,6 +88,9 @@ export default function ShotSpreadsheet({ shots, onPatch, canEdit, canViewCosts 
               <th>Script description</th>
               <th>Internal description</th>
               <th>Artists</th>
+              <th>Submitted version</th>
+              <th>Client notes</th>
+              <th>Internal notes</th>
               <th>Tasks</th>
               <th>Due date</th>
               <th>Priority</th>
@@ -150,6 +154,51 @@ export default function ShotSpreadsheet({ shots, onPatch, canEdit, canViewCosts 
                     <span className="sheet-static sheet-artists">
                       {[...new Set(shot.tasks.flatMap(getAssignees))].join(", ") || "—"}
                     </span>
+                  </td>
+                  <td>
+                    <div className="sheet-notes sheet-versions">
+                      {submittedVersions(shot).map((v) => (
+                        <span key={v.task.id} className="sheet-nowrap">
+                          {v.task.type} <span className="mono">{v.version}</span>
+                        </span>
+                      ))}
+                      {submittedVersions(shot).length === 0 && <span className="sheet-static">—</span>}
+                    </div>
+                  </td>
+                  <td className={clientNotes(shot, feedback).length ? "sheet-client-cell" : ""}>
+                    {/* The client's notes on each task's latest version come first. */}
+                    <div className="sheet-notes">
+                      {clientNotes(shot, feedback).map((n, i) => (
+                        <div key={i} className="sheet-note">
+                          <span className="sheet-note-head">
+                            {n.task.type} <span className="mono">{n.version}</span> · {n.reviewer}
+                            {n.decision && (
+                              <span className={`pill pill-${n.decision.tone} sheet-note-pill`}>{n.decision.label}</span>
+                            )}
+                          </span>
+                          {n.comment && <span>{n.comment}</span>}
+                          {n.drawings > 0 && (
+                            <span className="sheet-note-sub">
+                              {n.drawings} drawing{n.drawings === 1 ? "" : "s"} (see Review &amp; Dailies)
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                      {clientNotes(shot, feedback).length === 0 && <span className="sheet-static">—</span>}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="sheet-notes">
+                      {internalNotes(shot).map((n) => (
+                        <div key={n.task.id} className="sheet-note">
+                          <span className="sheet-note-head">
+                            {n.task.type} {n.version && <span className="mono">{n.version}</span>}
+                          </span>
+                          <span>{n.note}</span>
+                        </div>
+                      ))}
+                      {internalNotes(shot).length === 0 && <span className="sheet-static">—</span>}
+                    </div>
                   </td>
                   <td>
                     <div className="sheet-tasks">

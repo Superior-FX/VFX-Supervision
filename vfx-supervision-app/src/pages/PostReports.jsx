@@ -36,6 +36,8 @@ import { BRAND } from "../lib/brandColors.js";
 import ArtistDirectory, { artistDepartments } from "./postReports/ArtistDirectory.jsx";
 import FootageIngest from "./postReports/FootageIngest.jsx";
 import ShotSpreadsheet from "./postReports/ShotSpreadsheet.jsx";
+import { hasContent, loadProjectFeedback } from "../lib/reviewFeedback.js";
+import { clientNotesText, internalNotesText, submittedVersionsText } from "../lib/shotNotes.js";
 import TaskRow, { TrashIcon } from "../components/TaskRow.jsx";
 import { blankScene, blankShot } from "../lib/shotRecords.js";
 import "./PostReports.css";
@@ -84,6 +86,9 @@ const EXPORT_COLUMNS = [
     width: 24,
     value: (s) => [...new Set(s.tasks.flatMap(getAssignees))].join(", "),
   },
+  { key: "versions", header: "Submitted Version", width: 18, value: (s) => submittedVersionsText(s) },
+  { key: "clientNotes", header: "Client Notes", width: 40, value: (s, ctx) => clientNotesText(s, ctx.feedback) },
+  { key: "internalNotes", header: "Internal Notes", width: 40, value: (s) => internalNotesText(s) },
   {
     key: "tasks",
     header: "Tasks",
@@ -1091,6 +1096,21 @@ export default function PostReports() {
   const canViewCosts = can("view_costs");
   const deleteRequests = useDeleteRequests(project?.id);
 
+  // Client notes from review links (migration 006), for the Spreadsheet's
+  // Client notes column and the export. Refetched when the tab is opened so
+  // new notes show up; quietly empty if the table isn't readable.
+  const [clientFeedback, setClientFeedback] = useState([]);
+  useEffect(() => {
+    if (!project?.id || !isShotView) return;
+    let cancelled = false;
+    loadProjectFeedback(project.id)
+      .then((rows) => !cancelled && setClientFeedback(rows.filter(hasContent)))
+      .catch(() => !cancelled && setClientFeedback([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [project?.id, isShotView, tab]);
+
   const pickFolder = async () => {
     try {
       const handle = await pickProjectRootFolder(project.id, project.showCode);
@@ -1362,7 +1382,7 @@ export default function PostReports() {
   // or Google Sheets (upload to Drive, or File > Import).
   // `columns` is the ticked subset of EXPORT_COLUMNS, in sheet order.
   const exportShotListXlsx = async (columns, audience = "internal") => {
-    const rows = orderedShots.map((shot) => columns.map((col) => col.value(shot)));
+    const rows = orderedShots.map((shot) => columns.map((col) => col.value(shot, { feedback: clientFeedback })));
     const cellTier = (rowData, colIdx) => columns[colIdx].tier?.(rowData[colIdx]) ?? null;
     const usesTiers = columns.some((col) => col.tier);
 
@@ -1491,6 +1511,7 @@ export default function PostReports() {
           )}
           <ShotSpreadsheet
             shots={orderedShots}
+            feedback={clientFeedback}
             onPatch={patchShot}
             canEdit={canManage}
             canViewCosts={canViewCosts}
