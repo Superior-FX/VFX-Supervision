@@ -12,6 +12,8 @@ const PERMISSIONS = {
   manage_users: ["VFX Supervisor", "Comp Supervisor", "Producer", "Post-Supervisor"],
   // Final / Revise in Review & Dailies. Producers and Post-Supervisors can't.
   review_decide: ["VFX Supervisor", "Comp Supervisor"],
+  // Unfinal: take a finaled task back to Pending. Everyone but Artists.
+  unfinal: ["VFX Supervisor", "Comp Supervisor", "Producer", "Post-Supervisor"],
   footage_notes: ["VFX Supervisor", "Comp Supervisor", "Producer", "Post-Supervisor"],
   // Shot bid costs (from an imported VFX list). UI-only: the cost still
   // travels with the shot record, so anyone with database access can read it.
@@ -40,7 +42,7 @@ export function primaryRole(roles) {
 }
 
 // { profile, roles, can(permission), isAdmin, isArtistOnly, primaryRole,
-//   finalStatus, canFinal(status), canSendToClient(status) }
+//   finalStatus, canFinal(status), canSendToClient(status), canUnfinal(status) }
 export function useRole() {
   const { profile } = useAuth();
   const roles = profile?.roles ?? [];
@@ -65,5 +67,8 @@ export function useRole() {
     // client before it's finaled. The same people whose Final is final.
     canSendToClient: (status) =>
       finalStatusFor(roles) === "final" && (status === "pending" || status === "comp_approved"),
+    // Unfinal: takes a finaled task back to Pending so it re-enters Review &
+    // Dailies. Anyone but an Artist can undo one.
+    canUnfinal: (status) => rolesCan(roles, "unfinal") && status === "final",
   };
 }

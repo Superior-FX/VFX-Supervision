@@ -29,8 +29,13 @@ export default function TaskRow({ task, shot, readOnly, onChange, onRemove, arti
   const [confirming, setConfirming] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const status = taskStatusInfo(task.status);
-  const { can, canFinal, canSendToClient, finalStatus } = useRole();
+  const [unfinalConfirming, setUnfinalConfirming] = useState(false);
+  const { can, canFinal, canSendToClient, canUnfinal, finalStatus } = useRole();
   const deleteMatches = confirmText.trim().toUpperCase() === "DELETE";
+  const unfinal = () => {
+    setUnfinalConfirming(false);
+    onChange({ status: "pending" });
+  };
   const deleteRequests = useDeleteRequestsContext();
   const deletePending = deleteRequests.pendingFor("task", task.id);
   const confirmRemove = deleteRequests.isAdmin
@@ -49,6 +54,7 @@ export default function TaskRow({ task, shot, readOnly, onChange, onRemove, arti
       };
   useEnterKey(() => {
     if (confirming && deleteMatches) confirmRemove();
+    else if (unfinalConfirming) unfinal();
   });
 
   const setAssigneeAt = (index, value) => {
@@ -98,6 +104,29 @@ export default function TaskRow({ task, shot, readOnly, onChange, onRemove, arti
             {canFinal(task.status) && (
               <span className="btn btn-primary post-task-review-btn" onClick={() => onChange({ status: finalStatus })}>
                 {finalStatus === "comp_approved" ? "Comp Approve" : "Final"}
+              </span>
+            )}
+          </div>
+        )}
+        {canUnfinal(task.status) && (
+          <div className="post-task-review-actions">
+            {unfinalConfirming ? (
+              <>
+                <span className="post-task-confirm-label">Send back to Review as Pending?</span>
+                <span className="btn btn-danger post-task-review-btn" onClick={unfinal}>
+                  Unfinal
+                </span>
+                <span className="btn btn-secondary post-task-review-btn" onClick={() => setUnfinalConfirming(false)}>
+                  Cancel
+                </span>
+              </>
+            ) : (
+              <span
+                className="btn btn-secondary post-task-review-btn"
+                onClick={() => setUnfinalConfirming(true)}
+                title="Undo the Final: puts the task back in Review & Dailies as Pending"
+              >
+                Unfinal
               </span>
             )}
           </div>

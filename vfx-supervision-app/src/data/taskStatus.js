@@ -6,6 +6,8 @@
 //   -> final (VFX Supervisor / Admin clicks Final, from pending or comp_approved)
 //   -> client_review (VFX Supervisor / Admin clicks Client Review: approved
 //      internally, now waiting on the client) -> final or needs_revision
+//   final -> pending (anyone but an Artist clicks Unfinal on the task in
+//      Post Reports; it goes back into Review & Dailies)
 export const TASK_STATUSES = {
   assigned: { label: "Assigned", tone: null },
   wip: { label: "WIP", tone: "warning" },
