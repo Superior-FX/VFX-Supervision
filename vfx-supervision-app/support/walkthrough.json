@@ -85,7 +85,7 @@
         {
           "id": "export",
           "title": "Export the shot list",
-          "body": "Click **Export to Spreadsheet…** at the top of Post Reports to download a styled **.xlsx** of every scene and shot. Open it in Excel or Numbers, or upload it to Google Drive to view it as a Sheet."
+          "body": "Click **Export to Spreadsheet…** at the top of Post Reports to download a styled **.xlsx** of every scene and shot. Under **Export for**, pick **Internal use only**: the full shot list in the same column order as the Spreadsheet tab, marked internal. (**Client / shared** is coming soon.) Tick the columns you want, then export. Open it in Excel or Numbers, or upload it to Google Drive to view it as a Sheet."
         }
       ]
     },

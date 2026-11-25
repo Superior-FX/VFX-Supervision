@@ -68,13 +68,29 @@ const tierFromDueDate = (dueDate) => {
   return null;
 };
 
-// Every column the shot-list export can include, in sheet order. `locked`
-// columns can't be unticked; `permission` hides the option from anyone
-// without it; `defaultOff` leaves it unticked until someone opts in.
+// Every column the internal shot-list export can include, in sheet order —
+// the same order as the Spreadsheet tab. `locked` columns can't be
+// unticked; `permission` hides the option from anyone without it;
+// `defaultOff` leaves it unticked until someone opts in.
 const EXPORT_COLUMNS = [
   { key: "thumbnail", header: "Thumbnail", width: 17, image: true, value: (s) => s.thumbnail || null },
   { key: "scene", header: "Scene", width: 10, value: (s) => `SC${s.scene}` },
   { key: "shotCode", header: "Shot Code", width: 14, locked: true, value: (s) => s.shotCode },
+  { key: "scriptDescription", header: "Script Description", width: 30, value: (s) => s.scriptDescription },
+  { key: "internalDescription", header: "Internal Description", width: 30, value: (s) => s.internalDescription },
+  {
+    key: "artists",
+    header: "Artists",
+    width: 24,
+    value: (s) => [...new Set(s.tasks.flatMap(getAssignees))].join(", "),
+  },
+  {
+    key: "tasks",
+    header: "Tasks",
+    width: 36,
+    value: (s) => s.tasks.map((t) => `${t.type}: ${taskStatusInfo(t.status).label}`).join("; "),
+  },
+  { key: "dueDate", header: "Due Date", width: 12, value: (s) => s.dueDate, tier: tierFromDueDate },
   {
     key: "priority",
     header: "Priority",
@@ -82,12 +98,13 @@ const EXPORT_COLUMNS = [
     value: (s) =>
       computeImportance({ complexity: s.complexity, storyImportance: s.storyImportance, dueDate: s.dueDate }).tier,
   },
+  { key: "timecodeIn", header: "TC In", width: 13, value: (s) => s.timecodeIn ?? "" },
+  { key: "timecodeOut", header: "TC Out", width: 13, value: (s) => s.timecodeOut ?? "" },
   {
-    key: "storyImportance",
-    header: "Story Importance",
-    width: 16,
-    value: (s) => STORY_IMPORTANCE_LEVELS[s.storyImportance - 1] ?? "",
-    tier: (v) => tierFromLevel(STORY_IMPORTANCE_LEVELS.indexOf(v) + 1),
+    key: "pipeline",
+    header: "Pipeline",
+    width: 12,
+    value: (s) => PIPELINES.find((p) => p.value === s.pipeline)?.label ?? s.pipeline,
   },
   {
     key: "complexity",
@@ -96,16 +113,15 @@ const EXPORT_COLUMNS = [
     value: (s) => COMPLEXITY_LEVELS[s.complexity - 1] ?? "",
     tier: (v) => tierFromLevel(COMPLEXITY_LEVELS.indexOf(v) + 1),
   },
+  { key: "dispatched", header: "Pushed", width: 10, value: (s) => (s.dispatched ? "Yes" : "No") },
+  { key: "foldersCreated", header: "Folder", width: 10, value: (s) => (s.foldersCreatedAt ? "Yes" : "No") },
   {
-    key: "pipeline",
-    header: "Pipeline",
-    width: 12,
-    value: (s) => PIPELINES.find((p) => p.value === s.pipeline)?.label ?? s.pipeline,
+    key: "storyImportance",
+    header: "Story Importance",
+    width: 16,
+    value: (s) => STORY_IMPORTANCE_LEVELS[s.storyImportance - 1] ?? "",
+    tier: (v) => tierFromLevel(STORY_IMPORTANCE_LEVELS.indexOf(v) + 1),
   },
-  { key: "dispatched", header: "Pushed to Post", width: 14, value: (s) => (s.dispatched ? "Yes" : "No") },
-  { key: "dueDate", header: "Due Date", width: 12, value: (s) => s.dueDate, tier: tierFromDueDate },
-  { key: "timecodeIn", header: "TC In", width: 13, value: (s) => s.timecodeIn ?? "" },
-  { key: "timecodeOut", header: "TC Out", width: 13, value: (s) => s.timecodeOut ?? "" },
   {
     key: "bidCost",
     header: "Bid Cost",
@@ -114,26 +130,26 @@ const EXPORT_COLUMNS = [
     defaultOff: true,
     value: (s) => s.bidCost ?? null,
   },
-  { key: "scriptDescription", header: "Script Description", width: 30, value: (s) => s.scriptDescription },
-  { key: "internalDescription", header: "Internal Description", width: 30, value: (s) => s.internalDescription },
-  { key: "foldersCreated", header: "Folder Created", width: 14, value: (s) => (s.foldersCreatedAt ? "Yes" : "No") },
-  {
-    key: "tasks",
-    header: "Tasks",
-    width: 40,
-    value: (s) =>
-      s.tasks.map((t) => `${t.type}: ${taskStatusInfo(t.status).label} (${assigneesLabel(t)})`).join("; "),
-  },
+];
+
+// Who the export is for. Internal is the full shot list for the team; the
+// client / shared version (which columns a client may see) is set up later.
+const EXPORT_AUDIENCES = [
+  { value: "internal", label: "Internal use only" },
+  { value: "client", label: "Client / shared", disabled: true, hint: "coming soon" },
 ];
 
 const DEFAULT_EXPORT_KEYS = EXPORT_COLUMNS.filter((c) => !c.defaultOff).map((c) => c.key);
 
-// Pick the columns, then export. The choice is remembered on this computer.
+// Pick who it's for and the columns, then export. The column choice is
+// remembered on this computer (new key, so the reordered list with Artists
+// starts from the defaults).
 function ExportShotsForm({ shots, onExport, onCancel }) {
   const { can } = useRole();
   const options = EXPORT_COLUMNS.filter((c) => !c.permission || can(c.permission));
-  const [savedKeys, setSavedKeys] = useLocalStorageState("vfx-supe-export-columns", DEFAULT_EXPORT_KEYS);
+  const [savedKeys, setSavedKeys] = useLocalStorageState("vfx-supe-export-columns-internal", DEFAULT_EXPORT_KEYS);
   const selected = new Set([...savedKeys, ...options.filter((c) => c.locked).map((c) => c.key)]);
+  const [audience, setAudience] = useState("internal");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const withThumbnail = shots.filter((s) => s.thumbnail).length;
@@ -147,7 +163,7 @@ function ExportShotsForm({ shots, onExport, onCancel }) {
     setBusy(true);
     setError("");
     try {
-      await onExport(options.filter((c) => selected.has(c.key)));
+      await onExport(options.filter((c) => selected.has(c.key)), audience);
       onCancel();
     } catch (err) {
       console.error("Shot list export failed:", err);
@@ -159,6 +175,22 @@ function ExportShotsForm({ shots, onExport, onCancel }) {
 
   return (
     <div className="card post-export-form">
+      <div className="post-export-audience">
+        <span className="label">Export for</span>
+        {EXPORT_AUDIENCES.map((a) => (
+          <label key={a.value} className={`post-export-option${a.disabled ? " is-locked" : ""}`}>
+            <input
+              type="radio"
+              name="export-audience"
+              checked={audience === a.value}
+              disabled={a.disabled}
+              onChange={() => setAudience(a.value)}
+            />
+            {a.label}
+            {a.hint && <span className="post-export-option-hint">{a.hint}</span>}
+          </label>
+        ))}
+      </div>
       <div className="post-export-form-head">
         <span className="label">Export to spreadsheet — columns to include</span>
         <span className="post-export-form-links">
@@ -1329,7 +1361,7 @@ export default function PostReports() {
   // formatting in the destination sheet. Opens directly in Excel, Numbers,
   // or Google Sheets (upload to Drive, or File > Import).
   // `columns` is the ticked subset of EXPORT_COLUMNS, in sheet order.
-  const exportShotListXlsx = async (columns) => {
+  const exportShotListXlsx = async (columns, audience = "internal") => {
     const rows = orderedShots.map((shot) => columns.map((col) => col.value(shot)));
     const cellTier = (rowData, colIdx) => columns[colIdx].tier?.(rowData[colIdx]) ?? null;
     const usesTiers = columns.some((col) => col.tier);
@@ -1343,10 +1375,10 @@ export default function PostReports() {
     const { downloadStyledWorkbook } = await import("../lib/xlsx.js");
 
     await downloadStyledWorkbook({
-      filename: `${showCode}_shot-list_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      filename: `${showCode}_shot-list_${audience}_${new Date().toISOString().slice(0, 10)}.xlsx`,
       sheetName: "Shot List",
       title: `${project?.name || showCode} — Shot List`,
-      subtitle: `Exported ${new Date().toLocaleDateString()} — Superior-FX VFX Supervision`,
+      subtitle: `${audience === "internal" ? "INTERNAL USE ONLY — " : ""}Exported ${new Date().toLocaleDateString()} — Superior-FX VFX Supervision`,
       columns,
       rows,
       cellTier,
