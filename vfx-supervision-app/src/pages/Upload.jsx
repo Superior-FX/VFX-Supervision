@@ -26,6 +26,7 @@ import { sortByShotCode } from "../lib/sortShots.js";
 import { hasAssignee } from "../lib/taskAssignees.js";
 import { useLocalStorageState } from "../lib/useLocalStorageState.js";
 import { useProjectFolder } from "../lib/useProjectFolder.js";
+import { findUnfinishedVideo } from "../lib/videoCheck.js";
 import "./Upload.css";
 
 function FileIcon() {
@@ -290,6 +291,11 @@ export default function Upload() {
       if (!(await ensurePermission(rootHandle))) throw new Error("Project folder access was denied.");
       const { file, handle } = await pickVideoFile(sessionDirs?.renderDir, { pickerId: "upload-render-video" });
       setUploading(true);
+      // Before anything is copied: an unfinished render would otherwise be
+      // copied into render/ and only fail later, at the review proxy.
+      reportProgress("Checking the video…");
+      const unfinished = await findUnfinishedVideo(file);
+      if (unfinished) throw new Error(unfinished);
       reportProgress("Finding the task folders…");
       const dest = await resolveDestination();
       beginSession(dest);

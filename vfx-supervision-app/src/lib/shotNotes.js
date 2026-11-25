@@ -1,3 +1,4 @@
+import { aggregateTaskStatus } from "../data/taskStatus.js";
 import { DECISIONS } from "./reviewFeedback.js";
 import { formatVersion } from "./fsAccess.js";
 import { versionNotes } from "./versionNotes.js";
@@ -11,6 +12,24 @@ import { versionNotes } from "./versionNotes.js";
 export function submittedVersions(shot) {
   return shot.tasks.filter((t) => t.version != null).map((task) => ({ task, version: formatVersion(task.version) }));
 }
+
+// The most urgent status among the submitted tasks — what the Submitted
+// version cell is tinted by (same priority order as the shot's badge).
+export function submittedStatus(shot) {
+  const tasks = shot.tasks.filter((t) => t.version != null);
+  return tasks.length ? aggregateTaskStatus(tasks) : null;
+}
+
+// Light cell fills for the .xlsx export, one per status tone — the same
+// hues as the app's status pills, lightened so text stays readable.
+export const STATUS_FILLS = {
+  accent: { hex: "E0E7FF", label: "Pending (waiting on a supervisor)" },
+  info: { hex: "F3E8FF", label: "Comp Approved" },
+  client: { hex: "CFFAFE", label: "Pending Client Review" },
+  warning: { hex: "FEF3C7", label: "WIP" },
+  danger: { hex: "FDE2E1", label: "Needs Revision" },
+  success: { hex: "D1FAE5", label: "Final" },
+};
 
 // Client feedback rows (review_feedback) on each task's latest version.
 // [{ task, version, reviewer, decision, comment, drawings }]

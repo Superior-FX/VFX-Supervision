@@ -37,7 +37,7 @@ import ArtistDirectory, { artistDepartments } from "./postReports/ArtistDirector
 import FootageIngest from "./postReports/FootageIngest.jsx";
 import ShotSpreadsheet from "./postReports/ShotSpreadsheet.jsx";
 import { hasContent, loadProjectFeedback } from "../lib/reviewFeedback.js";
-import { clientNotesText, internalNotesText, submittedVersionsText } from "../lib/shotNotes.js";
+import { STATUS_FILLS, clientNotesText, internalNotesText, submittedStatus, submittedVersionsText } from "../lib/shotNotes.js";
 import { withCurrentSupNote } from "../lib/versionNotes.js";
 import TaskRow, { TrashIcon } from "../components/TaskRow.jsx";
 import { blankScene, blankShot } from "../lib/shotRecords.js";
@@ -87,7 +87,17 @@ const EXPORT_COLUMNS = [
     width: 24,
     value: (s) => [...new Set(s.tasks.flatMap(getAssignees))].join(", "),
   },
-  { key: "versions", header: "Submitted Version", width: 18, value: (s) => submittedVersionsText(s) },
+  {
+    key: "versions",
+    header: "Submitted Version",
+    width: 18,
+    value: (s) => submittedVersionsText(s),
+    // Filled by the most urgent submitted task's status (app pill colors).
+    tier: (v, s) => {
+      const hex = STATUS_FILLS[submittedStatus(s)?.tone]?.hex;
+      return hex ? { fill: hex } : null;
+    },
+  },
   { key: "clientNotes", header: "Client Notes", width: 40, value: (s, ctx) => clientNotesText(s, ctx.feedback) },
   { key: "internalNotes", header: "Internal Notes", width: 40, value: (s) => internalNotesText(s) },
   {
@@ -1394,8 +1404,10 @@ export default function PostReports() {
   // `columns` is the ticked subset of EXPORT_COLUMNS, in sheet order.
   const exportShotListXlsx = async (columns, audience = "internal") => {
     const rows = orderedShots.map((shot) => columns.map((col) => col.value(shot, { feedback: clientFeedback })));
-    const cellTier = (rowData, colIdx) => columns[colIdx].tier?.(rowData[colIdx]) ?? null;
-    const usesTiers = columns.some((col) => col.tier);
+    const shotForRow = new Map(rows.map((row, i) => [row, orderedShots[i]]));
+    const cellTier = (rowData, colIdx) => columns[colIdx].tier?.(rowData[colIdx], shotForRow.get(rowData)) ?? null;
+    const usesTiers = columns.some((col) => col.tier && col.key !== "versions");
+    const usesStatusFills = columns.some((col) => col.key === "versions");
 
     const showCode = project?.showCode || "vfx-supe";
     const logoBuffer = await fetch(sfxLogo).then((res) => res.arrayBuffer());
@@ -1413,13 +1425,21 @@ export default function PostReports() {
       columns,
       rows,
       cellTier,
-      legend: usesTiers
-        ? [
-            { color: BRAND.redSoft, text: "High complexity/importance, or due ≤3 days away" },
-            { color: BRAND.orangeSoft, text: "Medium complexity/importance, or due 4–7 days away" },
-            { color: null, text: "No fill = Low/normal, or no near-term due date" },
-          ]
-        : null,
+      legend:
+        usesTiers || usesStatusFills
+          ? [
+              ...(usesTiers
+                ? [
+                    { color: BRAND.redSoft, text: "High complexity/importance, or due ≤3 days away" },
+                    { color: BRAND.orangeSoft, text: "Medium complexity/importance, or due 4–7 days away" },
+                    { color: null, text: "No fill = Low/normal, or no near-term due date" },
+                  ]
+                : []),
+              ...(usesStatusFills
+                ? Object.values(STATUS_FILLS).map((f) => ({ color: f.hex, text: `Submitted Version: ${f.label}` }))
+                : []),
+            ]
+          : null,
       logoBuffer,
     });
   };

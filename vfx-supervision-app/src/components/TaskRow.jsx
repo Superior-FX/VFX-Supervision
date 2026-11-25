@@ -72,6 +72,32 @@ export default function TaskRow({ task, shot, readOnly, onChange, onRemove, arti
     onChange({ assignees: rows.length ? rows : [""], assignee: undefined });
   };
 
+  // Shown in both the read-only row (Post Reports) and the editing row
+  // (Post Reports edit mode, the Dashboard's tasks dialog).
+  const unfinalControls = canUnfinal(task.status) && (
+    <div className="post-task-review-actions">
+      {unfinalConfirming ? (
+        <>
+          <span className="post-task-confirm-label">Send back to Review as Pending?</span>
+          <span className="btn btn-danger post-task-review-btn" onClick={unfinal}>
+            Unfinal
+          </span>
+          <span className="btn btn-secondary post-task-review-btn" onClick={() => setUnfinalConfirming(false)}>
+            Cancel
+          </span>
+        </>
+      ) : (
+        <span
+          className="btn btn-secondary post-task-review-btn"
+          onClick={() => setUnfinalConfirming(true)}
+          title="Undo the Final: puts the task back in Review & Dailies as Pending"
+        >
+          Unfinal
+        </span>
+      )}
+    </div>
+  );
+
   if (readOnly) {
     return (
       <div className="post-task-row">
@@ -108,29 +134,7 @@ export default function TaskRow({ task, shot, readOnly, onChange, onRemove, arti
             )}
           </div>
         )}
-        {canUnfinal(task.status) && (
-          <div className="post-task-review-actions">
-            {unfinalConfirming ? (
-              <>
-                <span className="post-task-confirm-label">Send back to Review as Pending?</span>
-                <span className="btn btn-danger post-task-review-btn" onClick={unfinal}>
-                  Unfinal
-                </span>
-                <span className="btn btn-secondary post-task-review-btn" onClick={() => setUnfinalConfirming(false)}>
-                  Cancel
-                </span>
-              </>
-            ) : (
-              <span
-                className="btn btn-secondary post-task-review-btn"
-                onClick={() => setUnfinalConfirming(true)}
-                title="Undo the Final: puts the task back in Review & Dailies as Pending"
-              >
-                Unfinal
-              </span>
-            )}
-          </div>
-        )}
+        {unfinalControls}
       </div>
     );
   }
@@ -185,6 +189,7 @@ export default function TaskRow({ task, shot, readOnly, onChange, onRemove, arti
         </span>
       </div>
       <span className={`pill${status.tone ? ` pill-${status.tone}` : ""}`}>{status.label}</span>
+      {unfinalControls}
       <div className="post-task-assignee-list">
         {assigneeRows(task).map((value, i) => (
           <div className="post-task-assignee-row" key={i}>

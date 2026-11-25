@@ -4,7 +4,7 @@ import { STORY_IMPORTANCE_LEVELS } from "../../data/importance.js";
 import { isInReview, taskStatusInfo } from "../../data/taskStatus.js";
 import { COMPLEXITY_LEVELS } from "../../data/vfxEffects.js";
 import { computeImportance } from "../../lib/importance.js";
-import { clientNotes, internalNotes, submittedVersions, taskSupNote } from "../../lib/shotNotes.js";
+import { clientNotes, internalNotes, submittedStatus, submittedVersions, taskSupNote } from "../../lib/shotNotes.js";
 import { formatVersion } from "../../lib/fsAccess.js";
 import { assigneesLabel, getAssignees } from "../../lib/taskAssignees.js";
 import "./ShotSpreadsheet.css";
@@ -188,13 +188,25 @@ export default function ShotSpreadsheet({ shots, feedback, onPatch, onSaveSupNot
                       {[...new Set(shot.tasks.flatMap(getAssignees))].join(", ") || "—"}
                     </span>
                   </td>
-                  <td>
+                  <td
+                    className={
+                      submittedStatus(shot)?.tone ? `sheet-status-cell tone-${submittedStatus(shot).tone}` : ""
+                    }
+                  >
+                    {/* Colored by each task's status, same colors as the Tasks pills. */}
                     <div className="sheet-notes sheet-versions">
-                      {submittedVersions(shot).map((v) => (
-                        <span key={v.task.id} className="sheet-nowrap">
-                          {v.task.type} <span className="mono">{v.version}</span>
-                        </span>
-                      ))}
+                      {submittedVersions(shot).map((v) => {
+                        const status = taskStatusInfo(v.task.status);
+                        return (
+                          <span
+                            key={v.task.id}
+                            className={`sheet-version-chip${status.tone ? ` tone-${status.tone}` : ""}`}
+                            title={`${v.task.type} ${v.version}: ${status.label}`}
+                          >
+                            {v.task.type} <span className="mono">{v.version}</span>
+                          </span>
+                        );
+                      })}
                       {submittedVersions(shot).length === 0 && <span className="sheet-static">—</span>}
                     </div>
                   </td>

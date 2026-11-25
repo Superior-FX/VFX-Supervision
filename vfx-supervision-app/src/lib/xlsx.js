@@ -116,6 +116,7 @@ export async function downloadStyledWorkbook({
       const tier = cellTier?.(rowData, colIdx);
       if (tier === "high") cell.fill = fill(BRAND.redSoft);
       else if (tier === "medium") cell.fill = fill(BRAND.orangeSoft);
+      else if (tier?.fill) cell.fill = fill(tier.fill);
     }
     r += 1;
   }
