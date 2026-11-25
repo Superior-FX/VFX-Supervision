@@ -65,3 +65,13 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-11-07T18:15:07-06:00 — **Will Cox** (Atom-Smasher) — `4db9c37` Show shot thumbnails on collapsed scene bars; bigger shot thumbs
 - 2026-11-07T18:15:11-06:00 — **Will Cox** (Atom-Smasher) — `8d5b7d9` SHARED_STATE: log 137fde6 through 4db9c37
 - 2026-11-10T23:42:32-06:00 — **Will Cox** (Atom-Smasher) — `26c9de0` Add Post-Supervisor role (Producer rights, own footage notes only)
+- 2026-11-14T21:07:45-06:00 — **Will Cox** (Atom-Smasher) — `2d49d2b` SHARED_STATE: log 8d5b7d9 through 26c9de0
+- 2026-11-20T22:54:23-06:00 — **Will Cox** (Atom-Smasher) — `af53a47` Add client review links shared from Google Drive
+- 2026-11-21T20:11:08-06:00 — **Will Cox** (Atom-Smasher) — `e014ba0` Open Upload Shot pickers on click; list tasks not started yet
+- 2026-11-21T20:25:46-06:00 — **Will Cox** (Atom-Smasher) — `9fde16f` Add/remove tasks from the Dashboard via right-click on a shot tile
+- 2026-11-21T20:34:29-06:00 — **Will Cox** (Atom-Smasher) — `599abbe` Time out a hung scene-folder create; allow adding the scene without it
+- 2026-11-21T20:44:20-06:00 — **Will Cox** (Atom-Smasher) — `2ded6ce` Time out hung folder permission checks; report scene/shot folders not found
+- 2026-11-21T22:46:48-06:00 — **Will Cox** (Atom-Smasher) — `ceeade1` Let clients leave notes, drawings and approvals on review links
+- 2026-11-21T22:58:12-06:00 — **Will Cox** (Atom-Smasher) — `a8b7a53` Add Pending Client Review status; remember the Google Drive sign-in
+- 2026-11-21T23:15:35-06:00 — **Will Cox** (Atom-Smasher) — `5802534` Show Artist Report as a grid of shot cards
+- 2026-11-25T00:09:33-06:00 — **Will Cox** (Atom-Smasher) — `5a3484a` Add Unfinal: send a finaled task back to Review as Pending
