@@ -75,3 +75,10 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-11-21T22:58:12-06:00 — **Will Cox** (Atom-Smasher) — `a8b7a53` Add Pending Client Review status; remember the Google Drive sign-in
 - 2026-11-21T23:15:35-06:00 — **Will Cox** (Atom-Smasher) — `5802534` Show Artist Report as a grid of shot cards
 - 2026-11-25T00:09:33-06:00 — **Will Cox** (Atom-Smasher) — `5a3484a` Add Unfinal: send a finaled task back to Review as Pending
+- 2026-11-25T00:12:28-06:00 — **Will Cox** (Atom-Smasher) — `fc5aabe` SHARED_STATE: log 2d49d2b through 5a3484a
+- 2026-11-25T00:35:21-06:00 — **Will Cox** (Atom-Smasher) — `c9dc260` Add Spreadsheet tab to Post Reports as the default view
+- 2026-11-25T00:41:35-06:00 — **Will Cox** (Atom-Smasher) — `43ab5f2` Reorder Post Reports spreadsheet columns
+- 2026-11-25T00:52:47-06:00 — **Will Cox** (Atom-Smasher) — `eb8caec` Match the shot-list export to the Spreadsheet column order; add Export for picker
+- 2026-11-25T01:02:35-06:00 — **Will Cox** (Atom-Smasher) — `c96d4be` Add Submitted version, Client notes and Internal notes columns to the Post Reports spreadsheet
+- 2026-11-25T01:37:08-06:00 — **Will Cox** (Atom-Smasher) — `291893d` Save supe notes with Revise/Final; edit supe notes from the spreadsheet
+- 2026-11-25T02:43:56-06:00 — **Will Cox** (Atom-Smasher) — `599e45e` Add Edit Viewer: every shot's latest submission played as one cut
