@@ -84,20 +84,20 @@ export default function ShotSpreadsheet({ shots, onPatch, canEdit, canViewCosts 
               <th className="sheet-thumb-col"></th>
               <th>Scene</th>
               <th className="sheet-sticky-col">Shot code</th>
-              <th>Priority</th>
-              <th>Story importance</th>
-              <th>Complexity</th>
-              <th>Pipeline</th>
-              <th>Due date</th>
-              <th>TC in</th>
-              <th>TC out</th>
-              {canViewCosts && <th>Bid cost</th>}
               <th>Script description</th>
               <th>Internal description</th>
               <th>Artists</th>
               <th>Tasks</th>
+              <th>Due date</th>
+              <th>Priority</th>
+              <th>TC in</th>
+              <th>TC out</th>
+              <th>Pipeline</th>
+              <th>Complexity</th>
               <th>Pushed</th>
               <th>Folder</th>
+              <th>Story importance</th>
+              {canViewCosts && <th>Bid cost</th>}
             </tr>
           </thead>
           <tbody>
@@ -129,91 +129,6 @@ export default function ShotSpreadsheet({ shots, onPatch, canEdit, canViewCosts 
                       onChange={(v) => patch({ shotCode: v })}
                     />
                   </td>
-                  <td>
-                    <span className={`pill ${PRIORITY_TONE[importance.colorKey] ?? ""}`}>{importance.tier}</span>
-                  </td>
-                  <td>
-                    <LevelCell
-                      value={shot.storyImportance}
-                      levels={STORY_IMPORTANCE_LEVELS}
-                      readOnly={readOnly}
-                      onChange={(v) => patch({ storyImportance: v })}
-                    />
-                  </td>
-                  <td>
-                    <LevelCell
-                      value={shot.complexity}
-                      levels={COMPLEXITY_LEVELS}
-                      readOnly={readOnly}
-                      onChange={(v) => patch({ complexity: v })}
-                    />
-                  </td>
-                  <td>
-                    {readOnly ? (
-                      <span className="sheet-static">
-                        {PIPELINES.find((p) => p.value === shot.pipeline)?.label ?? shot.pipeline}
-                      </span>
-                    ) : (
-                      <select
-                        className="sheet-input"
-                        value={shot.pipeline || "traditional"}
-                        onChange={(e) => patch({ pipeline: e.target.value })}
-                      >
-                        {PIPELINES.map((p) => (
-                          <option key={p.value} value={p.value}>
-                            {p.label}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </td>
-                  <td>
-                    {readOnly ? (
-                      <span className="sheet-static mono">{shot.dueDate || "—"}</span>
-                    ) : (
-                      <input
-                        className="sheet-input mono"
-                        type="date"
-                        value={shot.dueDate || ""}
-                        onChange={(e) => patch({ dueDate: e.target.value })}
-                      />
-                    )}
-                  </td>
-                  <td>
-                    <TextCell
-                      mono
-                      value={shot.timecodeIn}
-                      placeholder="00:00:00:00"
-                      readOnly={readOnly}
-                      onChange={(v) => patch({ timecodeIn: v })}
-                    />
-                  </td>
-                  <td>
-                    <TextCell
-                      mono
-                      value={shot.timecodeOut}
-                      placeholder="00:00:00:00"
-                      readOnly={readOnly}
-                      onChange={(v) => patch({ timecodeOut: v })}
-                    />
-                  </td>
-                  {canViewCosts && (
-                    <td>
-                      {readOnly ? (
-                        <span className="sheet-static mono">
-                          {shot.bidCost != null ? `$${shot.bidCost.toLocaleString()}` : "—"}
-                        </span>
-                      ) : (
-                        <input
-                          className="sheet-input mono sheet-input-cost"
-                          type="number"
-                          min={0}
-                          value={shot.bidCost ?? ""}
-                          onChange={(e) => patch({ bidCost: e.target.value === "" ? null : Number(e.target.value) })}
-                        />
-                      )}
-                    </td>
-                  )}
                   <td>
                     <TextCell
                       wide
@@ -255,8 +170,93 @@ export default function ShotSpreadsheet({ shots, onPatch, canEdit, canViewCosts 
                       })}
                     </div>
                   </td>
+                  <td>
+                    {readOnly ? (
+                      <span className="sheet-static mono">{shot.dueDate || "—"}</span>
+                    ) : (
+                      <input
+                        className="sheet-input mono"
+                        type="date"
+                        value={shot.dueDate || ""}
+                        onChange={(e) => patch({ dueDate: e.target.value })}
+                      />
+                    )}
+                  </td>
+                  <td>
+                    <span className={`pill ${PRIORITY_TONE[importance.colorKey] ?? ""}`}>{importance.tier}</span>
+                  </td>
+                  <td>
+                    <TextCell
+                      mono
+                      value={shot.timecodeIn}
+                      placeholder="00:00:00:00"
+                      readOnly={readOnly}
+                      onChange={(v) => patch({ timecodeIn: v })}
+                    />
+                  </td>
+                  <td>
+                    <TextCell
+                      mono
+                      value={shot.timecodeOut}
+                      placeholder="00:00:00:00"
+                      readOnly={readOnly}
+                      onChange={(v) => patch({ timecodeOut: v })}
+                    />
+                  </td>
+                  <td>
+                    {readOnly ? (
+                      <span className="sheet-static">
+                        {PIPELINES.find((p) => p.value === shot.pipeline)?.label ?? shot.pipeline}
+                      </span>
+                    ) : (
+                      <select
+                        className="sheet-input"
+                        value={shot.pipeline || "traditional"}
+                        onChange={(e) => patch({ pipeline: e.target.value })}
+                      >
+                        {PIPELINES.map((p) => (
+                          <option key={p.value} value={p.value}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </td>
+                  <td>
+                    <LevelCell
+                      value={shot.complexity}
+                      levels={COMPLEXITY_LEVELS}
+                      readOnly={readOnly}
+                      onChange={(v) => patch({ complexity: v })}
+                    />
+                  </td>
                   <td className="sheet-nowrap">{shot.dispatched ? "Yes" : "No"}</td>
                   <td className="sheet-nowrap">{shot.foldersCreatedAt ? "Yes" : "No"}</td>
+                  <td>
+                    <LevelCell
+                      value={shot.storyImportance}
+                      levels={STORY_IMPORTANCE_LEVELS}
+                      readOnly={readOnly}
+                      onChange={(v) => patch({ storyImportance: v })}
+                    />
+                  </td>
+                  {canViewCosts && (
+                    <td>
+                      {readOnly ? (
+                        <span className="sheet-static mono">
+                          {shot.bidCost != null ? `$${shot.bidCost.toLocaleString()}` : "—"}
+                        </span>
+                      ) : (
+                        <input
+                          className="sheet-input mono sheet-input-cost"
+                          type="number"
+                          min={0}
+                          value={shot.bidCost ?? ""}
+                          onChange={(e) => patch({ bidCost: e.target.value === "" ? null : Number(e.target.value) })}
+                        />
+                      )}
+                    </td>
+                  )}
                 </tr>
               );
             })}
