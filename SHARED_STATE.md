@@ -82,3 +82,7 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-11-25T01:02:35-06:00 — **Will Cox** (Atom-Smasher) — `c96d4be` Add Submitted version, Client notes and Internal notes columns to the Post Reports spreadsheet
 - 2026-11-25T01:37:08-06:00 — **Will Cox** (Atom-Smasher) — `291893d` Save supe notes with Revise/Final; edit supe notes from the spreadsheet
 - 2026-11-25T02:43:56-06:00 — **Will Cox** (Atom-Smasher) — `599e45e` Add Edit Viewer: every shot's latest submission played as one cut
+- 2026-11-25T02:49:17-06:00 — **Will Cox** (Atom-Smasher) — `786d8ea` SHARED_STATE: log fc5aabe through 599e45e
+- 2026-11-25T03:02:24-06:00 — **Will Cox** (Atom-Smasher) — `ee49404` Catch unfinished videos on upload; Unfinal in the Dashboard; color submitted versions by status
+- 2026-11-26T01:22:16-06:00 — **Will Cox** (Atom-Smasher) — `0a7479d` Open submissions in Shot Viewer from the spreadsheet's Submitted version and Client notes
+- 2026-11-26T01:28:04-06:00 — **Will Cox** (Atom-Smasher) — `9a4582d` Retrigger Vercel deploy (0a7479d was not picked up)
