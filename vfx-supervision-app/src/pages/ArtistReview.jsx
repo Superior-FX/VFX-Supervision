@@ -69,8 +69,15 @@ export default function ArtistReview() {
   }, [entry?.task.id]);
 
   // null = the latest submission (default), an older version number, or "plate".
-  const [view, setView] = useState(null);
-  useEffect(() => setView(null), [entry?.task.id]);
+  // ?version=N (from the Post Reports spreadsheet) opens on an older version.
+  const versionParam = Number(searchParams.get("version"));
+  const requestedVersion =
+    entry && searchParams.get("task") === entry.task.id && Number.isInteger(versionParam) && versionParam > 0 &&
+    versionParam !== Number(entry.task.version)
+      ? versionParam
+      : null;
+  const [view, setView] = useState(requestedVersion);
+  useEffect(() => setView(requestedVersion), [entry?.task.id, requestedVersion]);
   const viewingPlate = view === "plate";
   const viewingOld = typeof view === "number";
 

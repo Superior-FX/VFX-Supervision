@@ -215,6 +215,27 @@
   text-decoration: underline;
 }
 
+/* Older client notes (earlier revisions), shown on request. */
+.sheet-history-toggle {
+  align-self: flex-start;
+  padding: 2px 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: 600 11px var(--font-body);
+  cursor: pointer;
+}
+
+.sheet-history-toggle:hover {
+  text-decoration: underline;
+}
+
+.sheet-note-older {
+  opacity: 0.7;
+  padding-left: 6px;
+  border-left: 2px solid var(--border);
+}
+
 /* Client notes take priority: their cell is tinted so they stand out. */
 .sheet-table td.sheet-client-cell {
   background: color-mix(in srgb, var(--client, var(--accent)) 10%, var(--card-bg));

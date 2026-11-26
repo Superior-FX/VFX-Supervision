@@ -4,7 +4,14 @@ import { STORY_IMPORTANCE_LEVELS } from "../../data/importance.js";
 import { isInReview, taskStatusInfo } from "../../data/taskStatus.js";
 import { COMPLEXITY_LEVELS } from "../../data/vfxEffects.js";
 import { computeImportance } from "../../lib/importance.js";
-import { clientNotes, internalNotes, submittedStatus, submittedVersions, taskSupNote } from "../../lib/shotNotes.js";
+import {
+  clientNotes,
+  internalNotes,
+  olderClientNotes,
+  submittedStatus,
+  submittedVersions,
+  taskSupNote,
+} from "../../lib/shotNotes.js";
 import { formatVersion } from "../../lib/fsAccess.js";
 import { assigneesLabel, getAssignees } from "../../lib/taskAssignees.js";
 import "./ShotSpreadsheet.css";
@@ -82,14 +89,51 @@ function SupNoteEditor({ task, onSave }) {
 export default function ShotSpreadsheet({ shots, feedback, onPatch, onSaveSupNote, canEdit, canViewCosts }) {
   const navigate = useNavigate();
   // Opens a submission in the Shot Viewer (only if it has a review proxy).
-  const viewerLink = (task) =>
+  // An earlier version opens on that version.
+  const viewerLink = (task, versionNum = null) =>
     task.reviewFile
       ? {
           role: "link",
-          onClick: () => navigate(`/artist-review?task=${task.id}`),
+          onClick: () =>
+            navigate(
+              `/artist-review?task=${task.id}${
+                versionNum != null && versionNum !== Number(task.version) ? `&version=${versionNum}` : ""
+              }`
+            ),
           title: "Open this submission in the Shot Viewer",
         }
       : {};
+  // Shots whose older client notes are expanded.
+  const [openHistory, setOpenHistory] = useState(() => new Set());
+  const toggleHistory = (shotId) =>
+    setOpenHistory((prev) => {
+      const next = new Set(prev);
+      next.has(shotId) ? next.delete(shotId) : next.add(shotId);
+      return next;
+    });
+  const renderClientNote = (n, key, older = false) => (
+    <div
+      key={key}
+      className={`sheet-note${older ? " sheet-note-older" : ""}${n.task.reviewFile ? " sheet-viewer-link" : ""}`}
+      {...viewerLink(n.task, n.versionNum)}
+    >
+      <span className="sheet-note-head">
+        {n.task.type} <span className="mono">{n.version}</span> · {n.reviewer}
+        {n.decision && <span className={`pill pill-${n.decision.tone} sheet-note-pill`}>{n.decision.label}</span>}
+      </span>
+      {n.comment && <span>{n.comment}</span>}
+      {n.drawings > 0 && (
+        <span className="sheet-note-sub">
+          {n.drawings} drawing{n.drawings === 1 ? "" : "s"} (see Review &amp; Dailies)
+        </span>
+      )}
+      {!older && n.previous && (
+        <span className="sheet-note-sub">
+          From {n.version} — no client notes on {formatVersion(n.task.version)} yet
+        </span>
+      )}
+    </div>
+  );
   const [sceneFilter, setSceneFilter] = useState("");
 
   const sceneOptions = useMemo(() => [...new Set(shots.map((s) => s.scene).filter(Boolean))], [shots]);
@@ -223,27 +267,18 @@ export default function ShotSpreadsheet({ shots, feedback, onPatch, onSaveSupNot
                   <td className={clientNotes(shot, feedback).length ? "sheet-client-cell" : ""}>
                     {/* The client's notes on each task's latest version come first. */}
                     <div className="sheet-notes">
-                      {clientNotes(shot, feedback).map((n, i) => (
-                        <div
-                          key={i}
-                          className={`sheet-note${n.task.reviewFile ? " sheet-viewer-link" : ""}`}
-                          {...viewerLink(n.task)}
-                        >
-                          <span className="sheet-note-head">
-                            {n.task.type} <span className="mono">{n.version}</span> · {n.reviewer}
-                            {n.decision && (
-                              <span className={`pill pill-${n.decision.tone} sheet-note-pill`}>{n.decision.label}</span>
-                            )}
-                          </span>
-                          {n.comment && <span>{n.comment}</span>}
-                          {n.drawings > 0 && (
-                            <span className="sheet-note-sub">
-                              {n.drawings} drawing{n.drawings === 1 ? "" : "s"} (see Review &amp; Dailies)
-                            </span>
-                          )}
-                        </div>
-                      ))}
+                      {clientNotes(shot, feedback).map((n, i) => renderClientNote(n, i))}
                       {clientNotes(shot, feedback).length === 0 && <span className="sheet-static">—</span>}
+                      {olderClientNotes(shot, feedback).length > 0 && (
+                        <>
+                          <button type="button" className="sheet-history-toggle" onClick={() => toggleHistory(shot.id)}>
+                            {openHistory.has(shot.id) ? "Hide" : "Show"} older notes (
+                            {olderClientNotes(shot, feedback).length})
+                          </button>
+                          {openHistory.has(shot.id) &&
+                            olderClientNotes(shot, feedback).map((n, i) => renderClientNote(n, `old-${i}`, true))}
+                        </>
+                      )}
                     </div>
                   </td>
                   <td>
