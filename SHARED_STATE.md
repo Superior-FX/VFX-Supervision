@@ -86,3 +86,5 @@ run `git config core.hooksPath .githooks` from the repo root.
 - 2026-11-25T03:02:24-06:00 — **Will Cox** (Atom-Smasher) — `ee49404` Catch unfinished videos on upload; Unfinal in the Dashboard; color submitted versions by status
 - 2026-11-26T01:22:16-06:00 — **Will Cox** (Atom-Smasher) — `0a7479d` Open submissions in Shot Viewer from the spreadsheet's Submitted version and Client notes
 - 2026-11-26T01:28:04-06:00 — **Will Cox** (Atom-Smasher) — `9a4582d` Retrigger Vercel deploy (0a7479d was not picked up)
+- 2026-11-26T01:44:08-06:00 — **Will Cox** (Atom-Smasher) — `aa0e7b2` SHARED_STATE: log ee49404 through 9a4582d
+- 2026-11-26T02:15:25-06:00 — **Will Cox** (Atom-Smasher) — `b14276d` Keep client notes until the client comments on a newer version; show older revisions' notes
