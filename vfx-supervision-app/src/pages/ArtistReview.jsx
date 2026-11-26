@@ -79,7 +79,9 @@ export default function ArtistReview() {
   });
   const { plateUrl, plateError } = usePlateProxy(folder, entry?.shot, viewingPlate);
 
-  if (!currentArtist) {
+  // A supervisor opening a submission from the spreadsheet doesn't need an
+  // artist link; only the artist's own list does.
+  if (!currentArtist && !entry) {
     return (
       <div className="review">
         <div className="review-header">

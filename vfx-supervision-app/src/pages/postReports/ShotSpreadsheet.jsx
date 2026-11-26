@@ -81,6 +81,15 @@ function SupNoteEditor({ task, onSave }) {
 
 export default function ShotSpreadsheet({ shots, feedback, onPatch, onSaveSupNote, canEdit, canViewCosts }) {
   const navigate = useNavigate();
+  // Opens a submission in the Shot Viewer (only if it has a review proxy).
+  const viewerLink = (task) =>
+    task.reviewFile
+      ? {
+          role: "link",
+          onClick: () => navigate(`/artist-review?task=${task.id}`),
+          title: "Open this submission in the Shot Viewer",
+        }
+      : {};
   const [sceneFilter, setSceneFilter] = useState("");
 
   const sceneOptions = useMemo(() => [...new Set(shots.map((s) => s.scene).filter(Boolean))], [shots]);
@@ -200,8 +209,9 @@ export default function ShotSpreadsheet({ shots, feedback, onPatch, onSaveSupNot
                         return (
                           <span
                             key={v.task.id}
-                            className={`sheet-version-chip${status.tone ? ` tone-${status.tone}` : ""}`}
+                            className={`sheet-version-chip${status.tone ? ` tone-${status.tone}` : ""}${v.task.reviewFile ? " sheet-viewer-link" : ""}`}
                             title={`${v.task.type} ${v.version}: ${status.label}`}
+                            {...viewerLink(v.task)}
                           >
                             {v.task.type} <span className="mono">{v.version}</span>
                           </span>
@@ -214,7 +224,11 @@ export default function ShotSpreadsheet({ shots, feedback, onPatch, onSaveSupNot
                     {/* The client's notes on each task's latest version come first. */}
                     <div className="sheet-notes">
                       {clientNotes(shot, feedback).map((n, i) => (
-                        <div key={i} className="sheet-note">
+                        <div
+                          key={i}
+                          className={`sheet-note${n.task.reviewFile ? " sheet-viewer-link" : ""}`}
+                          {...viewerLink(n.task)}
+                        >
                           <span className="sheet-note-head">
                             {n.task.type} <span className="mono">{n.version}</span> · {n.reviewer}
                             {n.decision && (

@@ -200,6 +200,21 @@
   color: var(--text-tertiary);
 }
 
+/* Submitted version chips and client notes open the Shot Viewer. */
+.sheet-viewer-link {
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.sheet-note.sheet-viewer-link:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.sheet-version-chip.sheet-viewer-link:hover {
+  filter: brightness(1.15);
+  text-decoration: underline;
+}
+
 /* Client notes take priority: their cell is tinted so they stand out. */
 .sheet-table td.sheet-client-cell {
   background: color-mix(in srgb, var(--client, var(--accent)) 10%, var(--card-bg));
